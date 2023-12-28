@@ -37,7 +37,7 @@ Connect the MOSI, MISO, and CLOCK pins of the W5500 to the SPI1 pins of the STM3
 Connect the RST pin of W5500 to the one of the GPIO pins of STM32 MCU to enable reset function trigger from the STM32 MCU. 
 
 #### Setting up the STM32F401CCU6 Firmware
-Install STM32Cube IDE in any Windows Computer, and load the project under the directory `KVMOIP/Firmware/STM32F401CCU6`
+Install STM32Cube IDE in any Windows Computer, and load the project under the directory `SKVMOIP/Firmware/STM32F401CCU6`
 
 Press the key combination `Windows Logo Key + B` to build the project and make sure there are no build errors.
 
@@ -48,17 +48,17 @@ Click on the `Run` tab on the menu bar on the top, and select `run` to build and
 
 #### Setting up client For Windows
 It requires buildilng the installer first and then executing the installer to install the client in Windows.
-1. `cd KVMOIP`
+1. `cd SKVMOIP`
 2. `./build.sh PLATFORM=Windows INSTALLER=1`
 3. `cd build/Windows`
-4. Now double click on `KVMOIP_Installer.exe` to execute the installer as usually you do to install any other Windows software package.
+4. Now double click on `SKVMOIP_Installer.exe` to execute the installer as usually you do to install any other Windows software package.
 
 #### Setting up client For Linux
 It is rather identical to Windows case above.
-1. `cd KVMOIP`
+1. `cd SKVMOIP`
 2. `./build.sh PLATFORM=Linux INSTALLER=1`
 3. `cd build/Linux`
-4. `sudo dpkg -i ./KVMOIP_Installer.deb`
+4. `sudo dpkg -i ./SKVMOIP_Installer.deb`
 
 ### TODO
 1. Add HDMI Routing over IP support to scale Video Over IP across local networks (as LANs are very fast, can handle the RAW HDMI data).
