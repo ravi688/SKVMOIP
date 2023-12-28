@@ -11,9 +11,9 @@
 #-------------------------------------------
 #		Project Configuration
 #-------------------------------------------
-PROJECT_NAME = TemplateRepo
-STATIC_LIB_NAME = templaterepo.a
-DYNAMIC_LIB_NAME = templaterepo.dll
+PROJECT_NAME = SKVMOIP
+STATIC_LIB_NAME = skvmoip.a
+DYNAMIC_LIB_NAME = skvmoip.dll
 EXECUTABLE_NAME = main
 EXTERNAL_INCLUDES =
 EXTERNAL_LIBS =
@@ -109,9 +109,13 @@ TARGET = $(__EXECUTABLE_NAME)
 DEPENDENCY_INCLUDES = $(addsuffix /include, $(__DEPENDENCIES))
 SHARED_DEPENDENCY_INCLUDES = $(addsuffix /include, $(__SHARED_DEPENDENCIES))
 
+MAIN_SOURCE=source/main.c
+MAIN_OBJECT=$(addsuffix .o, $(MAIN_SOURCE))
 INCLUDES= -I./include $(EXTERNAL_INCLUDES) $(addprefix -I, $(DEPENDENCY_INCLUDES) $(SHARED_DEPENDENCY_INCLUDES))
-SOURCES= $(wildcard source/*.c source/*/*.c)
-OBJECTS= $(addsuffix .o, $(basename $(SOURCES)))
+C_SOURCES=$(wildcard source/*.c source/*/*.c)
+CPP_SOURCES=$(wildcard source/*.cpp source/*/*.cpp)
+SOURCES= $(C_SOURCES) $(CPP_SOURCES)
+OBJECTS= $(addsuffix .o, $(SOURCES))
 LIBS = $(EXTERNAL_LIBS)
 
 #Flags and Defines
@@ -120,10 +124,14 @@ RELEASE_DEFINES =  -DGLOBAL_RELEASE -DRELEASE -DLOG_RELEASE
 DEFINES =
 
 COMPILER_FLAGS= -m64
+C_COMPILER_FLAGS = $(COMPILER_FLAGS)
+CPP_COMPILER_FLAGS = $(COMPILER_FLAGS)
 LINKER_FLAGS= -m64
+LINKER=g++
 DYNAMIC_LIBRARY_COMPILATION_FLAG = -shared
 DYNAMIC_IMPORT_LIBRARY_FLAG = -Wl,--out-implib,
-COMPILER = gcc
+C_COMPILER = gcc
+CPP_COMPILER = g++
 ARCHIVER_FLAGS = -rc
 ARCHIVER = ar
 
@@ -222,9 +230,13 @@ debug: LINKER_FLAGS += $(DEBUG_LINKER_FLAGS)
 debug: $(TARGET)
 
 
-%.o : %.c
+%.c.o : %.c
 	@echo [Log] Compiling $< to $@
-	$(COMPILER) $(COMPILER_FLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@
+	$(C_COMPILER) $(C_COMPILER_FLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@
+
+%.cpp.o: %.cpp
+	@echo [Log] Compiling $< to $@
+	$(CPP_COMPILER) $(CPP_COMPILER_FLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@
 
 %.a:
 	@echo [Log] Building $@ ...
@@ -240,21 +252,21 @@ PRINT_STATIC_INFO:
 PRINT_DYNAMIC_INFO:
 	@echo [Log] Building $(TARGET_DYNAMIC_LIB) ...
 
-$(TARGET_STATIC_LIB) : PRINT_STATIC_INFO $(filter-out source/main.o, $(OBJECTS)) | $(TARGET_LIB_DIR)
+$(TARGET_STATIC_LIB) : PRINT_STATIC_INFO $(filter-out $(MAIN_OBJECT), $(OBJECTS)) | $(TARGET_LIB_DIR)
 	$(ARCHIVER) $(ARCHIVER_FLAGS) $@ $(filter-out $<, $^)
 	@echo [Log] $@ built successfully!
 
-$(TARGET_DYNAMIC_LIB) : PRINT_DYNAMIC_INFO $(__DEPENDENCY_LIBS) $(__SHARED_DEPENDENCY_LIBS) $(filter-out source/main.o, $(OBJECTS)) | $(TARGET_LIB_DIR)
+$(TARGET_DYNAMIC_LIB) : PRINT_DYNAMIC_INFO $(__DEPENDENCY_LIBS) $(__SHARED_DEPENDENCY_LIBS) $(filter-out $(MAIN_OBJECT), $(OBJECTS)) | $(TARGET_LIB_DIR)
 	@echo [Log] Linking $@ ...
-	$(COMPILER) $(COMPILER_FLAGS) $(LINKER_FLAGS) $(DYNAMIC_LIBRARY_COMPILATION_FLAG) $(filter-out source/main.o, $(OBJECTS))  $(LIBS)\
+	$(LINKER) $(LINKER_FLAGS) $(DYNAMIC_LIBRARY_COMPILATION_FLAG) $(filter-out $(MAIN_OBJECT), $(OBJECTS))  $(LIBS)\
 	$(addprefix -L, $(dir $(__DEPENDENCY_LIBS) $(__SHARED_DEPENDENCY_LIBS))) \
 	$(addprefix -l:, $(notdir $(__DEPENDENCY_LIBS) $(__SHARED_DEPENDENCY_LIBS))) \
 	-o $@ $(DYNAMIC_IMPORT_LIBRARY_FLAG)$(TARGET_DYNAMIC_IMPORT_LIB)
 	@echo [Log] $@ and lib$(notdir $@.a) built successfully!
 
-$(TARGET): $(__DEPENDENCY_LIBS) $(__SHARED_DEPENDENCY_LIBS) $(TARGET_STATIC_LIB) source/main.o
+$(TARGET): $(__DEPENDENCY_LIBS) $(__SHARED_DEPENDENCY_LIBS) $(TARGET_STATIC_LIB) $(MAIN_OBJECT)
 	@echo [Log] Linking $@ ...
-	$(COMPILER) $(COMPILER_FLAGS) $(LINKER_FLAGS) source/main.o $(LIBS) \
+	$(LINKER) $(LINKER_FLAGS) $(MAIN_OBJECT) $(LIBS) \
 	$(addprefix -L, $(dir $(TARGET_STATIC_LIB) $(__DEPENDENCY_LIBS) $(__SHARED_DEPENDENCY_LIBS))) \
 	$(addprefix -l:, $(notdir $(TARGET_STATIC_LIB) $(__DEPENDENCY_LIBS) $(__SHARED_DEPENDENCY_LIBS))) \
 	-o $@

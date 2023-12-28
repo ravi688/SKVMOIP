@@ -4,11 +4,11 @@
 .PHONY: MESSAGE
 
 MESSAGE:
-	@echo [Log] Building Template Repo internals
+	@echo [Log] Building SKVMOP internals
 
 debug: MESSAGE
 	
 release: MESSAGE
 
 clean:
-	@echo [Log] Cleaning Template Repo internals
+	@echo [Log] Cleaning SKVMOP internals
