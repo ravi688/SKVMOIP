@@ -109,7 +109,7 @@ TARGET = $(__EXECUTABLE_NAME)
 DEPENDENCY_INCLUDES = $(addsuffix /include, $(__DEPENDENCIES))
 SHARED_DEPENDENCY_INCLUDES = $(addsuffix /include, $(__SHARED_DEPENDENCIES))
 
-MAIN_SOURCE=source/main.c
+MAIN_SOURCE=source/main.cpp
 MAIN_OBJECT=$(addsuffix .o, $(MAIN_SOURCE))
 INCLUDES= -I./include $(EXTERNAL_INCLUDES) $(addprefix -I, $(DEPENDENCY_INCLUDES) $(SHARED_DEPENDENCY_INCLUDES))
 C_SOURCES=$(wildcard source/*.c source/*/*.c)
