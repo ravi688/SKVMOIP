@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SKVMOIP/defines.h>
+#include <SKVMOIP/Event.hpp>
 
 #ifdef PLATFORM_WINDOWS
 #	define WIN32_LEAN_AND_MEAN
@@ -22,6 +23,13 @@ namespace SKVMOIP
 		Internal_MSG m_msg;
 	public:
 
+		enum class EventType
+		{
+			KeyboardInput,
+			MouseInput,
+			Resize
+		};
+
 		typedef Internal_HookHandle HookHandle;
 		typedef Internal_HookCallback HookCallback;
 		enum class HookType
@@ -42,6 +50,8 @@ namespace SKVMOIP
 
 		HookHandle installLocalHook(HookType hookType, HookCallback callback);
 		void uninstallLocalHook(HookHandle hookHandle);
+
+		Event& getEvent(EventType evenType);
 	};
 
 } /* SKVMOIP */

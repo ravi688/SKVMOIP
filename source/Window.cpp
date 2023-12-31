@@ -3,9 +3,13 @@
 #include <SKVMOIP/ErrorHandling.hpp>
 #include <SKVMOIP/debug.h>
 #include <SKVMOIP/assert.h>
+#include <SKVMOIP/defines.hpp>
 #include <bufferlib/buffer.h>
 
 static buffer_t gRawInputBuffer;
+typedef std::unordered_map<SKVMOIP::Window::EventType, SKVMOIP::Event> TypedEventMap;
+typedef std::unordered_map<HWND, TypedEventMap> WindowsEventRegistry;
+static WindowsEventRegistry  gWindowsEventRegistry;
 
 static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -17,30 +21,6 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 			int height = HIWORD(lParam); // Macro to get the high-order word.
 			break;
 		}
-
-		// /* Keyboard Input Handling */
-		// case WM_SYSKEYUP:
-		// case WM_SYSKEYDOWN:
-		// case WM_KEYUP:
-		// case WM_KEYDOWN:
-		// {
-		// 	Win32::KeyboardMessage message = Win32::GetKeyboardMessage(wParam, lParam);
-		// 	std::cout << "Keyboard Messsage: \n";
-		// 	std::cout << "\tKeyCode: " << message.keyCode << "\n";
-		// 	std::cout << "\tScanCode: " << message.scanCode << "\n";
-		// 	std::cout << "\tRepeatCount: " << message.repeatCount << "\n";
-		// 	std::cout << "\tWasKeyDown: " << message.wasKeyDown << "\n";
-		// 	std::cout << "\tIsKeyReleased: " << message.isKeyReleased << "\n";
-		// 	std::cout << "\tIsAltDown: " << message.isAltDown << "\n";
-		// 	std::cout << "\tIsExtendedKey: " << message.isExtendedKey << std::endl;
-		// 	break;
-		// }
-
-		// /* Mouse Input Handling */
-		// case WM_CAPTURECHANGED:
-		// {
-		// 	break;
-		// }
 
 		case WM_INPUT:
 		{
@@ -56,13 +36,21 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
 			RAWINPUT* rawInput = reinterpret_cast<RAWINPUT*>(buf_get_ptr(&gRawInputBuffer));
 
+			WindowsEventRegistry::iterator eventMapKeyValuePairIt = gWindowsEventRegistry.find(hwnd);
+			_assert(eventMapKeyValuePairIt != gWindowsEventRegistry.end());
+			TypedEventMap& eventMap = eventMapKeyValuePairIt->second;
+
 			switch(rawInput->header.dwType)
 			{
 				case RIM_TYPEMOUSE:
 				{
 					RAWMOUSE* rawMouse = &rawInput->data.mouse;
 					Win32::MouseInput mouseInput = Win32::DecodeRawMouseInput(rawMouse);
-					Win32::DumpMouseInput(&mouseInput);
+
+					TypedEventMap::iterator eventIt = eventMap.find(SKVMOIP::Window::EventType::MouseInput);
+					_assert(eventIt != eventMap.end());
+					SKVMOIP::Event& event = eventIt->second;
+					event.publish(reinterpret_cast<void*>(&mouseInput));
 					break;
 				}
 
@@ -70,7 +58,11 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 				{
 					RAWKEYBOARD* rawKeyboard = &rawInput->data.keyboard;
 					Win32::KeyboardInput keyboardInput = Win32::DecodeRawKeyboardInput(rawKeyboard);
-					Win32::DumpKeyboardInput(&keyboardInput);
+
+					TypedEventMap::iterator eventIt = eventMap.find(SKVMOIP::Window::EventType::KeyboardInput);
+					_assert(eventIt != eventMap.end());
+					SKVMOIP::Event& event = eventIt->second;
+					event.publish(reinterpret_cast<void*>(&keyboardInput));
 					break;
 				}
 
@@ -84,43 +76,6 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 		}
 	}
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
-}
-
-static Internal_WindowHandle SKVM_CreateWindow(const char* name)
-{
-#ifdef PLATFORM_WINDOWS
-
-	/* HMODULE and HINSTANCE are the same thing. Got to know from the internet */
-	HINSTANCE hInstance = GetModuleHandle(NULL);
-
-	/* Populate Window Class structure */
-	WNDCLASS wc = { };
-	wc.lpfnWndProc = WindowProc;
-	wc.hInstance = hInstance;
-	wc.lpszClassName = "MainWClass";
-
-	RegisterClass(&wc);
-
-	/* Now create the window */
-	HWND hHandle = CreateWindowEx(0, 
-									(LPSTR)"MainWClass",
-									(LPSTR)name, 
-									WS_OVERLAPPEDWINDOW, 
-									CW_USEDEFAULT, 
-									CW_USEDEFAULT, 
-									CW_USEDEFAULT, 
-									CW_USEDEFAULT, 
-									NULL,
-									NULL,
-									hInstance, 
-									NULL);
-	if(hHandle == NULL)
-		Internal_ErrorExit("CreateWindowEx");
-
-	ShowWindow(hHandle, SW_SHOWNORMAL);
-
-	return hHandle;
-#endif /* Windows */
 }
 
 static int SKVM_getWin32HookFromHookType(SKVMOIP::Window::HookType hookType)
@@ -140,25 +95,25 @@ static int SKVM_getWin32HookFromHookType(SKVMOIP::Window::HookType hookType)
 	}
 }
 
-static void SKVM_DestroyWindow(Internal_WindowHandle handle)
-{
-#ifdef PLATFORM_WINDOWS
-	DestroyWindow(handle);
-#endif /* Windows */
-}
-
 namespace SKVMOIP
 {
 
 	Window::Window(u32 width, u32 height, const char* name)
 	{
 		gRawInputBuffer = buf_create(sizeof(u8), sizeof(RAWINPUT), 0);
-		m_handle = ::SKVM_CreateWindow(name);
+		m_handle = Win32::Win32CreateWindow(width, height, name, WindowProc);
+		gWindowsEventRegistry.insert(std::pair<HWND, std::unordered_map<EventType, Event>> { m_handle, 
+									{ 
+										{ EventType::MouseInput, Event() },
+										{ EventType::KeyboardInput, Event() },
+										{ EventType::Resize, Event() }
+									} });
 	}
 
 	Window::~Window()
 	{
-		::SKVM_DestroyWindow(m_handle);
+		Win32::Win32DestroyWindow(m_handle);
+		gWindowsEventRegistry.erase(m_handle);
 		buf_free(&gRawInputBuffer);
 	}
 
@@ -205,5 +160,24 @@ namespace SKVMOIP
 	{
 		if(UnhookWindowsHookEx(static_cast<HHOOK>(hookHandle)) == 0)
 			Internal_ErrorExit("UnhookWindowsHookEx");
+	}
+
+	Event& Window::getEvent(EventType eventType)
+	{
+		WindowsEventRegistry::iterator it = gWindowsEventRegistry.find(m_handle);
+		if(it == gWindowsEventRegistry.end())
+		{
+			debug_log_fetal_error("This window is not registered in the gWindowsEventRegistry, corrupt Windoiw instance?");
+			return null_reference<Event>();
+		}
+
+		TypedEventMap::iterator it2 = it->second.find(eventType);
+		if(it2 == it->second.end())
+		{
+			debug_log_fetal_error("Unable to get event for even type: %lu, not such event exists in the registry", eventType);
+			return null_reference<Event>();
+		}
+
+		return it2->second;
 	}
 }
