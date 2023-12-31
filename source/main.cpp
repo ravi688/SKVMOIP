@@ -3,21 +3,10 @@
 #include <SKVMOIP/assert.h>
 #include <SKVMOIP/ErrorHandling.hpp>
 #include <SKVMOIP/Window.hpp>
+#include <SKVMOIP/Win32/Win32.hpp>
 #include <iostream>
 
 #ifdef PLATFORM_WINDOWS
-
-static LRESULT WindowsKeyboardCallback(int code, WPARAM wParam, LPARAM lParam)
-{
-	std::cout << "WindowsKeyboardCallback" << std::endl;
-	return CallNextHookEx(NULL, code, wParam, lParam);
-}
-
-static LRESULT WindowsMouseCallback(int code, WPARAM wParam, LPARAM lParam)
-{
-	std::cout << "WindowsMouseCallback" << std::endl;
-	return CallNextHookEx(NULL, code, wParam, lParam);
-}
 
 int main(int argc, const char* argv[])
 {
@@ -25,16 +14,13 @@ int main(int argc, const char* argv[])
 
 	SKVMOIP::Window window(500, 500, "Scalable KVM Over IP");
 
-	SKVMOIP::Window::HookHandle keyboardHook = window.installHook(SKVMOIP::Window::HookType::Keyboard, WindowsKeyboardCallback);
-	SKVMOIP::Window::HookHandle mouseHook = window.installHook(SKVMOIP::Window::HookType::Mouse, WindowsMouseCallback);
+	Win32::DisplayRawInputDeviceList();
+	Win32::RegisterRawInputDevices({ Win32::RawInputDeviceType::Mouse, Win32::RawInputDeviceType::Keyboard });
 
 	while(!window.shouldClose())
 	{
 		window.pollEvents();
 	}
-
-	window.uninstallHook(keyboardHook);
-	window.uninstallHook(mouseHook);
 
 	return 0;
 }

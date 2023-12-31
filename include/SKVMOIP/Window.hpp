@@ -27,7 +27,9 @@ namespace SKVMOIP
 		enum class HookType
 		{
 			Keyboard,
-			Mouse
+			KeyboardLowLevel,
+			Mouse,
+			MouseLowLevel
 		};
 	
 		Window(u32 width, u32 height, const char* name);
@@ -35,10 +37,11 @@ namespace SKVMOIP
 	
 		bool shouldClose();
 		void pollEvents();
+		void setMouseCapture();
+		void releaseMouseCapture();
 
-
-		HookHandle installHook(HookType hookType, HookCallback callback);
-		void uninstallHook(HookHandle hookHandle);
+		HookHandle installLocalHook(HookType hookType, HookCallback callback);
+		void uninstallLocalHook(HookHandle hookHandle);
 	};
 
 } /* SKVMOIP */
