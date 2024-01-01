@@ -19,6 +19,11 @@ namespace Win32
 		input.isExtended1 = (rawKeyboard->Flags & RI_KEY_E1) == RI_KEY_E1;
 		input.isAltorF10 = rawKeyboard->Message == WM_SYSKEYDOWN;
 
+		if(input.isExtended0)
+			input.makeCode |= (static_cast<u32>(0xE0) << 8);
+		else if(input.isExtended1)
+			input.makeCode |= (static_cast<u32>(0xE0) << 16);
+
 		_assert_wrn(rawKeyboard->MakeCode != KEYBOARD_OVERRUN_MAKE_CODE);
 
 		return input;
@@ -26,7 +31,7 @@ namespace Win32
 
 	SKVMOIP_API void DumpKeyboardInput(const KeyboardInput* keyboardInput)
 	{
-		debug_log_info("KeyboardInput { makeCode: %lu, vkey: %lu, status: %lu, e0: %lu, e1: %lu, AltOrF10: %lu }",
+		debug_log_info("KeyboardInput { makeCode: %x, vkey: %lu, status: %lu, e0: %lu, e1: %lu, AltOrF10: %lu }",
 						keyboardInput->makeCode, keyboardInput->virtualKey, static_cast<u8>(keyboardInput->keyStatus), keyboardInput->isExtended0, keyboardInput->isExtended1, keyboardInput->isAltorF10);
 	}
 

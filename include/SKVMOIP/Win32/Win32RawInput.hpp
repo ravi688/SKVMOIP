@@ -59,7 +59,7 @@ namespace Win32
 	{
 		/* PS/2 set 1 make code
 		 * see the table: https://download.microsoft.com/download/1/6/1/161ba512-40e2-4cc9-843a-923143f3456c/translate.pdf  */
-		u16 makeCode;
+		u32 makeCode;
 		/* Windows virtual key code */
 		u16 virtualKey;
 		KeyStatus keyStatus;
