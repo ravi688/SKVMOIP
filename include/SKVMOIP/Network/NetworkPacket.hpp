@@ -28,7 +28,7 @@ namespace SKVMOIP
 			};
 		};
 
-		/* 8 Bytes */
+		/* 10 Bytes */
 		union NetworkPacket
 		{
 		    u8 deviceType: 1;
@@ -41,7 +41,7 @@ namespace SKVMOIP
 			    u8 usbHIDUsageID : 8;
 		    };
 		
-			/* Mouse: 6 Bytes */
+			/* Mouse: 10 Bytes */
 			struct
 			{
 			    /* 2 Bytes */
@@ -57,11 +57,11 @@ namespace SKVMOIP
 				u8 bbMBPressed : 1;
 				u8 bbMBReleased : 1;
 				
-			    /* 4 Bytes */
-				s8 mousePointX;
-				s8 mousePointY;
-				s8 mouseWheelX;
-				s8 mouseWheelY;
+			    /* 8 Bytes */
+				s16 mousePointX;
+				s16 mousePointY;
+				s16 mouseWheelX;
+				s16 mouseWheelY;
 			};
 		};
 

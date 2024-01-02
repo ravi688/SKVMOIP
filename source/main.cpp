@@ -16,13 +16,10 @@
 
 using namespace SKVMOIP;
 
-#define SERVER_PORT "2000"
-#define SERVER_IP "192.168.1.113"
+#define SERVER_IP_ADDRESS "192.168.1.15"
+#define SERVER_PORT_NUMBER "2000"
 
-#define THIS_PORT 3000
-#define THIS_IP "192.168.1.17"
-
-#define NETWORK_THREAD_BUFFER_SIZE 512
+#define NETWORK_THREAD_BUFFER_SIZE 1024
 
 static std::mutex gMutex;
 static std::condition_variable gCv;
@@ -31,7 +28,7 @@ static std::deque<Win32::KMInputData> gInputQueue;
 
 static std::array<Win32::KMInputData, NETWORK_THREAD_BUFFER_SIZE> gNetworkThreadBuffer;
 
-static void NetworkHandler()
+static void NetworkHandler(Network::Socket& networkStream)
 {
 	while(1)
 	{
@@ -60,25 +57,13 @@ static void NetworkHandler()
 		while(index < count)
 		{
 			const Win32::KMInputData& kmInputData = gNetworkThreadBuffer[index];
-			Network::NetworkPacket netPacket = Network::GetNetworkPacketFromKMInputData(kmInputData);
-			Network::DumpNetworkPacket(netPacket);
-			switch(kmInputData.deviceType)
+			const Network::NetworkPacket netPacket = Network::GetNetworkPacketFromKMInputData(kmInputData);
+			// Network::DumpNetworkPacket(netPacket);
+			Network::Result result = networkStream.send(reinterpret_cast<const u8*>(&netPacket), sizeof(netPacket));
+			if(result == Network::Result::SocketError)
 			{
-				case Win32::RawInputDeviceType::Mouse:
-				{
-					// Win32::DumpMouseInput(reinterpret_cast<const Win32::MouseInput*>(&kmInputData.mouseInput));
-					break;
-				}
-				case Win32::RawInputDeviceType::Keyboard:
-				{
-					// Win32::DumpKeyboardInput(reinterpret_cast<const Win32::KeyboardInput*>(&kmInputData.keyboardInput));
-					break;
-				}
-				default:
-				{		
-					_assert(false);
-					break;
-				}
+				debug_log_error("Failed to send Network Packet over Network Stream, error code: %d", WSAGetLastError());
+				exit(-1);
 			}
 			++index;
 		}
@@ -118,7 +103,12 @@ int main(int argc, const char* argv[])
 	Event::SubscriptionHandle mouseInputHandle = window.getEvent(Window::EventType::MouseInput).subscribe(MouseInputHandler, NULL);
 	Event::SubscriptionHandle keyboardInputHandle = window.getEvent(Window::EventType::KeyboardInput).subscribe(KeyboardInputHandler, NULL);
 
-	std::thread networkThread(NetworkHandler);
+	Network::Socket networkStream(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP);
+	debug_log_info("Trying to connect to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
+	if(networkStream.connect(SERVER_IP_ADDRESS, SERVER_PORT_NUMBER) == Network::Result::Success)
+		debug_log_info("Connected to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
+
+	std::thread networkThread(NetworkHandler, std::ref(networkStream));
 
 	while(!window.shouldClose())
 	{

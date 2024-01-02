@@ -9,7 +9,7 @@ namespace SKVMOIP
 	{
 		SKVMOIP_API NetworkPacket GetNetworkPacketFromKMInputData(const Win32::KMInputData& inputData)
 		{
-			static_assert(sizeof(NetworkPacket) == 6);
+			static_assert(sizeof(NetworkPacket) == 10);
 		
 			NetworkPacket packet = { };
 			switch(inputData.deviceType)
@@ -67,6 +67,22 @@ namespace SKVMOIP
 								packet.bbMBReleased = EnumClassToInt(NetworkPacketValues::Bool::True);
 						}
 					}
+
+					if(input.isMoveRelative)
+					{
+						packet.mousePointX = input.movement.x;
+						packet.mousePointY = input.movement.y;
+						packet.mouseWheelX = input.wheel.x;
+						packet.mouseWheelY = input.wheel.y;
+					}
+					else if(input.isMoveAbsolute)
+					{
+						debug_log_warning("Absolute Mouse Pointer movement is not supported, You're probably using a PenTablet");
+					}
+					else if(input.isVirtualDesktop)
+					{
+						debug_log_warning("Virtual Desktop Pointer movement is not supported");
+					}
 					break;
 				}
 				default: { _assert(false); break; }
@@ -80,12 +96,12 @@ namespace SKVMOIP
 			{
 				case NetworkPacketValues::DeviceType::Keyboard:
 				{
-					debug_log_info("KeyboardInput { HID Usage ID: %u }", packet.usbHIDUsageID);
+					debug_log_info("KeyboardInput { HID Usage ID: %u, Status: %u }", packet.usbHIDUsageID, packet.keyStatus);
 					break;
 				}
 				case NetworkPacketValues::DeviceType::Mouse:
 				{
-					debug_log_info("MouseInput { Point (%d, %d), Wheel: (%d, %d), MBPr: %u, MBRl: %u, LBPr: %lu, LBRl: %u, RBPr: %u, RBRl: %u, BFBPr: %u, BFBRl: %u, BBBPr: %lu, BBBRl: %u }",
+					debug_log_info("MouseInput { Point (%d, %d), Wheel: (%d, %d), MBPr: %u, MBRl: %u, LBPr: %u, LBRl: %u, RBPr: %u, RBRl: %u, BFBPr: %u, BFBRl: %u, BBBPr: %u, BBBRl: %u }",
 									packet.mousePointX, 
 									packet.mousePointY,
 									packet.mouseWheelX,

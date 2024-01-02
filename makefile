@@ -16,7 +16,7 @@ STATIC_LIB_NAME = skvmoip.a
 DYNAMIC_LIB_NAME = skvmoip.dll
 EXECUTABLE_NAME = main
 EXTERNAL_INCLUDES =
-EXTERNAL_LIBS =
+EXTERNAL_LIBS = -lws2_32
 
 DEPENDENCIES = Common Common/dependencies/BufferLib Common/dependencies/BufferLib/dependencies/CallTrace
 DEPENDENCY_LIBS = Common/lib/common.a Common/dependencies/BufferLib/lib/bufferlib.a Common/dependencies/BufferLib/dependencies/CallTrace/lib/calltrace.a
@@ -266,9 +266,9 @@ $(TARGET_DYNAMIC_LIB) : PRINT_DYNAMIC_INFO $(__DEPENDENCY_LIBS) $(__SHARED_DEPEN
 
 $(TARGET): $(__DEPENDENCY_LIBS) $(__SHARED_DEPENDENCY_LIBS) $(TARGET_STATIC_LIB) $(MAIN_OBJECT)
 	@echo [Log] Linking $@ ...
-	$(LINKER) $(LINKER_FLAGS) $(MAIN_OBJECT) $(LIBS) \
+	$(LINKER) $(LINKER_FLAGS) $(MAIN_OBJECT) \
 	$(addprefix -L, $(dir $(TARGET_STATIC_LIB) $(__DEPENDENCY_LIBS) $(__SHARED_DEPENDENCY_LIBS))) \
-	$(addprefix -l:, $(notdir $(TARGET_STATIC_LIB) $(__DEPENDENCY_LIBS) $(__SHARED_DEPENDENCY_LIBS))) \
+	$(addprefix -l:, $(notdir $(TARGET_STATIC_LIB) $(__DEPENDENCY_LIBS) $(__SHARED_DEPENDENCY_LIBS))) $(LIBS) \
 	-o $@
 	@echo [Log] $(PROJECT_NAME) built successfully!
 
