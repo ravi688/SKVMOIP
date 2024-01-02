@@ -88,11 +88,14 @@ namespace Win32
 
 		bool isWheelX;
 		bool isWheelY;
+
+		bool isAnyButton;
 		bool isMiddleButton;
 		bool isLeftButton;
 		bool isRightButton;
 		bool isBrowseForwardButton;
 		bool isBrowseBackwardButton;
+
 		bool isMoveRelative;
 		bool isMoveAbsolute;
 		bool isVirtualDesktop;
@@ -109,6 +112,17 @@ namespace Win32
 		Mouse,
 		Keyboard
 	};
+
+	struct KMInputData
+	{
+		Win32::RawInputDeviceType deviceType;
+		union
+		{
+			Win32::MouseInput mouseInput;
+			Win32::KeyboardInput keyboardInput;
+		};
+	};
+
 
 	SKVMOIP_API void DisplayRawInputDeviceList();
 	SKVMOIP_API void RegisterRawInputDevices(std::vector<RawInputDeviceType> deviceTypes);

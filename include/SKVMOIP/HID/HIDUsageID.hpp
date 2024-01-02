@@ -169,6 +169,6 @@ namespace SKVMOIP
 	};
 
 	SKVMOIP_API HIDUsageID GetHIDUsageIDFromWin32KeyCode(Win32::KeyCode keyCode);
-	SKVMOIP_API HIDUsageID GetHIDUsageFromPS2Set1MakeCode(u16 makeCode);
+	SKVMOIP_API HIDUsageID GetHIDUsageFromPS2Set1MakeCode(PS2Set1MakeCode makeCode);
 }
 

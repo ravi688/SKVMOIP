@@ -39,17 +39,40 @@ namespace Win32
 	{
 		MouseInput input = { };
 		auto buttonFlags = rawMouse->usButtonFlags;
+
 		input.isWheelX = HAS_FLAG(buttonFlags, RI_MOUSE_WHEEL);
 		/* Warning: Horizontal wheel is not supported on Windows XP and 2000 */
 		input.isWheelY = HAS_FLAG(buttonFlags, RI_MOUSE_HWHEEL);
-		input.isMiddleButton = HAS_FLAG(buttonFlags, RI_MOUSE_MIDDLE_BUTTON_DOWN) | HAS_FLAG(buttonFlags, RI_MOUSE_MIDDLE_BUTTON_UP);
-		input.isLeftButton = HAS_FLAG(buttonFlags, RI_MOUSE_LEFT_BUTTON_DOWN) | HAS_FLAG(buttonFlags, RI_MOUSE_LEFT_BUTTON_UP);
-		input.isRightButton = HAS_FLAG(buttonFlags, RI_MOUSE_RIGHT_BUTTON_DOWN) | HAS_FLAG(buttonFlags, RI_MOUSE_RIGHT_BUTTON_UP);
-		input.isBrowseForwardButton = HAS_FLAG(buttonFlags, RI_MOUSE_BUTTON_4_DOWN) | HAS_FLAG(buttonFlags, RI_MOUSE_BUTTON_4_UP);
-		input.isBrowseBackwardButton = HAS_FLAG(buttonFlags, RI_MOUSE_BUTTON_5_DOWN) | HAS_FLAG(buttonFlags, RI_MOUSE_BUTTON_5_UP);
 		input.isMoveRelative = HAS_FLAG(rawMouse->usFlags, MOUSE_MOVE_RELATIVE);
 		input.isMoveAbsolute = HAS_FLAG(rawMouse->usFlags, MOUSE_MOVE_ABSOLUTE);
 		input.isVirtualDesktop = HAS_FLAG(rawMouse->usFlags, MOUSE_VIRTUAL_DESKTOP);
+		
+		bool isMiddleDown = HAS_FLAG(buttonFlags, RI_MOUSE_MIDDLE_BUTTON_DOWN);
+		bool isLeftDown = HAS_FLAG(buttonFlags, RI_MOUSE_LEFT_BUTTON_DOWN);
+		bool isRightDown = HAS_FLAG(buttonFlags, RI_MOUSE_RIGHT_BUTTON_DOWN);
+		bool isButton4Down = HAS_FLAG(buttonFlags, RI_MOUSE_BUTTON_4_DOWN);
+		bool isButton5Down = HAS_FLAG(buttonFlags, RI_MOUSE_BUTTON_5_DOWN);
+		bool isMiddleUp = HAS_FLAG(buttonFlags, RI_MOUSE_MIDDLE_BUTTON_UP);
+		bool isLeftUp = HAS_FLAG(buttonFlags, RI_MOUSE_LEFT_BUTTON_UP);
+		bool isRightUp = HAS_FLAG(buttonFlags, RI_MOUSE_RIGHT_BUTTON_UP);
+		bool isButton4Up = HAS_FLAG(buttonFlags, RI_MOUSE_BUTTON_4_UP);
+		bool isButton5Up = HAS_FLAG(buttonFlags, RI_MOUSE_BUTTON_5_UP);
+
+		bool isAnyButtonDown = isMiddleDown || isLeftDown || isRightDown || isButton4Down || isButton5Down;
+		input.isAnyButton = isAnyButtonDown || isMiddleUp || isLeftUp || isRightUp || isButton4Up || isButton5Up;
+
+		if(input.isAnyButton)
+		{
+			input.isMiddleButton = isMiddleDown | isMiddleUp;
+			input.isLeftButton = isLeftDown | isLeftUp;
+			input.isRightButton = isRightDown | isRightUp;
+			input.isBrowseForwardButton = isButton4Down | isButton4Up;
+			input.isBrowseBackwardButton = isButton5Down | isButton5Up;
+		}
+
+		/* TODO: Multiple Mouse buttons could be pressed at one time, so add support for it */
+		if(input.isAnyButton)
+			input.buttonStatus = isAnyButtonDown ? Win32::KeyStatus::Pressed : Win32::KeyStatus::Released;
 
 		input.movement.x = static_cast<s16>(rawMouse->lLastX);
 		input.movement.y = static_cast<s16>(rawMouse->lLastY);

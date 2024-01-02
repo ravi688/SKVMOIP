@@ -1,20 +1,18 @@
 
+#include <SKVMOIP/defines.hpp>
 #include <SKVMOIP/debug.h>
 #include <SKVMOIP/assert.h>
 #include <SKVMOIP/ErrorHandling.hpp>
 #include <SKVMOIP/Window.hpp>
 #include <SKVMOIP/Win32/Win32.hpp>
-#include <iostream>
+#include <SKVMOIP/HID/HIDUsageID.hpp>
+#include <SKVMOIP/Network/NetworkPacket.hpp>
+#include <SKVMOIP/Network/NetworkSocket.hpp>
 
 #include <deque>
 #include <array>
 #include <thread>
 #include <condition_variable>
-
-// #include <iphlpapi.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <cstring>
 
 using namespace SKVMOIP;
 
@@ -26,49 +24,12 @@ using namespace SKVMOIP;
 
 #define NETWORK_THREAD_BUFFER_SIZE 512
 
-struct InputData
-{
-	Win32::RawInputDeviceType deviceType;
-	union
-	{
-		Win32::MouseInput mouseInput;
-		Win32::KeyboardInput keyboardInput;
-	};
-};
-
-struct PackedInputData
-{
-	u8 deviceType : 1;
-	union
-	{
-		u32 usbHIDUsageID;
-		struct
-		{
-			/* 1 Byte */
-			u8 middleMBPressed : 1;
-			u8 middleMBReleased : 1;
-			u8 leftMBPressed : 1;
-			u8 leftMBReleased : 1;
-			u8 rightMBPressed : 1;
-			u8 rightMBReleased : 1;
-			u8 bfMBPressed : 1;
-			u8 bbMBReleased : 1;
-
-			/* 4 Bytes */
-			s8 mouse_point_x;
-			s8 mouse_point_y;
-			s8 mouse_wheel_x;
-			s8 mouse_wheel_y;
-		};
-	};
-};
-
 static std::mutex gMutex;
 static std::condition_variable gCv;
 
-static std::deque<InputData> gInputQueue;
+static std::deque<Win32::KMInputData> gInputQueue;
 
-static std::array<InputData, NETWORK_THREAD_BUFFER_SIZE> gNetworkThreadBuffer;
+static std::array<Win32::KMInputData, NETWORK_THREAD_BUFFER_SIZE> gNetworkThreadBuffer;
 
 static void NetworkHandler()
 {
@@ -98,17 +59,19 @@ static void NetworkHandler()
 		index = 0;
 		while(index < count)
 		{
-			const InputData& inputData = gNetworkThreadBuffer[index];
-			switch(inputData.deviceType)
+			const Win32::KMInputData& kmInputData = gNetworkThreadBuffer[index];
+			Network::NetworkPacket netPacket = Network::GetNetworkPacketFromKMInputData(kmInputData);
+			Network::DumpNetworkPacket(netPacket);
+			switch(kmInputData.deviceType)
 			{
 				case Win32::RawInputDeviceType::Mouse:
 				{
-					Win32::DumpMouseInput(reinterpret_cast<const Win32::MouseInput*>(&inputData.mouseInput));
+					// Win32::DumpMouseInput(reinterpret_cast<const Win32::MouseInput*>(&kmInputData.mouseInput));
 					break;
 				}
 				case Win32::RawInputDeviceType::Keyboard:
 				{
-					Win32::DumpKeyboardInput(reinterpret_cast<const Win32::KeyboardInput*>(&inputData.keyboardInput));
+					// Win32::DumpKeyboardInput(reinterpret_cast<const Win32::KeyboardInput*>(&kmInputData.keyboardInput));
 					break;
 				}
 				default:
@@ -125,9 +88,9 @@ static void NetworkHandler()
 static void MouseInputHandler(void* mouseInputData, void* userData)
 {
 	std::unique_lock<std::mutex> lock(gMutex);
-	InputData inputData = { Win32::RawInputDeviceType::Mouse };
-	memcpy(&inputData.mouseInput, mouseInputData, sizeof(Win32::MouseInput));
-	gInputQueue.push_front(inputData);
+	Win32::KMInputData kmInputData = { Win32::RawInputDeviceType::Mouse };
+	memcpy(&kmInputData.mouseInput, mouseInputData, sizeof(Win32::MouseInput));
+	gInputQueue.push_front(kmInputData);
 	lock.unlock();
 	gCv.notify_one();
 }
@@ -135,9 +98,9 @@ static void MouseInputHandler(void* mouseInputData, void* userData)
 static void KeyboardInputHandler(void* keyboardInputData, void* userData)
 {
 	std::unique_lock<std::mutex> lock(gMutex);
-	InputData inputData = { Win32::RawInputDeviceType::Keyboard };
-	memcpy(&inputData.keyboardInput, keyboardInputData, sizeof(Win32::KeyboardInput));
-	gInputQueue.push_front(inputData);
+	Win32::KMInputData kmInputData = { Win32::RawInputDeviceType::Keyboard };
+	memcpy(&kmInputData.keyboardInput, keyboardInputData, sizeof(Win32::KeyboardInput));
+	gInputQueue.push_front(kmInputData);
 	lock.unlock();
 	gCv.notify_one();
 }
