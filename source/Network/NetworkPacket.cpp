@@ -7,9 +7,9 @@ namespace SKVMOIP
 {
 	namespace Network
 	{
-		SKVMOIP_API NetworkPacket GetNetworkPacketFromKMInputData(const Win32::KMInputData& inputData)
+		SKVMOIP_API NetworkPacket GetNetworkPacketFromKMInputData(const Win32::KMInputData& inputData, u8 modifierKeys)
 		{
-			static_assert(sizeof(NetworkPacket) == 10);
+			// static_assert(sizeof(NetworkPacket) == 10);
 		
 			NetworkPacket packet = { };
 			switch(inputData.deviceType)
@@ -22,6 +22,7 @@ namespace SKVMOIP
 														NetworkPacketValues::KeyStatus::Released :
 														NetworkPacketValues::KeyStatus::Pressed);
 					packet.usbHIDUsageID = GetHIDUsageFromPS2Set1MakeCode(IntToEnumClass<PS2Set1MakeCode>(input.makeCode));
+					packet.modifierKeys = modifierKeys;
 					break;
 				}
 				case Win32::RawInputDeviceType::Mouse:

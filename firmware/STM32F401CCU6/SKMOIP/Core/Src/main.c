@@ -27,11 +27,50 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#define RECEIVE_BUFFER_SIZE 4096 // must be greater than or equal to 3
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+
+/* 10 Bytes */
+typedef union NetworkPacket
+{
+    uint8_t deviceType: 1;
+    
+    /* Keyboard: 2 Bytes */
+    struct
+    {
+        uint8_t : 1;
+        uint8_t keyStatus : 1;
+	    uint8_t usbHIDUsageID : 8;
+	    uint8_t modifierKeys: 8;
+    };
+
+	/* Mouse: 10 Bytes */
+	struct
+	{
+	    /* 2 Bytes */
+	    uint8_t : 1;
+		uint8_t middleMBPressed : 1;
+		uint8_t middleMBReleased : 1;
+		uint8_t leftMBPressed : 1;
+		uint8_t leftMBReleased : 1;
+		uint8_t rightMBPressed : 1;
+		uint8_t rightMBReleased : 1;
+		uint8_t bfMBPressed : 1;
+		uint8_t bfMBReleased : 1;
+		uint8_t bbMBPressed : 1;
+		uint8_t bbMBReleased : 1;
+		
+	    /* 8 Bytes */
+		int16_t mousePointX;
+		int16_t mousePointY;
+		int16_t mouseWheelX;
+		int16_t mouseWheelY;
+	};
+} NetworkPacket;
+
+#define RECEIVE_BUFFER_SIZE (128 * sizeof(NetworkPacket)) // must be greater than or equal to 3
 
 typedef enum input_type_t
 {
@@ -272,7 +311,13 @@ struct
 	  int8_t wheel;
 } mouseReport = { 0x02 };
 
-static inline void SendKeyboardReport(uint8_t keycode)
+typedef enum key_status_t
+{
+	KEY_STATUS_RELEASED = 0,
+	KEY_STATUS_PRESSED
+} key_status_t;
+
+static inline void SendKeyboardReportASCII(uint8_t keycode)
 {
 	keyboardReport.keycode0 = getKeyCodeFromASCII((char)keycode);
 	USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&keyboardReport, sizeof(keyboardReport));
@@ -280,6 +325,25 @@ static inline void SendKeyboardReport(uint8_t keycode)
 	HAL_Delay(10);
 	USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&keyboardReport, sizeof(keyboardReport));
 	HAL_Delay(20);
+}
+
+static inline void SendKeyboardReport(uint8_t hidUsageID, uint8_t modifierKeys, key_status_t status)
+{
+	keyboardReport.modifier = modifierKeys;
+	switch(status)
+	{
+		case KEY_STATUS_RELEASED:
+			{
+				keyboardReport.keycode0 = 0;
+				break;
+			}
+		case KEY_STATUS_PRESSED:
+			{
+				keyboardReport.keycode0 = hidUsageID;
+				break;
+			}
+	}
+	USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&keyboardReport, sizeof(keyboardReport));
 }
 
 static inline void SendMouseReport(uint8_t button, int8_t dx, int8_t dy, int8_t wheel)
@@ -298,7 +362,7 @@ static inline void SendMouseReport(uint8_t button, int8_t dx, int8_t dy, int8_t 
 		mouseReport.wheel = 0;
 		USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&mouseReport, sizeof(mouseReport));
 		HAL_Delay(20);
-		SendKeyboardReport('a');
+		SendKeyboardReportASCII('a');
 	}
 }
 
@@ -306,7 +370,7 @@ static inline void Info(const char* str)
 {
 	uint8_t len = strlen(str);
 	for(uint8_t i = 0; i < len; i++)
-		 SendKeyboardReport(str[i]);
+		 SendKeyboardReportASCII(str[i]);
 }
 
 static inline void Error(const char* str)
@@ -357,7 +421,15 @@ int main(void)
   {
 	  Error("failed to create socket 0\n");
   }
+
+  if(sizeof(NetworkPacket) != 10)
+  {
+  	Error("sizeof network packet incorrect");
+  }
+
   uint8_t recieveBuffer[RECEIVE_BUFFER_SIZE];
+
+//  uint8_t previousKeyPressedID = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -393,31 +465,42 @@ int main(void)
 			  continue;
 		  }
 
-		  for(int32_t i = 0; i < size;)
+		  NetworkPacket* packets = (NetworkPacket*)(recieveBuffer);
+		  NetworkPacket* end = (NetworkPacket*)(recieveBuffer + size);
+		  for(; packets < end; ++packets)
 		  {
-			  uint8_t command = recieveBuffer[i++];
-			  switch(command & 0x01)
+			  NetworkPacket packet = *packets;
+			  switch(packet.deviceType)
 			  {
-			  	  case INPUT_TYPE_MOUSE:
+			  	  case 0 /* Keyboard */:
 			  	  {
-			  		  mouseReport.button = 0;
+//			  		  if((previousKeyPressedID > 0) && (packet.keyStatus == KEY_STATUS_PRESSED))
+//			  		  {
+//			  			  SendKeyboardReport(previousKeyPressedID, KEY_STATUS_RELEASED);
+//			  			  previousKeyPressedID = packet.usbHIDUsageID;
+//			  			  HAL_Delay(20);
+//			  		  }
+			  		  SendKeyboardReport(packet.usbHIDUsageID, packet.modifierKeys, (key_status_t)packet.keyStatus);
+			  		  HAL_Delay(10);
+			  		  break;
+			  	  }
+			  	  case 1 /* Mouse */:
+			  	  {
+/*			  		  mouseReport.button = 0;
 			  		  mouseReport.mouse_x = 0;
 			  		  mouseReport.mouse_y = 0;
 			  		  mouseReport.wheel = 0;
 			  		  if(command & 0x02)
 			  		  {
-			  			  /* handle button here */
 			  			  mouseReport.button = recieveBuffer[i++];
 			  		  }
 			  		  if(command & 0x04)
 			  		  {
-			  			  /* handle mouse movement here */
 			  			  mouseReport.mouse_x = *((int8_t*)(recieveBuffer + (i++)));
 			  			  mouseReport.mouse_y = *((int8_t*)(recieveBuffer + (i++)));
 			  		  }
 			  		  if(command & 0x08)
 			  		  {
-			  			  /* handle scroll wheel movement here */
 			  			  mouseReport.wheel = *((int8_t*)(recieveBuffer + (i++)));
 			  		  }
 			  		  uint8_t t = (mouseReport.mouse_x < 0) ? -mouseReport.mouse_x : mouseReport.mouse_x;
@@ -426,12 +509,7 @@ int main(void)
 			  		  {
 			  			  USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&mouseReport, sizeof(mouseReport));
 			  			  HAL_Delay(1);
-			  		  }
-			  		  break;
-			  	  }
-			  	  case INPUT_TYPE_KEYBOARD:
-			  	  {
-			  		  SendKeyboardReport(recieveBuffer[i++]);
+			  		  }*/
 			  		  break;
 			  	  }
 			  	  default:

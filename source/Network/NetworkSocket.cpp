@@ -117,6 +117,7 @@ namespace SKVMOIP
 					return Result::SocketError;
 				numSentBytes += static_cast<u32>(result);
 			}
+			debug_log_info("Sent: %lu bytes", numSentBytes);
 			return Result::Success;
 		}
 

@@ -16,7 +16,7 @@
 
 using namespace SKVMOIP;
 
-#define SERVER_IP_ADDRESS "192.168.1.15"
+#define SERVER_IP_ADDRESS "192.168.1.113"
 #define SERVER_PORT_NUMBER "2000"
 
 #define NETWORK_THREAD_BUFFER_SIZE 1024
@@ -27,6 +27,8 @@ static std::condition_variable gCv;
 static std::deque<Win32::KMInputData> gInputQueue;
 
 static std::array<Win32::KMInputData, NETWORK_THREAD_BUFFER_SIZE> gNetworkThreadBuffer;
+
+static u8 gModifierKeys = 0;
 
 static void NetworkHandler(Network::Socket& networkStream)
 {
@@ -57,7 +59,7 @@ static void NetworkHandler(Network::Socket& networkStream)
 		while(index < count)
 		{
 			const Win32::KMInputData& kmInputData = gNetworkThreadBuffer[index];
-			const Network::NetworkPacket netPacket = Network::GetNetworkPacketFromKMInputData(kmInputData);
+			const Network::NetworkPacket netPacket = Network::GetNetworkPacketFromKMInputData(kmInputData, gModifierKeys);
 			// Network::DumpNetworkPacket(netPacket);
 			Network::Result result = networkStream.send(reinterpret_cast<const u8*>(&netPacket), sizeof(netPacket));
 			if(result == Network::Result::SocketError)
@@ -70,6 +72,8 @@ static void NetworkHandler(Network::Socket& networkStream)
 	}
 }
 
+static std::unordered_map<u32, Win32::KeyStatus> gPressedKeys;
+
 static void MouseInputHandler(void* mouseInputData, void* userData)
 {
 	std::unique_lock<std::mutex> lock(gMutex);
@@ -80,11 +84,77 @@ static void MouseInputHandler(void* mouseInputData, void* userData)
 	gCv.notify_one();
 }
 
+static HIDUsageIDModifierBits GetModifierBitFromMakeCode(PS2Set1MakeCode makeCode)
+{
+	switch(makeCode)
+	{
+		case PS2Set1MakeCode::LeftControl: return HIDUsageIDModifierBits::LEFTCTRL_BIT;
+		case PS2Set1MakeCode::LeftShift: return HIDUsageIDModifierBits::LEFTSHIFT_BIT;
+		case PS2Set1MakeCode::LeftAlt: return HIDUsageIDModifierBits::LEFTALT_BIT;
+		case PS2Set1MakeCode::LeftGUI: return HIDUsageIDModifierBits::LEFTGUI_BIT; 
+		case PS2Set1MakeCode::RightControl: return HIDUsageIDModifierBits::RIGHTCTRL_BIT; 
+		case PS2Set1MakeCode::RightShift: return HIDUsageIDModifierBits::RIGHTSHIFT_BIT;
+		case PS2Set1MakeCode::RightAlt: return HIDUsageIDModifierBits::RIGHTALT_BIT; 
+		case PS2Set1MakeCode::RightGUI: return HIDUsageIDModifierBits::RIGHTGUI_BIT;
+		default: return IntToEnumClass<HIDUsageIDModifierBits>(static_cast<u8>(0));
+	}
+}
+
 static void KeyboardInputHandler(void* keyboardInputData, void* userData)
 {
-	std::unique_lock<std::mutex> lock(gMutex);
+	Win32::KeyboardInput* kInput = reinterpret_cast<Win32::KeyboardInput*>(keyboardInputData);
+	if(kInput->keyStatus == Win32::KeyStatus::Pressed)
+	{
+		switch(kInput->makeCode)
+		{
+			case PS2Set1MakeCode::LeftControl:
+			case PS2Set1MakeCode::LeftShift:
+			case PS2Set1MakeCode::LeftAlt:
+			case PS2Set1MakeCode::LeftGUI: 
+			case PS2Set1MakeCode::RightControl: 
+			case PS2Set1MakeCode::RightShift:
+			case PS2Set1MakeCode::RightAlt: 
+			case PS2Set1MakeCode::RightGUI: 
+			{
+				u8 modifierKey = GetModifierBitFromMakeCode(IntToEnumClass<PS2Set1MakeCode>(kInput->makeCode));
+				_assert(modifierKey != 0);
+				gModifierKeys |= modifierKey;
+				break;
+			}
+		}
+
+		if(gPressedKeys.find(kInput->makeCode) != gPressedKeys.end())
+			/* skip as the key is already pressed */
+			return;
+		else
+			gPressedKeys.insert({kInput->makeCode, Win32::KeyStatus::Pressed});
+	}
+	else if(kInput->keyStatus == Win32::KeyStatus::Released)
+	{
+		switch(kInput->makeCode)
+		{
+			case PS2Set1MakeCode::LeftControl:
+			case PS2Set1MakeCode::LeftShift:
+			case PS2Set1MakeCode::LeftAlt:
+			case PS2Set1MakeCode::LeftGUI: 
+			case PS2Set1MakeCode::RightControl: 
+			case PS2Set1MakeCode::RightShift:
+			case PS2Set1MakeCode::RightAlt: 
+			case PS2Set1MakeCode::RightGUI: 
+			{
+				u8 modifierKey = GetModifierBitFromMakeCode(IntToEnumClass<PS2Set1MakeCode>(kInput->makeCode));
+				_assert(modifierKey != 0);
+				_assert((gModifierKeys & modifierKey) == modifierKey);
+				gModifierKeys &= ~(modifierKey);
+				break;
+			}
+		}
+		_assert(gPressedKeys.erase(kInput->makeCode) == 1);
+	}
 	Win32::KMInputData kmInputData = { Win32::RawInputDeviceType::Keyboard };
 	memcpy(&kmInputData.keyboardInput, keyboardInputData, sizeof(Win32::KeyboardInput));
+	
+	std::unique_lock<std::mutex> lock(gMutex);
 	gInputQueue.push_front(kmInputData);
 	lock.unlock();
 	gCv.notify_one();

@@ -39,6 +39,7 @@ namespace SKVMOIP
 		        u8 : 1;
 		        u8 keyStatus : 1;
 			    u8 usbHIDUsageID : 8;
+			    u8 modifierKeys: 8;
 		    };
 		
 			/* Mouse: 10 Bytes */
@@ -65,7 +66,7 @@ namespace SKVMOIP
 			};
 		};
 
-		SKVMOIP_API NetworkPacket GetNetworkPacketFromKMInputData(const Win32::KMInputData& inputData);
+		SKVMOIP_API NetworkPacket GetNetworkPacketFromKMInputData(const Win32::KMInputData& inputData, u8 modifierKeys = 0);
 		SKVMOIP_API void DumpNetworkPacket(const NetworkPacket& packet);
 	}
 }
