@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SKVMOIP/defines.h>
+#include <SKVMOIP/defines.hpp>
 #include <vector>
 
 #ifndef WIN32_LEAN_AND_MEAN
@@ -90,11 +90,36 @@ namespace Win32
 		bool isWheelY;
 
 		bool isAnyButton;
-		bool isMiddleButton;
-		bool isLeftButton;
-		bool isRightButton;
-		bool isBrowseForwardButton;
-		bool isBrowseBackwardButton;
+
+		struct
+		{
+			bool isTransition;
+			KeyStatus status;;
+		} leftButton;
+		
+		struct
+		{
+			bool isTransition;
+			KeyStatus status;;
+		}  rightButton;
+
+		struct
+		{
+			bool isTransition;
+			KeyStatus status;;
+		} middleButton;
+
+		struct
+		{
+			bool isTransition;
+			KeyStatus status;;
+		} browseForwardButton;
+
+		struct
+		{
+			bool isTransition;
+			KeyStatus status;;
+		} browseBackwardButton;
 
 		bool isMoveRelative;
 		bool isMoveAbsolute;

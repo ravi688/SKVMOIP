@@ -24,6 +24,7 @@
 #include "wizchip_conf.h"
 #include "w5500.h"
 #include "socket.h"
+#include <stdbool.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -32,45 +33,44 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
-/* 10 Bytes */
-typedef union NetworkPacket
-{
-    uint8_t deviceType: 1;
-    
-    /* Keyboard: 2 Bytes */
-    struct
-    {
-        uint8_t : 1;
-        uint8_t keyStatus : 1;
-	    uint8_t usbHIDUsageID : 8;
-	    uint8_t modifierKeys: 8;
-    };
+typedef uint8_t u8;
+typedef int16_t s16;
 
-	/* Mouse: 10 Bytes */
-	struct
+/* 12 Bytes */
+typedef struct NetworkPacket
+{
+	/* 1 Byte */
+	u8 deviceType;
+
+	union
 	{
-	    /* 2 Bytes */
-	    uint8_t : 1;
-		uint8_t middleMBPressed : 1;
-		uint8_t middleMBReleased : 1;
-		uint8_t leftMBPressed : 1;
-		uint8_t leftMBReleased : 1;
-		uint8_t rightMBPressed : 1;
-		uint8_t rightMBReleased : 1;
-		uint8_t bfMBPressed : 1;
-		uint8_t bfMBReleased : 1;
-		uint8_t bbMBPressed : 1;
-		uint8_t bbMBReleased : 1;
-		
-	    /* 8 Bytes */
-		int16_t mousePointX;
-		int16_t mousePointY;
-		int16_t mouseWheelX;
-		int16_t mouseWheelY;
+		/* Keyboard: 3 Bytes */
+		struct
+		{
+			u8 keyStatus;
+			u8 usbHIDUsageID;
+			u8 modifierKeys;
+		};
+
+		/* Mouse: 9 Bytes */
+		struct
+		{
+			/* BIT8(0) = left button is being pressed
+			 * BIT8(1) = right button is being pressed
+			 * BIT8(2) = middle button is being pressed */
+			u8 mouseButtons;
+			/* 8 Bytes */
+			s16 mousePointX;
+			s16 mousePointY;
+			s16 mouseWheelX;
+			s16 mouseWheelY;
+		};
 	};
 } NetworkPacket;
 
 #define RECEIVE_BUFFER_SIZE (128 * sizeof(NetworkPacket)) // must be greater than or equal to 3
+#define SEND_KEYBOARD_REPORT_INTERVAL 10
+#define SEND_MOUSE_REPORT_INTERVAL 4
 
 typedef enum input_type_t
 {
@@ -353,17 +353,6 @@ static inline void SendMouseReport(uint8_t button, int8_t dx, int8_t dy, int8_t 
 	mouseReport.mouse_y = dy;
 	mouseReport.wheel = wheel;
 	USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&mouseReport, sizeof(mouseReport));
-	if(button != 0x0)
-	{
-		HAL_Delay(20);
-		mouseReport.button = 0;
-		mouseReport.mouse_x = 0;
-		mouseReport.mouse_y = 0;
-		mouseReport.wheel = 0;
-		USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&mouseReport, sizeof(mouseReport));
-		HAL_Delay(20);
-		SendKeyboardReportASCII('a');
-	}
 }
 
 static inline void Info(const char* str)
@@ -422,29 +411,22 @@ int main(void)
 	  Error("failed to create socket 0\n");
   }
 
-  if(sizeof(NetworkPacket) != 10)
+  if(sizeof(NetworkPacket) != 12)
   {
   	Error("sizeof network packet incorrect");
   }
 
   uint8_t recieveBuffer[RECEIVE_BUFFER_SIZE];
 
-//  uint8_t previousKeyPressedID = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if( listen(mySocket) != SOCK_OK)
-	  {
-		  Error("listen error\n");
-	  }
+	  if(listen(mySocket) != SOCK_OK);
 
-	  while(getSn_SR(mySocket) != SOCK_ESTABLISHED)
-	  {
-		  Info("waiting for sock establish\n");
-	  }
+	  while(getSn_SR(mySocket) != SOCK_ESTABLISHED);
 
 	  while(1)
 	  {
@@ -474,47 +456,15 @@ int main(void)
 			  {
 			  	  case 0 /* Keyboard */:
 			  	  {
-//			  		  if((previousKeyPressedID > 0) && (packet.keyStatus == KEY_STATUS_PRESSED))
-//			  		  {
-//			  			  SendKeyboardReport(previousKeyPressedID, KEY_STATUS_RELEASED);
-//			  			  previousKeyPressedID = packet.usbHIDUsageID;
-//			  			  HAL_Delay(20);
-//			  		  }
 			  		  SendKeyboardReport(packet.usbHIDUsageID, packet.modifierKeys, (key_status_t)packet.keyStatus);
-			  		  HAL_Delay(10);
+			  		  HAL_Delay(SEND_KEYBOARD_REPORT_INTERVAL);
 			  		  break;
 			  	  }
 			  	  case 1 /* Mouse */:
 			  	  {
-/*			  		  mouseReport.button = 0;
-			  		  mouseReport.mouse_x = 0;
-			  		  mouseReport.mouse_y = 0;
-			  		  mouseReport.wheel = 0;
-			  		  if(command & 0x02)
-			  		  {
-			  			  mouseReport.button = recieveBuffer[i++];
-			  		  }
-			  		  if(command & 0x04)
-			  		  {
-			  			  mouseReport.mouse_x = *((int8_t*)(recieveBuffer + (i++)));
-			  			  mouseReport.mouse_y = *((int8_t*)(recieveBuffer + (i++)));
-			  		  }
-			  		  if(command & 0x08)
-			  		  {
-			  			  mouseReport.wheel = *((int8_t*)(recieveBuffer + (i++)));
-			  		  }
-			  		  uint8_t t = (mouseReport.mouse_x < 0) ? -mouseReport.mouse_x : mouseReport.mouse_x;
-			  		  t *= 2;
-			  		  while(t--)
-			  		  {
-			  			  USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&mouseReport, sizeof(mouseReport));
-			  			  HAL_Delay(1);
-			  		  }*/
+			  		  SendMouseReport(packet.mouseButtons, (int8_t)(packet.mousePointX), (int8_t)(packet.mousePointY), (int8_t)packet.mouseWheelX);
+			  		  HAL_Delay(SEND_MOUSE_REPORT_INTERVAL);
 			  		  break;
-			  	  }
-			  	  default:
-			  	  {
-			  		  Info("invalid input type\n");
 			  	  }
 			  }
 		  }

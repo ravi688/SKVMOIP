@@ -63,23 +63,28 @@ namespace Win32
 
 		if(input.isAnyButton)
 		{
-			input.isMiddleButton = isMiddleDown | isMiddleUp;
-			input.isLeftButton = isLeftDown | isLeftUp;
-			input.isRightButton = isRightDown | isRightUp;
-			input.isBrowseForwardButton = isButton4Down | isButton4Up;
-			input.isBrowseBackwardButton = isButton5Down | isButton5Up;
+			input.leftButton.isTransition = isLeftDown | isLeftUp;
+			input.leftButton.status = isLeftDown ? Win32::KeyStatus::Pressed : Win32::KeyStatus::Released;
+			
+			input.rightButton.isTransition = isRightDown | isRightUp;
+			input.rightButton.status = isRightDown ? Win32::KeyStatus::Pressed : Win32::KeyStatus::Released;
+			
+			input.middleButton.isTransition = isMiddleDown | isMiddleUp;
+			input.middleButton.status = isMiddleDown ? Win32::KeyStatus::Pressed : Win32::KeyStatus::Released;
+			
+			input.browseForwardButton.isTransition = isButton4Down | isButton4Up;
+			input.browseForwardButton.status = isButton4Down ? Win32::KeyStatus::Pressed : Win32::KeyStatus::Released;
+		
+			input.browseBackwardButton.isTransition = isButton5Down | isButton5Up;
+			input.browseBackwardButton.status = isButton5Down ? Win32::KeyStatus::Pressed : Win32::KeyStatus::Released;
 		}
-
-		/* TODO: Multiple Mouse buttons could be pressed at one time, so add support for it */
-		if(input.isAnyButton)
-			input.buttonStatus = isAnyButtonDown ? Win32::KeyStatus::Pressed : Win32::KeyStatus::Released;
 
 		input.movement.x = static_cast<s16>(rawMouse->lLastX);
 		input.movement.y = static_cast<s16>(rawMouse->lLastY);
 		if(input.isWheelX)
-			input.wheel.x = static_cast<s16>(rawMouse->usButtonData);
+			input.wheel.x = static_cast<s16>(rawMouse->usButtonData) / WHEEL_DELTA;
 		else if(input.isWheelY)
-			input.wheel.y = static_cast<s16>(rawMouse->usButtonData);
+			input.wheel.y = static_cast<s16>(rawMouse->usButtonData) / WHEEL_DELTA;
 		return input;
 	}
 
@@ -94,11 +99,11 @@ namespace Win32
 						mouseInput->wheel.x, 
 						mouseInput->isWheelY, 
 						mouseInput->wheel.y, 
-						mouseInput->isMiddleButton, 
-						mouseInput->isLeftButton, 
-						mouseInput->isRightButton, 
-						mouseInput->isBrowseForwardButton, 
-						mouseInput->isBrowseBackwardButton);
+						EnumClassToInt(mouseInput->middleButton.status), 
+						EnumClassToInt(mouseInput->leftButton.status), 
+						EnumClassToInt(mouseInput->rightButton.status), 
+						EnumClassToInt(mouseInput->browseForwardButton.status), 
+						EnumClassToInt(mouseInput->browseBackwardButton.status));
 	}
 
 	static USHORT getHIDUsagePageID(RawInputDeviceType deviceType)

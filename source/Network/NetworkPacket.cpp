@@ -30,44 +30,45 @@ namespace SKVMOIP
 					const Win32::MouseInput& input = inputData.mouseInput;
 					packet.deviceType = EnumClassToInt(NetworkPacketValues::DeviceType::Mouse);
 
+					static u8 mouseButtons = 0;
 					if(input.isAnyButton)
 					{
-						if(input.isMiddleButton)
+						if(input.leftButton.isTransition)
 						{
-							if(input.buttonStatus == Win32::KeyStatus::Pressed)
-								packet.middleMBPressed = EnumClassToInt(NetworkPacketValues::Bool::True);
-							else if(input.buttonStatus == Win32::KeyStatus::Released)
-								packet.middleMBReleased = EnumClassToInt(NetworkPacketValues::Bool::True);
+							if(input.leftButton.status == Win32::KeyStatus::Pressed)
+								mouseButtons |= EnumClassToInt(NetworkPacketValues::MouseButtonBits::LeftButtonBit);
+							else mouseButtons &= ~EnumClassToInt(NetworkPacketValues::MouseButtonBits::LeftButtonBit);
 						}
-						if(input.isLeftButton)
+						if(input.rightButton.isTransition)
 						{
-							if(input.buttonStatus == Win32::KeyStatus::Pressed)
-								packet.leftMBPressed = EnumClassToInt(NetworkPacketValues::Bool::True);
-							else if(input.buttonStatus == Win32::KeyStatus::Released)
-								packet.leftMBReleased = EnumClassToInt(NetworkPacketValues::Bool::True);
+							if(input.rightButton.status == Win32::KeyStatus::Pressed)
+								mouseButtons |= EnumClassToInt(NetworkPacketValues::MouseButtonBits::RightButtonBit);
+							else
+								mouseButtons &= ~EnumClassToInt(NetworkPacketValues::MouseButtonBits::RightButtonBit);
 						}
-						if(input.isRightButton)
+						if(input.middleButton.isTransition)
 						{
-							if(input.buttonStatus == Win32::KeyStatus::Pressed)
-								packet.rightMBPressed = EnumClassToInt(NetworkPacketValues::Bool::True);
-							else if(input.buttonStatus == Win32::KeyStatus::Released)
-								packet.rightMBReleased = EnumClassToInt(NetworkPacketValues::Bool::True);
+							if(input.middleButton.status == Win32::KeyStatus::Pressed)
+								mouseButtons |= EnumClassToInt(NetworkPacketValues::MouseButtonBits::MiddleButtonBit);
+							else
+								mouseButtons &= ~EnumClassToInt(NetworkPacketValues::MouseButtonBits::MiddleButtonBit);
 						}
-						if(input.isBrowseForwardButton)
+						if(input.browseForwardButton.isTransition)
 						{
-							if(input.buttonStatus == Win32::KeyStatus::Pressed)
-								packet.bfMBPressed = EnumClassToInt(NetworkPacketValues::Bool::True);
-							else if(input.buttonStatus == Win32::KeyStatus::Released)
-								packet.bfMBReleased = EnumClassToInt(NetworkPacketValues::Bool::True);
+							if(input.browseForwardButton.status == Win32::KeyStatus::Pressed)
+								mouseButtons |= EnumClassToInt(NetworkPacketValues::MouseButtonBits::BrowseForwardButtonBit);
+							else
+								mouseButtons &= ~EnumClassToInt(NetworkPacketValues::MouseButtonBits::BrowseForwardButtonBit);
 						}
-						if(input.isBrowseBackwardButton)
+						if(input.browseBackwardButton.isTransition)
 						{
-							if(input.buttonStatus == Win32::KeyStatus::Pressed)
-								packet.bbMBPressed = EnumClassToInt(NetworkPacketValues::Bool::True);
-							else if(input.buttonStatus == Win32::KeyStatus::Released)
-								packet.bbMBReleased = EnumClassToInt(NetworkPacketValues::Bool::True);
+							if(input.browseBackwardButton.status == Win32::KeyStatus::Pressed)
+								mouseButtons |= EnumClassToInt(NetworkPacketValues::MouseButtonBits::BrowseBackwardButtonBit);
+							else
+								mouseButtons &= ~EnumClassToInt(NetworkPacketValues::MouseButtonBits::BrowseBackwardButtonBit);
 						}
 					}
+					packet.mouseButtons = mouseButtons;
 
 					if(input.isMoveRelative)
 					{
@@ -102,21 +103,16 @@ namespace SKVMOIP
 				}
 				case NetworkPacketValues::DeviceType::Mouse:
 				{
-					debug_log_info("MouseInput { Point (%d, %d), Wheel: (%d, %d), MBPr: %u, MBRl: %u, LBPr: %u, LBRl: %u, RBPr: %u, RBRl: %u, BFBPr: %u, BFBRl: %u, BBBPr: %u, BBBRl: %u }",
+					debug_log_info("MouseInput { Point (%d, %d), Wheel: (%d, %d), MB: %u, LB: %u, RB: %u, BFB: %u, BBB: %u }",
 									packet.mousePointX, 
 									packet.mousePointY,
 									packet.mouseWheelX,
 									packet.mouseWheelY,
-									packet.middleMBPressed, 
-									packet.middleMBReleased, 
-									packet.leftMBPressed, 
-									packet.leftMBReleased, 
-									packet.rightMBPressed, 
-									packet.rightMBReleased, 
-									packet.bfMBPressed, 
-									packet.bfMBReleased, 
-									packet.bbMBPressed, 
-									packet.bbMBReleased);
+									HAS_FLAG(packet.mouseButtons, EnumClassToInt(NetworkPacketValues::MouseButtonBits::MiddleButtonBit)), 
+									HAS_FLAG(packet.mouseButtons, EnumClassToInt(NetworkPacketValues::MouseButtonBits::LeftButtonBit)), 
+									HAS_FLAG(packet.mouseButtons, EnumClassToInt(NetworkPacketValues::MouseButtonBits::RightButtonBit)), 
+									HAS_FLAG(packet.mouseButtons, EnumClassToInt(NetworkPacketValues::MouseButtonBits::BrowseForwardButtonBit)), 
+									HAS_FLAG(packet.mouseButtons, EnumClassToInt(NetworkPacketValues::MouseButtonBits::BrowseBackwardButtonBit)));
 					break;
 				}
 				default:

@@ -75,12 +75,12 @@
 /*---------- -----------*/
 #define USBD_SELF_POWERED     1U
 /*---------- -----------*/
-#define HID_FS_BINTERVAL     0xAU
+#define HID_FS_BINTERVAL     0x1U
 
 /****************************************/
 /* #define for FS and HS identification */
-#define DEVICE_FS 		0
-#define DEVICE_HS 		1
+#define DEVICE_FS 		1
+#define DEVICE_HS 		0
 
 /**
   * @}
