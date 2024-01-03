@@ -1,5 +1,6 @@
 # Scalable KVM Over IP (SKVMOIP)
 This repository contains source code for a SKVMOIP for Windows and Linux platforms.
+NOTE: Currently it is in development, and only Keyboard and Mouse works - no User Interface though.
 
 ### Introduction
 There are many options available in the market for KVKM over IP, however most of them either for a corporate or very expensive for individuals - and still not scalable enough.
