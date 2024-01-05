@@ -112,7 +112,7 @@ namespace SKVMOIP
 			u32 numSentBytes = 0;
 			while(numSentBytes < size)
 			{
-				int result = ::send(m_socket, reinterpret_cast<const char*>(bytes), size, 0);
+				int result = ::send(m_socket, reinterpret_cast<const char*>(bytes + numSentBytes), size - numSentBytes, 0);
 				if(result == SOCKET_ERROR)
 					return Result::SocketError;
 				numSentBytes += static_cast<u32>(result);
