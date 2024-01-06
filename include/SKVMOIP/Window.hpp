@@ -21,6 +21,7 @@ namespace SKVMOIP
 	private:
 		Internal_WindowHandle m_handle;
 		Internal_MSG m_msg;
+		bool m_isMessageAvailable;
 	public:
 
 		enum class EventType
@@ -47,6 +48,8 @@ namespace SKVMOIP
 	
 		Window(u32 width, u32 height, const char* name);
 		~Window();
+
+		void runGameLoop(u32 frameRate);
 	
 		bool shouldClose(bool isBlock = true);
 		void pollEvents();

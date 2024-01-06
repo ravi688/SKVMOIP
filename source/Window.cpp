@@ -6,6 +6,8 @@
 #include <SKVMOIP/defines.hpp>
 #include <bufferlib/buffer.h>
 
+#include <chrono>
+
 static buffer_t gRawInputBuffer;
 typedef std::unordered_map<SKVMOIP::Window::EventType, SKVMOIP::Event> TypedEventMap;
 typedef std::unordered_map<HWND, TypedEventMap> WindowsEventRegistry;
@@ -92,6 +94,12 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 			EndPaint(hwnd, &paintStruct);
 			break;
 		}
+
+		case WM_DESTROY:
+		{
+			PostQuitMessage(0);
+			break;
+		}
 	}
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
@@ -116,7 +124,7 @@ static int SKVM_getWin32HookFromHookType(SKVMOIP::Window::HookType hookType)
 namespace SKVMOIP
 {
 
-	Window::Window(u32 width, u32 height, const char* name)
+	Window::Window(u32 width, u32 height, const char* name) : m_isMessageAvailable(false)
 	{
 		m_handle = Win32::Win32CreateWindow(width, height, name, WindowProc);
 		setSize(width, height);
@@ -141,6 +149,23 @@ namespace SKVMOIP
 		buf_free(&gRawInputBuffer);
 	}
 
+	void Window::runGameLoop(u32 frameRate)
+	{
+		const f64 deltaTime = 1000.0 / frameRate;
+		auto startTime = std::chrono::high_resolution_clock::now();
+		while(!shouldClose(false))
+		{
+			auto time = std::chrono::high_resolution_clock::now();
+			if(std::chrono::duration_cast<std::chrono::milliseconds>(time - startTime).count() >= deltaTime)
+			{
+				invalidateRect();	
+				startTime = time;
+			}
+			
+			pollEvents();
+		}
+	}
+
 	bool Window::shouldClose(bool isBlock)
 	{
 		if(isBlock)
@@ -154,10 +179,12 @@ namespace SKVMOIP
 				/* But for now let's exit */
 				exit(-1);
 			}
+			m_isMessageAvailable = true;
 		}
-		else if(PeekMessageA(&m_msg, m_handle, 0, 0, PM_REMOVE) != 0)
+		else if(PeekMessage(&m_msg, NULL, 0, 0, PM_REMOVE) != 0)
 		{
-			bool isQuit = m_msg.message == WM_QUIT;
+			m_isMessageAvailable = true;
+			bool isQuit = (m_msg.message == WM_QUIT);
 			if(isQuit)
 				pollEvents();
 			return isQuit;
@@ -167,6 +194,9 @@ namespace SKVMOIP
 
 	void Window::pollEvents()
 	{
+		if(!m_isMessageAvailable)
+			return;
+		m_isMessageAvailable = false;
 		TranslateMessage(&m_msg);
 		DispatchMessage(&m_msg);
 	}
