@@ -52,6 +52,10 @@ namespace SKVMOIP
 		void pollEvents();
 		void setMouseCapture();
 		void releaseMouseCapture();
+		void setSize(u32 width, u32 height);
+		void setPosition(s32 x, s32 y);
+		void setSizeAndPosition(s32 x, s32 y, u32 width, u32 height);
+		void setZOrder(HWND insertAfter);
 		void update();
 		void redraw(RegionHandle& regionHandle, s32 x, s32 y, s32 width, s32 height);
 

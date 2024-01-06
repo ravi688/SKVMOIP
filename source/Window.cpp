@@ -117,8 +117,10 @@ namespace SKVMOIP
 
 	Window::Window(u32 width, u32 height, const char* name)
 	{
-
 		m_handle = Win32::Win32CreateWindow(width, height, name, WindowProc);
+		setSize(width, height);
+		setPosition(500, 200);
+		setZOrder(HWND_TOPMOST);
 
 		gRawInputBuffer = buf_create(sizeof(u8), sizeof(RAWINPUT), 0);
 
@@ -167,6 +169,30 @@ namespace SKVMOIP
 	{
 		if(ReleaseCapture() == 0)
 			Internal_ErrorExit("ReleaseCapture");
+	}
+
+	void Window::setSize(u32 width, u32 height)
+	{
+		if(SetWindowPos(m_handle, 0, 0, 0, static_cast<int>(width), static_cast<int>(height), SWP_NOMOVE) == 0)
+			Internal_ErrorExit("SetWindowPos");
+	}
+
+	void Window::setPosition(s32 x, s32 y)
+	{
+		if(SetWindowPos(m_handle, 0, x, y, 0, 0, SWP_NOSIZE) == 0)
+			Internal_ErrorExit("SetWindowPos");
+	}
+
+	void Window::setSizeAndPosition(s32 x, s32 y, u32 width, u32 height)
+	{
+		if(SetWindowPos(m_handle, HWND_TOP, x, y, static_cast<int>(width), static_cast<int>(height), SWP_NOZORDER) == 0)
+			Internal_ErrorExit("SetWindowPos");
+	}
+
+	void Window::setZOrder(HWND insertAfter)
+	{
+		if(SetWindowPos(m_handle, insertAfter, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE) == 0)
+			Internal_ErrorExit("SetWindowPos");
 	}
 
 	void Window::update()
