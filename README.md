@@ -1,5 +1,5 @@
 # Scalable KVM Over IP (SKVMOIP)
-This repository contains source code for a SKVMOIP for Windows and Linux platforms.
+This repository contains source code for a SKVMOIP for Windows and Linux platforms written in C++.
 NOTE: Currently it is in development, and only Keyboard and Mouse works - no User Interface though.
 
 ### Introduction
