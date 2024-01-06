@@ -56,6 +56,7 @@ namespace SKVMOIP
 		void setPosition(s32 x, s32 y);
 		void setSizeAndPosition(s32 x, s32 y, u32 width, u32 height);
 		void setZOrder(HWND insertAfter);
+		void invalidateRect(const RECT* rect = NULL, bool isEraseBackground = false);
 		void update();
 		void redraw(RegionHandle& regionHandle, s32 x, s32 y, s32 width, s32 height);
 

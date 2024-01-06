@@ -89,6 +89,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 				Internal_ErrorExit("BeginPaint");
 			Win32::WindowPaintInfo paintInfo = { paintStruct.hdc, paintStruct.rcPaint };
 			getEvent(*eventMap, SKVMOIP::Window::EventType::Paint).publish(reinterpret_cast<void*>(&paintInfo));
+			EndPaint(hwnd, &paintStruct);
 			break;
 		}
 	}
@@ -195,10 +196,14 @@ namespace SKVMOIP
 			Internal_ErrorExit("SetWindowPos");
 	}
 
+	void Window::invalidateRect(const RECT* rect, bool isEraseBackground)
+	{
+		Win32::Win32InvalidateRect(m_handle, rect, isEraseBackground);
+	}
+
 	void Window::update()
 	{
-		if(UpdateWindow(m_handle) == 0)
-			Internal_ErrorExit("UpdateWindow");
+		Win32::Win32UpdateWindow(m_handle);
 	}
 
 	void Window::redraw(RegionHandle& regionHandle, s32 x, s32 y, s32 width, s32 height)

@@ -41,4 +41,16 @@ namespace Win32
 	{
 		DestroyWindow(handle);
 	}
+
+	SKVMOIP_API void Win32UpdateWindow(HWND handle)
+	{
+		if(UpdateWindow(handle) == 0)
+			Internal_ErrorExit("UpdateWindow");
+	}
+
+	SKVMOIP_API void Win32InvalidateRect(HWND handle, const RECT* rect, bool isEraseBackground)
+	{
+		if(InvalidateRect(handle, rect, isEraseBackground) == 0)
+			Internal_ErrorExit("InvalidateWindow");
+	}
 }
