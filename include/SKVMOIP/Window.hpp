@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SKVMOIP/defines.h>
+#include <SKVMOIP/defines.hpp>
 #include <SKVMOIP/Event.hpp>
 
 #ifdef PLATFORM_WINDOWS
@@ -25,9 +25,12 @@ namespace SKVMOIP
 
 		enum class EventType
 		{
-			KeyboardInput,
+			KeyboardInput = 0,
 			MouseInput,
-			Resize
+			Resize,
+			Paint,
+
+			MAX
 		};
 
 		typedef Internal_HookHandle HookHandle;
@@ -39,6 +42,8 @@ namespace SKVMOIP
 			Mouse,
 			MouseLowLevel
 		};
+
+		typedef HRGN RegionHandle;
 	
 		Window(u32 width, u32 height, const char* name);
 		~Window();
@@ -47,6 +52,8 @@ namespace SKVMOIP
 		void pollEvents();
 		void setMouseCapture();
 		void releaseMouseCapture();
+		void update();
+		void redraw(RegionHandle& regionHandle, s32 x, s32 y, s32 width, s32 height);
 
 		HookHandle installLocalHook(HookType hookType, HookCallback callback);
 		void uninstallLocalHook(HookHandle hookHandle);

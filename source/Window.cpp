@@ -11,8 +11,27 @@ typedef std::unordered_map<SKVMOIP::Window::EventType, SKVMOIP::Event> TypedEven
 typedef std::unordered_map<HWND, TypedEventMap> WindowsEventRegistry;
 static WindowsEventRegistry  gWindowsEventRegistry;
 
+static TypedEventMap*getEventMap(HWND windowHandle)
+{
+	WindowsEventRegistry::iterator eventMapKeyValuePairIt = gWindowsEventRegistry.find(windowHandle);
+	if(eventMapKeyValuePairIt != gWindowsEventRegistry.end());
+		return &eventMapKeyValuePairIt->second;
+	return nullptr;
+}
+
+static SKVMOIP::Event& getEvent(TypedEventMap& eventMap, SKVMOIP::Window::EventType eventType)
+{
+	TypedEventMap::iterator eventIt = eventMap.find(eventType);
+	_assert(eventIt != eventMap.end());
+	return eventIt->second;
+}
+
 static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	TypedEventMap* eventMap = getEventMap(hwnd);
+	if(eventMap == nullptr)
+		return DefWindowProc(hwnd, uMsg, wParam, lParam);
+
 	switch (uMsg)
     {
 		case WM_SIZE:
@@ -36,21 +55,13 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
 			RAWINPUT* rawInput = reinterpret_cast<RAWINPUT*>(buf_get_ptr(&gRawInputBuffer));
 
-			WindowsEventRegistry::iterator eventMapKeyValuePairIt = gWindowsEventRegistry.find(hwnd);
-			_assert(eventMapKeyValuePairIt != gWindowsEventRegistry.end());
-			TypedEventMap& eventMap = eventMapKeyValuePairIt->second;
-
 			switch(rawInput->header.dwType)
 			{
 				case RIM_TYPEMOUSE:
 				{
 					RAWMOUSE* rawMouse = &rawInput->data.mouse;
 					Win32::MouseInput mouseInput = Win32::DecodeRawMouseInput(rawMouse);
-
-					TypedEventMap::iterator eventIt = eventMap.find(SKVMOIP::Window::EventType::MouseInput);
-					_assert(eventIt != eventMap.end());
-					SKVMOIP::Event& event = eventIt->second;
-					event.publish(reinterpret_cast<void*>(&mouseInput));
+					getEvent(*eventMap, SKVMOIP::Window::EventType::MouseInput).publish(reinterpret_cast<void*>(&mouseInput));
 					break;
 				}
 
@@ -58,11 +69,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 				{
 					RAWKEYBOARD* rawKeyboard = &rawInput->data.keyboard;
 					Win32::KeyboardInput keyboardInput = Win32::DecodeRawKeyboardInput(rawKeyboard);
-
-					TypedEventMap::iterator eventIt = eventMap.find(SKVMOIP::Window::EventType::KeyboardInput);
-					_assert(eventIt != eventMap.end());
-					SKVMOIP::Event& event = eventIt->second;
-					event.publish(reinterpret_cast<void*>(&keyboardInput));
+					getEvent(*eventMap, SKVMOIP::Window::EventType::KeyboardInput).publish(reinterpret_cast<void*>(&keyboardInput));
 					break;
 				}
 
@@ -72,6 +79,16 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 					break;
 				}
 			}
+			break;
+		}
+
+		case WM_PAINT:
+		{
+			PAINTSTRUCT paintStruct;
+			if(BeginPaint(hwnd, &paintStruct) == NULL)
+				Internal_ErrorExit("BeginPaint");
+			Win32::WindowPaintInfo paintInfo = { paintStruct.hdc, paintStruct.rcPaint };
+			getEvent(*eventMap, SKVMOIP::Window::EventType::Paint).publish(reinterpret_cast<void*>(&paintInfo));
 			break;
 		}
 	}
@@ -100,14 +117,18 @@ namespace SKVMOIP
 
 	Window::Window(u32 width, u32 height, const char* name)
 	{
-		gRawInputBuffer = buf_create(sizeof(u8), sizeof(RAWINPUT), 0);
+
 		m_handle = Win32::Win32CreateWindow(width, height, name, WindowProc);
-		gWindowsEventRegistry.insert(std::pair<HWND, std::unordered_map<EventType, Event>> { m_handle, 
-									{ 
-										{ EventType::MouseInput, Event() },
-										{ EventType::KeyboardInput, Event() },
-										{ EventType::Resize, Event() }
-									} });
+
+		gRawInputBuffer = buf_create(sizeof(u8), sizeof(RAWINPUT), 0);
+
+		std::unordered_map<EventType, Event> eventMap;
+		eventMap.reserve(EnumClassToInt(Window::EventType::MAX));
+
+		for(typename std::underlying_type<Window::EventType>::type i = 0; i < EnumClassToInt(Window::EventType::MAX); i++)
+			eventMap.insert({ IntToEnumClass<Window::EventType>(i), Event() });
+
+		gWindowsEventRegistry.insert(std::pair<HWND, std::unordered_map<EventType, Event>> { m_handle, std::move(eventMap) });
 	}
 
 	Window::~Window()
@@ -146,6 +167,19 @@ namespace SKVMOIP
 	{
 		if(ReleaseCapture() == 0)
 			Internal_ErrorExit("ReleaseCapture");
+	}
+
+	void Window::update()
+	{
+		if(UpdateWindow(m_handle) == 0)
+			Internal_ErrorExit("UpdateWindow");
+	}
+
+	void Window::redraw(RegionHandle& regionHandle, s32 x, s32 y, s32 width, s32 height)
+	{
+		RECT updateRect = { x, y, x + width, y + height };
+		if(RedrawWindow(m_handle, &updateRect, regionHandle, 0) == 0)
+			Internal_ErrorExit("RedrawWindow");
 	}
 
 	Window::HookHandle Window::installLocalHook(HookType hookType, HookCallback callback)

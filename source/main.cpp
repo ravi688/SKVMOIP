@@ -160,6 +160,12 @@ static void KeyboardInputHandler(void* keyboardInputData, void* userData)
 	gCv.notify_one();
 }
 
+static void WindowPaintHandler(void* paintInfo, void* userData)
+{
+	Win32::WindowPaintInfo* winPaintInfo = reinterpret_cast<Win32::WindowPaintInfo*>(paintInfo);
+	debug_log_info("Painting");
+}
+
 int main(int argc, const char* argv[])
 {
 	debug_log_info("Platform is Windows");
@@ -172,6 +178,7 @@ int main(int argc, const char* argv[])
 
 	Event::SubscriptionHandle mouseInputHandle = window.getEvent(Window::EventType::MouseInput).subscribe(MouseInputHandler, NULL);
 	Event::SubscriptionHandle keyboardInputHandle = window.getEvent(Window::EventType::KeyboardInput).subscribe(KeyboardInputHandler, NULL);
+	Event::SubscriptionHandle windowPaintHandle = window.getEvent(Window::EventType::Paint).subscribe(WindowPaintHandler, NULL);
 
 	Network::Socket networkStream(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP);
 	debug_log_info("Trying to connect to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
@@ -182,11 +189,13 @@ int main(int argc, const char* argv[])
 
 	while(!window.shouldClose())
 	{
+		window.update();
 		window.pollEvents();
 	}
 
 	networkThread.join();
 
+	window.getEvent(Window::EventType::Paint).unsubscribe(windowPaintHandle);
 	window.getEvent(Window::EventType::MouseInput).unsubscribe(mouseInputHandle);
 	window.getEvent(Window::EventType::KeyboardInput).unsubscribe(keyboardInputHandle);
 
