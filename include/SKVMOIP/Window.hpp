@@ -48,7 +48,7 @@ namespace SKVMOIP
 		Window(u32 width, u32 height, const char* name);
 		~Window();
 	
-		bool shouldClose();
+		bool shouldClose(bool isBlock = true);
 		void pollEvents();
 		void setMouseCapture();
 		void releaseMouseCapture();

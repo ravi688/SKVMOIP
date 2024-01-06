@@ -141,16 +141,26 @@ namespace SKVMOIP
 		buf_free(&gRawInputBuffer);
 	}
 
-	bool Window::shouldClose()
+	bool Window::shouldClose(bool isBlock)
 	{
-		BOOL result = GetMessage(&m_msg, m_handle, 0, 0);
-		if(result == 0)
-			return true;
-		else if(result == -1)
+		if(isBlock)
 		{
-			/* Invoke the error handler here*/
-			/* But for now let's exit */
-			exit(-1);
+			BOOL result = GetMessage(&m_msg, m_handle, 0, 0);
+			if(result == 0)
+				return true;
+			else if(result == -1)
+			{
+				/* Invoke the error handler here*/
+				/* But for now let's exit */
+				exit(-1);
+			}
+		}
+		else if(PeekMessageA(&m_msg, m_handle, 0, 0, PM_REMOVE) != 0)
+		{
+			bool isQuit = m_msg.message == WM_QUIT;
+			if(isQuit)
+				pollEvents();
+			return isQuit;
 		}
 		return false;
 	}
