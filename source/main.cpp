@@ -8,11 +8,19 @@
 #include <SKVMOIP/HID/HIDUsageID.hpp>
 #include <SKVMOIP/Network/NetworkPacket.hpp>
 #include <SKVMOIP/Network/NetworkSocket.hpp>
+#include <SKVMOIP/Win32/Win32ImagingDevice.hpp>
+#include <SKVMOIP/VideoSourceStream.hpp>
 
 #include <deque>
 #include <array>
 #include <thread>
 #include <condition_variable>
+
+#include <mfapi.h>
+#include <mfidl.h>
+#include <mferror.h>
+#include <mfreadwrite.h>
+
 
 using namespace SKVMOIP;
 
@@ -163,12 +171,130 @@ static void KeyboardInputHandler(void* keyboardInputData, void* userData)
 static void WindowPaintHandler(void* paintInfo, void* userData)
 {
 	Win32::WindowPaintInfo* winPaintInfo = reinterpret_cast<Win32::WindowPaintInfo*>(paintInfo);
-	debug_log_info("Painting");
 }
+
+static void TestWebCam()
+{
+	std::optional<Win32::Win32SourceDeviceListGuard> deviceList = Win32::Win32GetSourceDeviceList(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
+	if(!deviceList)
+	{
+		debug_log_error("Unable to get Video source device list");
+		MFShutdown();
+		CoUninitialize();
+		return;
+	}
+			
+	std::optional<Win32::Win32SourceDevice> device = deviceList->activateDevice(0);
+	if(!device)
+	{
+		debug_log_error("Unable to create video source device with index: %lu ", 0);
+		MFShutdown();
+		CoUninitialize();
+		return;
+	}
+
+	VideoSourceStream hdmiStream(device.value());
+
+	if (!hdmiStream)
+		return;
+
+	if(auto t = hdmiStream.isCompressedFormat())
+		debug_log_info("IsCompressedFormat: %s", (t.value() == TRUE) ? "True" : "False");					
+
+	if(auto t = hdmiStream.getFrameSize())
+		debug_log_info("Frame Size: %lu, %lu", t->first, t->second);
+
+	if(auto t = hdmiStream.getFrameRate())
+	{
+		f32 frameRate = t->first / static_cast<f32>(t->second);
+		debug_log_info("Frame Rate %.2f", frameRate);
+	}
+				
+	while(1)
+	{
+		if(auto frame = hdmiStream.readFrame())
+		{
+
+		}
+	}
+}
+
+#ifdef BUILD_SERVER
+
+static void HandleHDMIStream(Network::Protocols::USBToHDMIStreamControlProtocol& controlProtocol, u32 clientID, u32 usbPortNumber, std::condition_variable& sync)
+{
+	USBToHDMIStream hdmiStream(usbPortNumber);
+
+	if(!hdmiStream.isValid())
+		controlProtocol.sendMessage(STATUS_FAILED);
+	else
+		controlProtocol.sendMessage(STATUS_OK, clientID);
+
+	Network::Socket listenSocket;
+	while(listenSocket.listen())
+	{
+		Network::Socket streamSocket = listenSocket.accpet();
+		Network::Protocols::USBToHDMIStreamProtocol streamProtocol(streamSocket);
+		
+		std::vector<u8> buffer;
+		buffer.reserve(hdmiStream.getFrameSizeInBytes());
+
+		while(!streamProtocol.shouldClose())
+		{
+			Encoding::ImageEncode(hdmiStream.getLatestFrame(), buffer);
+			streamProtocol.sendFrame(STATUS_OK, buffer);
+		}
+	}
+}
+
+static void HandleNetworkConnection(Network::Socket& connectionSocket)
+{
+	// UHSCP Protocol
+	Network::Protocols::USBToHDMIStreamControlProtocol controlSocket(connectionSocket);
+	while(!controlSocket.shouldClose())
+	{
+		Network::Protocols::USBToHDMIStreamControlProtocol::MessagePacket messagePacket;
+		if(controlSocket.peekMessage(messagePacket))
+		{
+			switch(messagePacket.message)
+			{
+				case Network::Protocols::USBToHDMIStreamControlProtocol::MessagePacket::MessageType::AvailableHDMIConnection:
+				{
+					std::optional<std::vector<u32>> usbPortNumbers = GetAvailableUSBToHDMIConnections();
+					if(!usbPortNumbers)
+						controlSocket.sendMessage(STATUS_FAILED);
+					else
+						controlSocket.sendMessage(STATUS_OK, usbPortNumbers);
+					break;
+				}
+				case Network::Protocols::USBToHDMIStreamControlProtocol::MessagePacket::MessageType::StartHDMIStream:
+				{
+					u32 usbPortNumber = message.getUSBPortNumber();
+					if(!isValid(usbPortNumber))
+						controlSocket.sendMessage(STATUS_INVALID_USB_PORT_NUMBER);
+
+					std::condition_variable hdmiStreamStartedSignal;
+					u32 clientID = GenerateID();
+					std::thread hdmiStreamThread(HandleHDMIStream, 
+						std::tuple<Network::Protocols::USBToHDMIStreamControlProtocol, u32, usbPortNumber, std::condition_variable>(controlSocket, clientID, usbPortNumber, std::ref(hdmiStreamStartedSignal)));
+					hdmiStreamThread.detach();
+
+					hdmiStreamStartedSignal.wait(lock);
+				}
+			}
+		}
+	}
+}
+
+#endif /* Server */
 
 int main(int argc, const char* argv[])
 {
 	debug_log_info("Platform is Windows");
+
+	TestWebCam();
+
+	exit(0);
 
 	Win32::DisplayRawInputDeviceList();
 	Win32::RegisterRawInputDevices({ Win32::RawInputDeviceType::Mouse, Win32::RawInputDeviceType::Keyboard });
@@ -180,6 +306,19 @@ int main(int argc, const char* argv[])
 	Event::SubscriptionHandle keyboardInputHandle = window.getEvent(Window::EventType::KeyboardInput).subscribe(KeyboardInputHandler, NULL);
 	Event::SubscriptionHandle windowPaintHandle = window.getEvent(Window::EventType::Paint).subscribe(WindowPaintHandler, NULL);
 
+#ifdef BUILD_SERVER
+
+	std::vector<std::thread> concurrentConnections;
+
+	Network::Socket listenSocket;
+	while(listenSocket.listen())
+	{
+		Network::Socket connectionSocket = listenSocket.accept();
+		concurrentConnections.push_back(std::thread(HandleNetworkConnection, std::ref(connectionSocket)));
+	}
+
+#endif /* Server */
+
 	Network::Socket networkStream(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP);
 	debug_log_info("Trying to connect to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
 	if(networkStream.connect(SERVER_IP_ADDRESS, SERVER_PORT_NUMBER) == Network::Result::Success)
@@ -187,11 +326,7 @@ int main(int argc, const char* argv[])
 
 	std::thread networkThread(NetworkHandler, std::ref(networkStream));
 
-	while(!window.shouldClose())
-	{
-		window.update();
-		window.pollEvents();
-	}
+	window.runGameLoop(60);
 
 	networkThread.join();
 

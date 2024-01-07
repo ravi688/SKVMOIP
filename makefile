@@ -16,7 +16,7 @@ STATIC_LIB_NAME = skvmoip.a
 DYNAMIC_LIB_NAME = skvmoip.dll
 EXECUTABLE_NAME = main
 EXTERNAL_INCLUDES =
-EXTERNAL_LIBS = -lws2_32 -lgdi32
+EXTERNAL_LIBS = -lws2_32 -lole32 -loleaut32 -lmfreadwrite -lmfplat -lmf -lmfuuid -lgdi32
 
 DEPENDENCIES = Common Common/dependencies/BufferLib Common/dependencies/BufferLib/dependencies/CallTrace
 DEPENDENCY_LIBS = Common/lib/common.a Common/dependencies/BufferLib/lib/bufferlib.a Common/dependencies/BufferLib/dependencies/CallTrace/lib/calltrace.a
@@ -121,7 +121,7 @@ LIBS = $(EXTERNAL_LIBS)
 #Flags and Defines
 DEBUG_DEFINES =  -DGLOBAL_DEBUG -DDEBUG -DLOG_DEBUG
 RELEASE_DEFINES =  -DGLOBAL_RELEASE -DRELEASE -DLOG_RELEASE
-DEFINES =
+DEFINES = -DCOMMON_HINT_OUT_IN_ALREADY_DEFINED
 
 COMPILER_FLAGS= -m64
 C_COMPILER_FLAGS = $(COMPILER_FLAGS)
