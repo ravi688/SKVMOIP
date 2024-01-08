@@ -124,12 +124,12 @@ static int SKVM_getWin32HookFromHookType(SKVMOIP::Window::HookType hookType)
 namespace SKVMOIP
 {
 
-	Window::Window(u32 width, u32 height, const char* name) : m_isMessageAvailable(false)
+	Window::Window(u32 width, u32 height, const char* name) : m_isMessageAvailable(false), m_width(width), m_height(height)
 	{
 		m_handle = Win32::Win32CreateWindow(width, height, name, WindowProc);
 		setSize(width, height);
-		setPosition(500, 200);
-		setZOrder(HWND_TOPMOST);
+		setPosition(0, 0);
+		setZOrder(HWND_TOP);
 
 		gRawInputBuffer = buf_create(sizeof(u8), sizeof(RAWINPUT), 0);
 
@@ -216,6 +216,16 @@ namespace SKVMOIP
 	{
 		if(SetWindowPos(m_handle, 0, 0, 0, static_cast<int>(width), static_cast<int>(height), SWP_NOMOVE) == 0)
 			Internal_ErrorExit("SetWindowPos");
+		else
+		{
+			m_width = width;
+			m_height = height;
+		}
+	}
+
+	std::pair<u32, u32> Window::getSize() const
+	{
+		return { m_width, m_height };
 	}
 
 	void Window::setPosition(s32 x, s32 y)

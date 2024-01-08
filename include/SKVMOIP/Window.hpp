@@ -22,6 +22,8 @@ namespace SKVMOIP
 		Internal_WindowHandle m_handle;
 		Internal_MSG m_msg;
 		bool m_isMessageAvailable;
+		u32 m_width;
+		u32 m_height;
 	public:
 
 		enum class EventType
@@ -58,6 +60,7 @@ namespace SKVMOIP
 		void setMouseCapture();
 		void releaseMouseCapture();
 		void setSize(u32 width, u32 height);
+		std::pair<u32, u32> getSize() const;
 		void setPosition(s32 x, s32 y);
 		void setSizeAndPosition(s32 x, s32 y, u32 width, u32 height);
 		void setZOrder(HWND insertAfter);

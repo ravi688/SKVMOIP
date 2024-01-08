@@ -10,11 +10,13 @@
 #include <SKVMOIP/Network/NetworkSocket.hpp>
 #include <SKVMOIP/Win32/Win32ImagingDevice.hpp>
 #include <SKVMOIP/VideoSourceStream.hpp>
+#include <SKVMOIP/Win32/Win32DrawSurface.hpp>
 
 #include <deque>
 #include <array>
 #include <thread>
 #include <condition_variable>
+#include <memory>
 
 #include <mfapi.h>
 #include <mfidl.h>
@@ -168,55 +170,25 @@ static void KeyboardInputHandler(void* keyboardInputData, void* userData)
 	gCv.notify_one();
 }
 
+static std::unique_ptr<Win32::Win32DrawSurface> gWin32DrawSurfaceUPtr;
+static std::unique_ptr<VideoSourceStream> gHDMIStream;
+
+static u32 counter = 0;
+
 static void WindowPaintHandler(void* paintInfo, void* userData)
 {
+	u8* pixels = gWin32DrawSurfaceUPtr->getPixels();
+
+	if(!gHDMIStream->readRGBFrameToBuffer(pixels))
+	{
+		return;
+	}
+	memset(pixels, 0, gWin32DrawSurfaceUPtr	->getBufferSize());
+	debug_log_info("Reading frame : %u", ++counter);
+
+	auto drawSurfaceSize = gWin32DrawSurfaceUPtr->getSize();
 	Win32::WindowPaintInfo* winPaintInfo = reinterpret_cast<Win32::WindowPaintInfo*>(paintInfo);
-}
-
-static void TestWebCam()
-{
-	std::optional<Win32::Win32SourceDeviceListGuard> deviceList = Win32::Win32GetSourceDeviceList(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
-	if(!deviceList)
-	{
-		debug_log_error("Unable to get Video source device list");
-		MFShutdown();
-		CoUninitialize();
-		return;
-	}
-			
-	std::optional<Win32::Win32SourceDevice> device = deviceList->activateDevice(0);
-	if(!device)
-	{
-		debug_log_error("Unable to create video source device with index: %lu ", 0);
-		MFShutdown();
-		CoUninitialize();
-		return;
-	}
-
-	VideoSourceStream hdmiStream(device.value());
-
-	if (!hdmiStream)
-		return;
-
-	if(auto t = hdmiStream.isCompressedFormat())
-		debug_log_info("IsCompressedFormat: %s", (t.value() == TRUE) ? "True" : "False");					
-
-	if(auto t = hdmiStream.getFrameSize())
-		debug_log_info("Frame Size: %lu, %lu", t->first, t->second);
-
-	if(auto t = hdmiStream.getFrameRate())
-	{
-		f32 frameRate = t->first / static_cast<f32>(t->second);
-		debug_log_info("Frame Rate %.2f", frameRate);
-	}
-				
-	while(1)
-	{
-		if(auto frame = hdmiStream.readFrame())
-		{
-
-		}
-	}
+	BitBlt(winPaintInfo->deviceContext, 0, 0, drawSurfaceSize.first, drawSurfaceSize.second, gWin32DrawSurfaceUPtr->getHDC(), 0, 0, SRCCOPY);
 }
 
 #ifdef BUILD_SERVER
@@ -292,15 +264,52 @@ int main(int argc, const char* argv[])
 {
 	debug_log_info("Platform is Windows");
 
-	TestWebCam();
+	std::optional<Win32::Win32SourceDeviceListGuard> deviceList = Win32::Win32GetSourceDeviceList(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
+	if(!deviceList)
+	{
+		debug_log_error("Unable to get Video source device list");
+		return 0;
+	}
+			
+	std::optional<Win32::Win32SourceDevice> device = deviceList->activateDevice(1);
+	if(!device)
+	{
+		debug_log_error("Unable to create video source device with index: %lu ", 0);
+		return 0;
+	}
 
-	exit(0);
+	gHDMIStream = std::move(std::unique_ptr<VideoSourceStream>(new VideoSourceStream(device.value())));
+
+	if (!(*gHDMIStream))
+		return 0;
+
+	if(auto t = gHDMIStream->isCompressedFormat())
+		debug_log_info("IsCompressedFormat: %s", (t.value() == TRUE) ? "True" : "False");					
+
+	auto frameSize = gHDMIStream->getFrameSize();
+	if(frameSize)
+		debug_log_info("Frame Size: %lu, %lu", frameSize->first, frameSize->second);
+
+	f32 frameRate = 0;
+	if(auto t = gHDMIStream->getFrameRate())
+	{
+		frameRate = t->first / static_cast<f32>(t->second);
+		debug_log_info("Frame Rate %.2f", frameRate);
+	}
+
+	if(auto t = gHDMIStream->getSampleSizeInBytes())
+		debug_log_info("Sample Size in Bytes: %lu", t.value());
+
+	if(auto t = gHDMIStream->getEncodingFormatStr())
+		debug_log_info("Encoding Format: %s", t.value());
 
 	Win32::DisplayRawInputDeviceList();
 	Win32::RegisterRawInputDevices({ Win32::RawInputDeviceType::Mouse, Win32::RawInputDeviceType::Keyboard });
 
 
-	Window window(500, 500, "Scalable KVM Over IP");
+	Window window(frameSize->first, frameSize->second, "Scalable KVM Over IP");
+
+	gWin32DrawSurfaceUPtr = std::move(std::unique_ptr<Win32::Win32DrawSurface>(new Win32::Win32DrawSurface(window.getNativeHandle(), window.getSize().first, window.getSize().second, 24)));
 
 	Event::SubscriptionHandle mouseInputHandle = window.getEvent(Window::EventType::MouseInput).subscribe(MouseInputHandler, NULL);
 	Event::SubscriptionHandle keyboardInputHandle = window.getEvent(Window::EventType::KeyboardInput).subscribe(KeyboardInputHandler, NULL);
@@ -319,16 +328,17 @@ int main(int argc, const char* argv[])
 
 #endif /* Server */
 
-	Network::Socket networkStream(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP);
-	debug_log_info("Trying to connect to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
-	if(networkStream.connect(SERVER_IP_ADDRESS, SERVER_PORT_NUMBER) == Network::Result::Success)
-		debug_log_info("Connected to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
+	// Network::Socket networkStream(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP);
+	// debug_log_info("Trying to connect to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
+	// if(networkStream.connect(SERVER_IP_ADDRESS, SERVER_PORT_NUMBER) == Network::Result::Success)
+	// 	debug_log_info("Connected to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
 
-	std::thread networkThread(NetworkHandler, std::ref(networkStream));
+	// std::thread networkThread(NetworkHandler, std::ref(networkStream));
 
-	window.runGameLoop(60);
+	window.runGameLoop(static_cast<u32>(frameRate));
 
-	networkThread.join();
+	// networkThread.join();
+
 
 	window.getEvent(Window::EventType::Paint).unsubscribe(windowPaintHandle);
 	window.getEvent(Window::EventType::MouseInput).unsubscribe(mouseInputHandle);

@@ -19,13 +19,16 @@ namespace SKVMOIP
 
 		struct Frame
 		{
-			u8* pixels;
-			u32 size;
+			u16* pixels;
+			u32 pixelCount;
 		};
 
 	private:
 		IMFSourceReader* m_sourceReader;
 		IMFMediaType* m_mediaType;
+		IMFMediaBuffer* m_stagingBuffer;
+		u32 m_sampleSize;
+		GUID m_encodingFormat;
 		bool m_isValid;
 
 	private:
@@ -44,9 +47,11 @@ namespace SKVMOIP
 		operator bool() const { return isValid();  }
 
 		std::optional<bool> isCompressedFormat();
+		std::optional<u32> getSampleSizeInBytes() const;
 		std::optional<std::pair<u32, u32>> getFrameSize();
 		std::optional<std::pair<u32, u32>> getFrameRate();
+		std::optional<const char*> getEncodingFormatStr();
 
-		std::optional<Frame> readFrame();
+		bool readRGBFrameToBuffer(u8* const rgbBuffer);
 	};
 }
