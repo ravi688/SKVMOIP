@@ -178,7 +178,7 @@ static u32 counter = 0;
 static void WindowPaintHandler(void* paintInfo, void* userData)
 {
 	u8* pixels = gWin32DrawSurfaceUPtr->getPixels();
-	// memset(pixels, 255, gWin32DrawSurfaceUPtr->getBufferSize());
+	memset(pixels, 255, gWin32DrawSurfaceUPtr->getBufferSize());
 
 	auto drawSurfaceSize = gWin32DrawSurfaceUPtr->getSize();
 	// for(u32 i = 0; i < drawSurfaceSize.second; i++)
@@ -197,7 +197,7 @@ static void WindowPaintHandler(void* paintInfo, void* userData)
 	{
 		return;
 	}
-	debug_log_info("Reading frame : %u", ++counter);
+	// debug_log_info("Reading frame : %u", ++counter);
 
 	Win32::WindowPaintInfo* winPaintInfo = reinterpret_cast<Win32::WindowPaintInfo*>(paintInfo);
 	BitBlt(winPaintInfo->deviceContext, 0, 0, drawSurfaceSize.first, drawSurfaceSize.second, gWin32DrawSurfaceUPtr->getHDC(), 0, 0, SRCCOPY);

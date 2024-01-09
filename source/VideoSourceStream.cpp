@@ -5,6 +5,8 @@
 #include <mfapi.h>
 #include <unknwn.h>
 #include <wmcodecdsp.h>
+#include <mftransform.h>
+#include <mferror.h>
 
 namespace SKVMOIP
 {
@@ -203,7 +205,8 @@ namespace SKVMOIP
 																				m_mediaType(NULL),
 																				m_outputMediaType(NULL), 
 																				m_stagingMediaBuffer(NULL),
-																				m_videoColorConverter(NULL)
+																				m_videoColorConverter(NULL),
+																				m_outputSample(NULL)
 	{
 		if(MFCreateSourceReaderFromMediaSource(device.getInternalHandle(), NULL, &m_sourceReader) != S_OK)
 		{
@@ -260,67 +263,113 @@ namespace SKVMOIP
 			goto RELEASE;
 		}
 
-		if(MFCreateMemoryBuffer(m_sampleSize, &m_stagingMediaBuffer) != S_OK)
+
+		IMFTransform* pVideoColorConverter;
+		if(CoCreateInstance(CLSID_CColorConvertDMO, NULL, CLSCTX_INPROC_SERVER, IID_IMFTransform, reinterpret_cast<void**>(&pVideoColorConverter)) != S_OK)
 		{
-			debug_log_error("Unable to create Media Buffer");
+			debug_log_error("Failed to create CLSID_CColorConvertDMO");
 			goto RELEASE;
 		}
 
-		// IMFTransform* pVideoColorConverter;
-		// if(CoCreateInstance(CLSID_CColorConvertDMO, NULL, CLSCTX_INPROC_SERVER, IID_IMFTransform, reinterpret_cast<void**>(&pVideoColorConverter)) != S_OK)
-		// {
-		// 	debug_log_error("Failed to create CLSID_CColorConvertDMO");
-		// 	goto RELEASE;
-		// }
+		m_videoColorConverter = pVideoColorConverter;
 
-		// m_videoColorConverter = pVideoColorConverter;
+		if(pVideoColorConverter->SetInputType(0, m_mediaType, 0) != S_OK)
+		{
+			debug_log_error("Failed to set input type");
+			goto RELEASE;
+		}
 
-		// if(pVideoColorConverter->SetInputType(0, m_mediaType, 0) != S_OK)
-		// {
-		// 	debug_log_error("Failed to set input type");
-		// 	goto RELEASE;
-		// }
+		if(MFCreateMediaType(&m_outputMediaType) != S_OK)
+		{
+			debug_log_error("Failed to create output media type");
+			goto RELEASE;
+		}
 
-		// if(MFCreateMediaType(&m_outputMediaType) != S_OK)
-		// {
-		// 	debug_log_error("Failed to create output media type");
-		// 	goto RELEASE;
-		// }
+		if(m_mediaType->CopyAllItems(m_outputMediaType) != S_OK)
+		{
+			debug_log_error("Failed to copy all items from input media to output media");
+			goto RELEASE;
+		}
 
-		// if(m_mediaType->CopyAllItems(m_outputMediaType) != S_OK)
-		// {
-		// 	debug_log_error("Failed to copy all items from input media to output media");
-		// 	goto RELEASE;
-		// }
+		if(m_outputMediaType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video) != S_OK)
+		{
+			debug_log_error("Failed to set major type on output media type");
+			goto RELEASE;
+		}
 
-		// if(m_outputMediaType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video) != S_OK)
-		// {
-		// 	debug_log_error("Failed to set major type on output media type");
-		// 	goto RELEASE;
-		// }
+		if(m_outputMediaType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB24) != S_OK)
+		{
+			debug_log_error("Failed to set sub type on output media type");
+			goto RELEASE;
+		}
 
-		// if(m_outputMediaType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB24) != S_OK)
-		// {
-		// 	debug_log_error("Failed to set sub type on output media type");
-		// 	goto RELEASE;
-		// }
+		if(pVideoColorConverter->SetOutputType(0, m_outputMediaType, 0) != S_OK)
+		{
+			debug_log_error("Failed to set output type");
+			goto RELEASE;
+		}		
 
-		// if(pVideoColorConverter->SetOutputType(0, m_outputMediaType, 0) != S_OK)
-		// {
-		// 	debug_log_error("Failed to set output type");
-		// 	goto RELEASE;
-		// }
+		if(m_outputMediaType->GetRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void**>(&pInfo)) != S_OK)
+		{
+			debug_log_error("Unable to get Representation for output media type (RGB24) ");
+			goto RELEASE;
+		}
+		
+		m_outputSampleSize = pInfo->lSampleSize;
 
-		// if(pVideoColorConverter->ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0) != S_OK)
-		// {
-		// 	debug_log_error("Failed to Process Message MFT_MESSAGE_NOTIFY_BEGIN_STREAMING");
-		// 	goto RELEASE;
-		// }
+		if(m_outputMediaType->FreeRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void*>(pInfo)) != S_OK)
+		{
+			debug_log_error("Unable to free Representation");
+			goto RELEASE;
+		}
+
+		MFT_OUTPUT_STREAM_INFO outputStreamInfo;
+		if(m_videoColorConverter->GetOutputStreamInfo(0, &outputStreamInfo) != S_OK)
+		{
+			debug_log_error("Unable to get output stream info");
+			goto RELEASE;
+		}
+
+
+		if((outputStreamInfo.dwFlags & MFT_OUTPUT_STREAM_PROVIDES_SAMPLES) != MFT_OUTPUT_STREAM_PROVIDES_SAMPLES)
+		{
+			_assert(m_outputSampleSize == outputStreamInfo.cbSize);
+			debug_log_info("Output Sample Size: %lu", outputStreamInfo.cbSize);
+			if(MFCreateMemoryBuffer(outputStreamInfo.cbSize, &m_stagingMediaBuffer) != S_OK)
+			{
+				debug_log_error("Unable to create Media Buffer");
+				goto RELEASE;
+			}
+			if(MFCreateSample(&m_outputSample) != S_OK)
+			{
+				debug_log_error("Failed to create IMFSample for output stream");
+				goto RELEASE;
+			}
+			if(m_outputSample->AddBuffer(m_stagingMediaBuffer) != S_OK)
+			{
+				debug_log_error("Failed to add staging buffer into the output sample");
+				goto RELEASE;
+			}
+		}
+		else
+			m_outputSample = NULL;
+
+		if(pVideoColorConverter->ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0) != S_OK)
+		{
+			debug_log_error("Failed to Process Message MFT_MESSAGE_NOTIFY_BEGIN_STREAMING");
+			goto RELEASE;
+		}
 
 		m_isValid = true;
 		return;
 
 		RELEASE:
+			if(m_outputSample != NULL)
+				m_outputSample->Release();
+			m_outputSample = NULL;
+			if(m_stagingMediaBuffer != NULL)
+				m_stagingMediaBuffer->Release();
+			m_stagingMediaBuffer = NULL;
 			if(m_videoColorConverter != NULL)
 				m_videoColorConverter->Release();
 			if(m_sourceReader != NULL)
@@ -330,10 +379,16 @@ namespace SKVMOIP
 	}
 
 	VideoSourceStream::VideoSourceStream(VideoSourceStream&& stream) : m_sourceReader(stream.m_sourceReader),
+																	   m_stagingMediaBuffer(stream.m_stagingMediaBuffer),
+																	   m_videoColorConverter(stream.m_videoColorConverter),
+																	   m_outputSample(stream.m_outputSample),
 																	   m_mediaType(stream.m_mediaType),
 																	   m_isValid(stream.m_isValid)
 	{
 		stream.m_sourceReader = NULL;
+		stream.m_stagingMediaBuffer = NULL;
+		stream.m_videoColorConverter = NULL;
+		stream.m_outputSample = NULL;
 		stream.m_mediaType = NULL;
 		stream.m_isValid = false;
 	}
@@ -346,6 +401,11 @@ namespace SKVMOIP
 			m_sourceReader = NULL;
 			m_stagingMediaBuffer->Release();
 			m_stagingMediaBuffer = NULL;
+			m_videoColorConverter->Release();
+			m_videoColorConverter = NULL;
+			if(m_outputSample != NULL)
+				m_outputSample->Release();
+			m_outputSample = NULL;
 			m_mediaType = NULL;
 			m_isValid = false;
 		}
@@ -420,16 +480,19 @@ namespace SKVMOIP
 			if(pSample->GetBufferByIndex(i, &pBuffer) != S_OK)
 			{
 				debug_log_error("Failed to get buffer by index");
+				pSample->Release();
 				return 0;
 			}
 			DWORD maxLength;
 			if(pBuffer->GetMaxLength(&maxLength) != S_OK)
 			{
 				debug_log_error("Failed to get max length");
+				pSample->Release();
 				return 0;
 			}
 			totalLength += maxLength;
 		}
+		pSample->Release();
 		return totalLength;
 	}
 
@@ -458,35 +521,49 @@ namespace SKVMOIP
 		else
 			debug_log_error("Unable to verify total sample length");
 
+		// pSample->AddRef();
 		// auto totalMaxSize = GetTotalMaxSize(pSample);
 		// _assert(totalMaxSize == m_sampleSize);
 
-		// if(m_videoColorConverter->ProcessInput(0, pSample, 0) != S_OK)
-		// {
-		// 	debug_log_error("Failed to Process Input");
-		// 	exit(1);
-		// }
-		// else
-		// 	debug_log_info("Processed Input");
+PROCESS_INPUT:
 
-		// DWORD flags;
-		// HRESULT result;
-		// if((result = m_videoColorConverter->GetOutputStatus(&flags)) != S_OK)
-		// {
-		// 	if(result == E_NOTIMPL)
-		// 		debug_log_error("Not implemented");
-		// 	else
-		// 		debug_log_error("Transform type is not set");
-		// }
-		// else if(flags != MFT_OUTPUT_STATUS_SAMPLE_READY)
-		// 	debug_log_error("Not ready to produce output");
-
-		// if(m_videoColorConverter->ProcessOutput(0, )
-
-		if(pSample->CopyToBuffer(m_stagingMediaBuffer) != S_OK)
+		if(m_videoColorConverter->ProcessInput(0, pSample, 0) != S_OK)
 		{
-			debug_log_error("Unable	to copy the sample data to the staging media buffer");
-			goto RELEASE_FALSE;
+			debug_log_error("Failed to Process Input");
+			return false;
+		}
+		else
+		{
+			// debug_log_info("Processed Input");
+		}
+
+		DWORD flags;
+		HRESULT result;
+		if((result = m_videoColorConverter->GetOutputStatus(&flags)) != S_OK)
+		{
+			if(result != E_NOTIMPL)
+			{
+				debug_log_error("Transform type is not set");
+				goto RELEASE_FALSE;
+			}
+		}
+		else if(flags != MFT_OUTPUT_STATUS_SAMPLE_READY)
+			debug_log_error("Not ready to produce output, still proceeding to ProcessOutput");
+		else if(flags == 0)
+			goto PROCESS_INPUT;
+
+		MFT_OUTPUT_DATA_BUFFER buffer;
+		memset(&buffer, 0, sizeof(buffer));
+		buffer.pSample = m_outputSample;
+
+		DWORD status;
+		result = m_videoColorConverter->ProcessOutput(0, 1, &buffer, &status);
+		if(result != S_OK)
+		{
+			if(result == MF_E_TRANSFORM_NEED_MORE_INPUT)
+				goto PROCESS_INPUT;
+			else if(result == MF_E_TRANSFORM_STREAM_CHANGE)
+				debug_log_info("Output Stream has changed");
 		}
 
 		BYTE* pMappedBuffer;
@@ -497,14 +574,14 @@ namespace SKVMOIP
 			goto RELEASE_FALSE;
 		}
 
-		// _assert(currentLength == rgbBufferSize);
-
-		for(u32 i = 0; i < currentLength; i++)
+		/* convert to RGB and the copy the data to the RGB Buffer */
+		for(u32 i = 0; i < currentLength; i += 3)
 		{
-			rgbBuffer[i] = pMappedBuffer[i];
+			rgbBuffer[(i / 3) * 4 + 0] = pMappedBuffer[i + 0];
+			rgbBuffer[(i / 3) * 4 + 1] = pMappedBuffer[i + 1];
+			rgbBuffer[(i / 3) * 4 + 2] = pMappedBuffer[i + 2];
+			rgbBuffer[(i / 3) * 4 + 3] = 255;
 		}
-
-		// memcpy(rgbBuffer, pMappedBuffer, currentLength);
 
 		if(m_stagingMediaBuffer->Unlock() != S_OK)
 		{
@@ -514,7 +591,7 @@ namespace SKVMOIP
 		pSample->Release();
 		return true;
 
-		RELEASE_FALSE:
+RELEASE_FALSE:
 		pSample->Release();
 		return false;
 	}

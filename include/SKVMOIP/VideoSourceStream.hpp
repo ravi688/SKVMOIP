@@ -3,6 +3,7 @@
 #include <SKVMOIP/defines.hpp>
 #include <SKVMOIP/Win32/Win32ImagingDevice.hpp>
 #include <utility>
+#include <vector>
 
 namespace SKVMOIP
 {
@@ -29,7 +30,9 @@ namespace SKVMOIP
 		IMFMediaType* m_outputMediaType;
 		IMFMediaBuffer* m_stagingMediaBuffer;
 		IMFTransform* m_videoColorConverter;
+		IMFSample* m_outputSample;
 		u32 m_sampleSize;
+		u32 m_outputSampleSize;
 		GUID m_encodingFormat;
 		bool m_isFixedSizedSamples;
 		bool m_isTemporalCompression;
@@ -43,7 +46,7 @@ namespace SKVMOIP
 		VideoSourceStream& operator=(VideoSourceStream& stream) = delete;
 
 		VideoSourceStream(VideoSourceDeviceConnectionID deviceID);
-		VideoSourceStream(Win32::Win32SourceDevice& device);
+		VideoSourceStream(Win32::Win32SourceDevice& device, const std::vector<std::tuple<u32, u32, u32>>& resPrefList);
 		VideoSourceStream(VideoSourceStream&& stream);
 		~VideoSourceStream();
 
