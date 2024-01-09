@@ -178,15 +178,27 @@ static u32 counter = 0;
 static void WindowPaintHandler(void* paintInfo, void* userData)
 {
 	u8* pixels = gWin32DrawSurfaceUPtr->getPixels();
+	// memset(pixels, 255, gWin32DrawSurfaceUPtr->getBufferSize());
 
-	if(!gHDMIStream->readRGBFrameToBuffer(pixels))
+	auto drawSurfaceSize = gWin32DrawSurfaceUPtr->getSize();
+	// for(u32 i = 0; i < drawSurfaceSize.second; i++)
+	// {
+	// 	for(u32 j = 0; j < drawSurfaceSize.first; j++)
+	// 	{
+	// 		u32 offset = i * drawSurfaceSize.first * 4;
+	// 		pixels[offset + j * 4 + 0] = 0; // B
+	// 		pixels[offset + j * 4 + 1] = 0;   // G
+	// 		pixels[offset + j * 4 + 2] = 255; // R
+	// 		pixels[offset + j * 4 + 3] = 255;
+	// 	}
+	// }
+
+	if(!gHDMIStream->readRGBFrameToBuffer(pixels, gWin32DrawSurfaceUPtr->getBufferSize()))
 	{
 		return;
 	}
-	memset(pixels, 0, gWin32DrawSurfaceUPtr	->getBufferSize());
 	debug_log_info("Reading frame : %u", ++counter);
 
-	auto drawSurfaceSize = gWin32DrawSurfaceUPtr->getSize();
 	Win32::WindowPaintInfo* winPaintInfo = reinterpret_cast<Win32::WindowPaintInfo*>(paintInfo);
 	BitBlt(winPaintInfo->deviceContext, 0, 0, drawSurfaceSize.first, drawSurfaceSize.second, gWin32DrawSurfaceUPtr->getHDC(), 0, 0, SRCCOPY);
 }
@@ -271,7 +283,7 @@ int main(int argc, const char* argv[])
 		return 0;
 	}
 			
-	std::optional<Win32::Win32SourceDevice> device = deviceList->activateDevice(1);
+	std::optional<Win32::Win32SourceDevice> device = deviceList->activateDevice(0);
 	if(!device)
 	{
 		debug_log_error("Unable to create video source device with index: %lu ", 0);
@@ -309,7 +321,7 @@ int main(int argc, const char* argv[])
 
 	Window window(frameSize->first, frameSize->second, "Scalable KVM Over IP");
 
-	gWin32DrawSurfaceUPtr = std::move(std::unique_ptr<Win32::Win32DrawSurface>(new Win32::Win32DrawSurface(window.getNativeHandle(), window.getSize().first, window.getSize().second, 24)));
+	gWin32DrawSurfaceUPtr = std::move(std::unique_ptr<Win32::Win32DrawSurface>(new Win32::Win32DrawSurface(window.getNativeHandle(), window.getSize().first, window.getSize().second, 32)));
 
 	Event::SubscriptionHandle mouseInputHandle = window.getEvent(Window::EventType::MouseInput).subscribe(MouseInputHandler, NULL);
 	Event::SubscriptionHandle keyboardInputHandle = window.getEvent(Window::EventType::KeyboardInput).subscribe(KeyboardInputHandler, NULL);

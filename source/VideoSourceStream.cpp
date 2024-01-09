@@ -3,6 +3,8 @@
 #include <SKVMOIP/assert.h>
 #include <strmif.h>
 #include <mfapi.h>
+#include <unknwn.h>
+#include <wmcodecdsp.h>
 
 namespace SKVMOIP
 {
@@ -81,11 +83,123 @@ namespace SKVMOIP
 			return "MFVideoFormat_Y410";
 		else if(guid == MFVideoFormat_Y416)
 			return "MFVideoFormat_Y416";
+		else if(guid == MFVideoFormat_L8)
+			return "MFVideoFormat_L8";
+		else if(guid == MFVideoFormat_L16)
+			return "MFVideoFormat_L16";
+		else if(guid == MFVideoFormat_D16)
+			return "MFVideoFormat_D16";
+		else if(guid == MFVideoFormat_DV25)
+			return "MFVideoFormat_DV25";
+		else if(guid == MFVideoFormat_DV50)
+			return "MFVideoFormat_DV50";
+		else if(guid == MFVideoFormat_DVC)
+			return "MFVideoFormat_DVC";
+		else if(guid == MFVideoFormat_DVH1)
+			return "MFVideoFormat_DVH1";
+		else if(guid == MFVideoFormat_DVHD)
+			return "MFVideoFormat_DVHD";
+		else if(guid == MFVideoFormat_DVSD)
+			return "MFVideoFormat_DVSD";
+		else if(guid == MFVideoFormat_DVSL)
+			return "MFVideoFormat_DVSL";
+		// else if(guid == MFVideoFormat_H263)
+			// return "MFVideoFormat_H263";
+		else if(guid == MFVideoFormat_H264)
+			return "MFVideoFormat_H264";
+		else if(guid == MFVideoFormat_H265)
+			return "MFVideoFormat_H265";
+		else if(guid == MFVideoFormat_H264_ES)
+			return "MFVideoFormat_H264_ES";
+		else if(guid == MFVideoFormat_HEVC)
+			return "MFVideoFormat_HEVC";
+		else if(guid == MFVideoFormat_HEVC_ES)
+			return "MFVideoFormat_HEVC_ES";
+		else if(guid == MFVideoFormat_M4S2)
+			return "MFVideoFormat_M4S2";
+		else if(guid == MFVideoFormat_MJPG)
+			return "MFVideoFormat_MJPG";
+		else if(guid == MFVideoFormat_MP43)
+			return "MFVideoFormat_MP43";
+		else if(guid == MFVideoFormat_MP4S)
+			return "MFVideoFormat_MP4S";
+		else if(guid == MFVideoFormat_MP4V)
+			return "MFVideoFormat_MP4V";
+		else if(guid == MFVideoFormat_MPEG2)
+			return "MFVideoFormat_MPEG2";
+		else if(guid == MFVideoFormat_VP80)
+			return "MFVideoFormat_VP80";
+		else if(guid == MFVideoFormat_VP90)
+			return "MFVideoFormat_VP90";
+		else if(guid == MFVideoFormat_MPG1)
+			return "MFVideoFormat_MPG1";
+		else if(guid == MFVideoFormat_MSS1)
+			return "MFVideoFormat_MSS1";
+		else if(guid == MFVideoFormat_MSS2)
+			return "MFVideoFormat_MSS2";
+		else if(guid == MFVideoFormat_WMV1)
+			return "MFVideoFormat_WMV1";
+		else if(guid == MFVideoFormat_WMV2)
+			return "MFVideoFormat_WMV2";
+		else if(guid == MFVideoFormat_WMV3)
+			return "MFVideoFormat_WMV3";
+		else if(guid == MFVideoFormat_WVC1)
+			return "MFVideoFormat_WVC1";
+		else if(guid == MFVideoFormat_420O)
+			return "MFVideoFormat_420O";
+		else if(guid == MFVideoFormat_AV1)
+			return "MFVideoFormat_AV1";
 		return "<unknown>";
 	}
 
-	VideoSourceStream::VideoSourceStream(Win32::Win32SourceDevice& device)
+	static IMFMediaType* FindRGBMediaType(IMFSourceReader *pReader)
 	{
+	    DWORD dwMediaTypeIndex = 0;
+	    HRESULT hr = S_OK;	
+	    while (SUCCEEDED(hr))
+	    {
+	        IMFMediaType *pType = NULL;
+	        hr = pReader->GetNativeMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, dwMediaTypeIndex, &pType);
+	        if (hr != S_OK)
+	        {
+	            hr = S_OK;
+	            break;
+	        }
+	        else if (SUCCEEDED(hr))
+	        {
+	            // Examine the media type. (Not shown.)
+	            GUID m_encodingFormat;
+	            if(pType->GetGUID(MF_MT_SUBTYPE, &m_encodingFormat) != S_OK)
+					debug_log_error("Unable to get encoding");
+				else
+				{
+					if((m_encodingFormat == MFVideoFormat_RGB24) || (m_encodingFormat == MFVideoFormat_RGB32))
+						return pType;
+				}
+	            pType->Release();
+	        }
+	        ++dwMediaTypeIndex;
+	    }
+	    return NULL;
+	}
+
+	VideoSourceStream::VideoSourceStream(Win32::Win32SourceDevice& device) : m_sourceReader(NULL), m_mediaType(NULL), m_outputMediaType(NULL), m_stagingMediaBuffer(NULL)
+	{
+		IMFAttributes* pAttributes;
+		if(MFCreateAttributes(&pAttributes, 10) != S_OK)
+		{
+			debug_log_error("Failed to create Attributes");
+			m_isValid = false;
+			return;
+		}
+
+		UINT32 outUint32;
+		if(pAttributes->SetUINT32(MF_READWRITE_DISABLE_CONVERTERS, TRUE) != S_OK)
+		{
+			debug_log_error("Failed to set MF_READWRITE_DISABLE_CONVERTERS");
+			goto RELEASE;
+		}
+
 		if(MFCreateSourceReaderFromMediaSource(device.getInternalHandle(), NULL, &m_sourceReader) != S_OK)
 		{
 			debug_log_error("Unable to create SourceReader from MediaSource");
@@ -93,23 +207,50 @@ namespace SKVMOIP
 			return;
 		}
 
-		if(m_sourceReader->GetNativeMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, MF_SOURCE_READER_CURRENT_TYPE_INDEX, &m_mediaType) != S_OK)
+		debug_log_info("MF_READWRITE_DISABLE_CONVERTERS: %lu", outUint32);
+
+		if((m_mediaType = FindRGBMediaType(m_sourceReader)) == NULL)
 		{
-			debug_log_error("Unable to get NativeMediaType");
+			if(m_sourceReader->GetNativeMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, MF_SOURCE_READER_CURRENT_TYPE_INDEX, &m_mediaType) != S_OK)
+			{
+				debug_log_error("Unable to get NativeMediaType");
+				goto RELEASE;
+			}
+		}
+
+		if(m_sourceReader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, m_mediaType) != S_OK)
+		{
+			debug_log_error("Unable to set current media type");
 			goto RELEASE;
 		}
 
-		AM_MEDIA_TYPE* pInfo;
-		if(m_mediaType->GetRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void**>(&pInfo)) != S_OK)
+		if(m_mediaType->GetUINT32(MF_MT_ALL_SAMPLES_INDEPENDENT, &outUint32) != S_OK)
 		{
-			debug_log_error("Unable to get Representation");
+			debug_log_error("Unable to determine temporal compression (delta compression)");
 			goto RELEASE;
 		}
+		else
+			m_isTemporalCompression = (outUint32 == 1) ? true : false;
 
-		_assert(pInfo->bFixedSizeSamples == TRUE);
-		// _assert(pInfo->bTemporalCompression = FALSE);
+		if(m_mediaType->GetUINT32(MF_MT_FIXED_SIZE_SAMPLES, &outUint32) != S_OK)
+		{
+			debug_log_error("Unable to determine fixed size samples");
+			goto RELEASE;
+		}
+		else
+			m_isFixedSizedSamples = (outUint32 == 1) ? true : false;
+		_assert(m_isFixedSizedSamples == true);
 
-		m_sampleSize = pInfo->lSampleSize;
+		if(m_isFixedSizedSamples)
+		{
+			if(m_mediaType->GetUINT32(MF_MT_SAMPLE_SIZE, &outUint32) != S_OK)
+			{
+				debug_log_error("Unable to get sample size");
+				goto RELEASE;
+			}
+			else
+				m_sampleSize = outUint32;
+		}
 
 		GUID majorType;
 		if(m_mediaType->GetMajorType(&majorType) == S_OK)
@@ -126,16 +267,71 @@ namespace SKVMOIP
 			goto RELEASE;
 		}
 
-		if(m_mediaType->FreeRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void*>(pInfo)) != S_OK)
+		// _assert(m_encodingFormat == pInfo->subtype);
+
+		if(MFCreateMemoryBuffer(m_sampleSize, &m_stagingMediaBuffer) != S_OK)
 		{
-			debug_log_error("Unable to free Representation");
+			debug_log_error("Unable to create Media Buffer");
 			goto RELEASE;
 		}
+
+		// IMFTransform* pVideoColorConverter;
+		// if(CoCreateInstance(CLSID_CColorConvertDMO, NULL, CLSCTX_INPROC_SERVER, IID_IMFTransform, reinterpret_cast<void**>(&pVideoColorConverter)) != S_OK)
+		// {
+		// 	debug_log_error("Failed to create CLSID_CColorConvertDMO");
+		// 	goto RELEASE;
+		// }
+
+		// m_videoColorConverter = pVideoColorConverter;
+
+		// if(pVideoColorConverter->SetInputType(0, m_mediaType, 0) != S_OK)
+		// {
+		// 	debug_log_error("Failed to set input type");
+		// 	goto RELEASE;
+		// }
+
+		// if(MFCreateMediaType(&m_outputMediaType) != S_OK)
+		// {
+		// 	debug_log_error("Failed to create output media type");
+		// 	goto RELEASE;
+		// }
+
+		// if(m_mediaType->CopyAllItems(m_outputMediaType) != S_OK)
+		// {
+		// 	debug_log_error("Failed to copy all items from input media to output media");
+		// 	goto RELEASE;
+		// }
+
+		// if(m_outputMediaType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video) != S_OK)
+		// {
+		// 	debug_log_error("Failed to set major type on output media type");
+		// 	goto RELEASE;
+		// }
+
+		// if(m_outputMediaType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB24) != S_OK)
+		// {
+		// 	debug_log_error("Failed to set sub type on output media type");
+		// 	goto RELEASE;
+		// }
+
+		// if(pVideoColorConverter->SetOutputType(0, m_outputMediaType, 0) != S_OK)
+		// {
+		// 	debug_log_error("Failed to set output type");
+		// 	goto RELEASE;
+		// }
+
+		// if(pVideoColorConverter->ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0) != S_OK)
+		// {
+		// 	debug_log_error("Failed to Process Message MFT_MESSAGE_NOTIFY_BEGIN_STREAMING");
+		// 	goto RELEASE;
+		// }
 
 		m_isValid = true;
 		return;
 
 		RELEASE:
+			// if(pVideoColorConverter != NULL)
+				// pVideoColorConverter->Release();
 			m_sourceReader->Release();
 			m_isValid = false;
 			return;
@@ -156,6 +352,8 @@ namespace SKVMOIP
 		{
 			m_sourceReader->Release();
 			m_sourceReader = NULL;
+			m_stagingMediaBuffer->Release();
+			m_stagingMediaBuffer = NULL;
 			m_mediaType = NULL;
 			m_isValid = false;
 		}
@@ -214,7 +412,36 @@ namespace SKVMOIP
 			return { };
 	}
 
-	bool VideoSourceStream::readRGBFrameToBuffer(u8* const rgbBuffer)
+	static u32 GetTotalMaxSize(IMFSample* pSample)
+	{
+		DWORD bufferCount;
+		if(pSample->GetBufferCount(&bufferCount) != S_OK)
+		{
+			debug_log_error("Failed to get buffer count");
+			return 0;
+		}
+
+		DWORD totalLength = 0;
+		for(DWORD i = 0; i < bufferCount; i++)
+		{
+			IMFMediaBuffer* pBuffer;
+			if(pSample->GetBufferByIndex(i, &pBuffer) != S_OK)
+			{
+				debug_log_error("Failed to get buffer by index");
+				return 0;
+			}
+			DWORD maxLength;
+			if(pBuffer->GetMaxLength(&maxLength) != S_OK)
+			{
+				debug_log_error("Failed to get max length");
+				return 0;
+			}
+			totalLength += maxLength;
+		}
+		return totalLength;
+	}
+
+	bool VideoSourceStream::readRGBFrameToBuffer(u8* const rgbBuffer, u32 rgbBufferSize)
 	{
 		DWORD streamIndex;
 		DWORD streamFlags;
@@ -230,7 +457,78 @@ namespace SKVMOIP
 			debug_log_error("IMFSample data is NULL");
 			return false;
 		}
+
+		DWORD totalLength;
+		if(pSample->GetTotalLength(&totalLength) == S_OK)
+		{
+			_assert(totalLength <= m_sampleSize);
+		}
+		else
+			debug_log_error("Unable to verify total sample length");
+
+		// auto totalMaxSize = GetTotalMaxSize(pSample);
+		// _assert(totalMaxSize == m_sampleSize);
+
+		// if(m_videoColorConverter->ProcessInput(0, pSample, 0) != S_OK)
+		// {
+		// 	debug_log_error("Failed to Process Input");
+		// 	exit(1);
+		// }
+		// else
+		// 	debug_log_info("Processed Input");
+
+		// DWORD flags;
+		// HRESULT result;
+		// if((result = m_videoColorConverter->GetOutputStatus(&flags)) != S_OK)
+		// {
+		// 	if(result == E_NOTIMPL)
+		// 		debug_log_error("Not implemented");
+		// 	else
+		// 		debug_log_error("Transform type is not set");
+		// }
+		// else if(flags != MFT_OUTPUT_STATUS_SAMPLE_READY)
+		// 	debug_log_error("Not ready to produce output");
+
+		// if(m_videoColorConverter->ProcessOutput(0, )
+
+		if(pSample->CopyToBuffer(m_stagingMediaBuffer) != S_OK)
+		{
+			debug_log_error("Unable	to copy the sample data to the staging media buffer");
+			goto RELEASE_FALSE;
+		}
+
+		BYTE* pMappedBuffer;
+		DWORD currentLength;
+		if(m_stagingMediaBuffer->Lock(&pMappedBuffer, NULL, &currentLength) != S_OK)
+		{
+			debug_log_error("Failed to lock the staging media buffer");
+			goto RELEASE_FALSE;
+		}
+
+		// _assert(currentLength <= m_sampleSize);
+
+		// _assert(currentLength == rgbBufferSize);
+
+		for(u32 i = 0; i < currentLength; i += 3)
+		{
+			rgbBuffer[(i / 3) * 4 + 0] = pMappedBuffer[i + 0];
+			rgbBuffer[(i / 3) * 4 + 1] = pMappedBuffer[i + 1];
+			rgbBuffer[(i / 3) * 4 + 2] = pMappedBuffer[i + 2];
+			rgbBuffer[(i / 3) * 4 + 3] = 255;
+		}
+
+		// memcpy(rgbBuffer, pMappedBuffer, currentLength);
+
+		if(m_stagingMediaBuffer->Unlock() != S_OK)
+		{
+			debug_log_error("Failed to unlock the staging media buffer");
+		}
+
 		pSample->Release();
 		return true;
+
+		RELEASE_FALSE:
+		pSample->Release();
+		return false;
 	}
 }

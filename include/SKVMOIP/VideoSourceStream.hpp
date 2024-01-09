@@ -26,9 +26,13 @@ namespace SKVMOIP
 	private:
 		IMFSourceReader* m_sourceReader;
 		IMFMediaType* m_mediaType;
-		IMFMediaBuffer* m_stagingBuffer;
+		IMFMediaType* m_outputMediaType;
+		IMFMediaBuffer* m_stagingMediaBuffer;
+		IMFTransform* m_videoColorConverter;
 		u32 m_sampleSize;
 		GUID m_encodingFormat;
+		bool m_isFixedSizedSamples;
+		bool m_isTemporalCompression;
 		bool m_isValid;
 
 	private:
@@ -52,6 +56,6 @@ namespace SKVMOIP
 		std::optional<std::pair<u32, u32>> getFrameRate();
 		std::optional<const char*> getEncodingFormatStr();
 
-		bool readRGBFrameToBuffer(u8* const rgbBuffer);
+		bool readRGBFrameToBuffer(u8* const rgbBuffer, u32 rgbBufferSize);
 	};
 }
