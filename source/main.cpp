@@ -290,7 +290,21 @@ int main(int argc, const char* argv[])
 		return 0;
 	}
 
-	gHDMIStream = std::move(std::unique_ptr<VideoSourceStream>(new VideoSourceStream(device.value())));
+	std::vector<std::tuple<u32, u32, u32>> preferenceList = 
+	{
+		{ 1920, 1080, 60 },
+		{ 1920, 1080, 30 },
+		{ 1366, 768, 60 },
+		{ 1366, 768, 30 },
+		{ 1280, 720, 60 },
+		{ 1280, 720, 30 },
+		{ 1024, 768, 60 },
+		{ 1024, 768, 30 }, 
+		{ 960, 720, 60 },
+		{ 960, 720, 30 }
+	};
+
+	gHDMIStream = std::move(std::unique_ptr<VideoSourceStream>(new VideoSourceStream(device.value(), preferenceList)));
 
 	if (!(*gHDMIStream))
 		return 0;

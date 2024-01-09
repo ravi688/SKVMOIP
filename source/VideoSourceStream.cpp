@@ -152,7 +152,7 @@ namespace SKVMOIP
 		return "<unknown>";
 	}
 
-	static IMFMediaType* FindRGBMediaType(IMFSourceReader *pReader)
+	static IMFMediaType* FindMediaType(IMFSourceReader *pReader, const std::tuple<u32, u32, u32>& res)
 	{
 	    DWORD dwMediaTypeIndex = 0;
 	    HRESULT hr = S_OK;	
@@ -173,33 +173,38 @@ namespace SKVMOIP
 					debug_log_error("Unable to get encoding");
 				else
 				{
-					if((m_encodingFormat == MFVideoFormat_RGB24) || (m_encodingFormat == MFVideoFormat_RGB32))
+	        		UINT32 frNumerator, frDenominator;
+					if(MFGetAttributeRatio(pType, MF_MT_FRAME_RATE, &frNumerator, &frDenominator) != S_OK)
+						debug_log_error("\tUnable to get the frame rate");
+					UINT32 width, height;
+					if(MFGetAttributeSize(pType, MF_MT_FRAME_SIZE, &width, &height) != S_OK)
+						debug_log_error("\tUnable to get the frame size");
+					if(((frNumerator / frDenominator) == std::get<2>(res)) && (width == std::get<0>(res)) && (height == std::get<1>(res)))
 						return pType;
 				}
 	            pType->Release();
+
 	        }
 	        ++dwMediaTypeIndex;
 	    }
 	    return NULL;
 	}
 
-	VideoSourceStream::VideoSourceStream(Win32::Win32SourceDevice& device) : m_sourceReader(NULL), m_mediaType(NULL), m_outputMediaType(NULL), m_stagingMediaBuffer(NULL)
+	static IMFMediaType* SelectMediaType(IMFSourceReader* pSourceReader, const std::vector<std::tuple<u32, u32, u32>>& resPrefList)
 	{
-		IMFAttributes* pAttributes;
-		if(MFCreateAttributes(&pAttributes, 10) != S_OK)
-		{
-			debug_log_error("Failed to create Attributes");
-			m_isValid = false;
-			return;
-		}
+		for(const std::tuple<u32, u32, u32>& res : resPrefList)
+			if(auto mediaType = FindMediaType(pSourceReader, res))
+				return mediaType;
+		return NULL;
+	}
 
-		UINT32 outUint32;
-		if(pAttributes->SetUINT32(MF_READWRITE_DISABLE_CONVERTERS, TRUE) != S_OK)
-		{
-			debug_log_error("Failed to set MF_READWRITE_DISABLE_CONVERTERS");
-			goto RELEASE;
-		}
-
+	VideoSourceStream::VideoSourceStream(Win32::Win32SourceDevice& device, const std::vector<std::tuple<u32, u32, u32>>& resPrefList) : 
+																				m_sourceReader(NULL), 
+																				m_mediaType(NULL),
+																				m_outputMediaType(NULL), 
+																				m_stagingMediaBuffer(NULL),
+																				m_videoColorConverter(NULL)
+	{
 		if(MFCreateSourceReaderFromMediaSource(device.getInternalHandle(), NULL, &m_sourceReader) != S_OK)
 		{
 			debug_log_error("Unable to create SourceReader from MediaSource");
@@ -207,15 +212,11 @@ namespace SKVMOIP
 			return;
 		}
 
-		debug_log_info("MF_READWRITE_DISABLE_CONVERTERS: %lu", outUint32);
-
-		if((m_mediaType = FindRGBMediaType(m_sourceReader)) == NULL)
+		m_mediaType = SelectMediaType(m_sourceReader, resPrefList);
+		if(m_mediaType == NULL)
 		{
-			if(m_sourceReader->GetNativeMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, MF_SOURCE_READER_CURRENT_TYPE_INDEX, &m_mediaType) != S_OK)
-			{
-				debug_log_error("Unable to get NativeMediaType");
-				goto RELEASE;
-			}
+			debug_log_error("Failed to match any of the available media formats on the capture device");
+			goto RELEASE;
 		}
 
 		if(m_sourceReader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, m_mediaType) != S_OK)
@@ -224,32 +225,24 @@ namespace SKVMOIP
 			goto RELEASE;
 		}
 
-		if(m_mediaType->GetUINT32(MF_MT_ALL_SAMPLES_INDEPENDENT, &outUint32) != S_OK)
+		AM_MEDIA_TYPE* pInfo;
+		if(m_mediaType->GetRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void**>(&pInfo)) != S_OK)
 		{
-			debug_log_error("Unable to determine temporal compression (delta compression)");
+			debug_log_error("Unable to get Representation");
 			goto RELEASE;
 		}
-		else
-			m_isTemporalCompression = (outUint32 == 1) ? true : false;
+		m_isFixedSizedSamples = (pInfo->bFixedSizeSamples == 1) ? true : false;
+		m_isTemporalCompression = (pInfo->bFixedSizeSamples == 1) ? true : false;
 
-		if(m_mediaType->GetUINT32(MF_MT_FIXED_SIZE_SAMPLES, &outUint32) != S_OK)
-		{
-			debug_log_error("Unable to determine fixed size samples");
-			goto RELEASE;
-		}
-		else
-			m_isFixedSizedSamples = (outUint32 == 1) ? true : false;
 		_assert(m_isFixedSizedSamples == true);
+		// _assert(pInfo->bTemporalCompression = FALSE);
 
-		if(m_isFixedSizedSamples)
+		m_sampleSize = pInfo->lSampleSize;
+
+		if(m_mediaType->FreeRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void*>(pInfo)) != S_OK)
 		{
-			if(m_mediaType->GetUINT32(MF_MT_SAMPLE_SIZE, &outUint32) != S_OK)
-			{
-				debug_log_error("Unable to get sample size");
-				goto RELEASE;
-			}
-			else
-				m_sampleSize = outUint32;
+			debug_log_error("Unable to free Representation");
+			goto RELEASE;
 		}
 
 		GUID majorType;
@@ -266,8 +259,6 @@ namespace SKVMOIP
 			debug_log_error("Unable to get encoding");
 			goto RELEASE;
 		}
-
-		// _assert(m_encodingFormat == pInfo->subtype);
 
 		if(MFCreateMemoryBuffer(m_sampleSize, &m_stagingMediaBuffer) != S_OK)
 		{
@@ -330,9 +321,10 @@ namespace SKVMOIP
 		return;
 
 		RELEASE:
-			// if(pVideoColorConverter != NULL)
-				// pVideoColorConverter->Release();
-			m_sourceReader->Release();
+			if(m_videoColorConverter != NULL)
+				m_videoColorConverter->Release();
+			if(m_sourceReader != NULL)
+				m_sourceReader->Release();
 			m_isValid = false;
 			return;
 	}
@@ -505,16 +497,11 @@ namespace SKVMOIP
 			goto RELEASE_FALSE;
 		}
 
-		// _assert(currentLength <= m_sampleSize);
-
 		// _assert(currentLength == rgbBufferSize);
 
-		for(u32 i = 0; i < currentLength; i += 3)
+		for(u32 i = 0; i < currentLength; i++)
 		{
-			rgbBuffer[(i / 3) * 4 + 0] = pMappedBuffer[i + 0];
-			rgbBuffer[(i / 3) * 4 + 1] = pMappedBuffer[i + 1];
-			rgbBuffer[(i / 3) * 4 + 2] = pMappedBuffer[i + 2];
-			rgbBuffer[(i / 3) * 4 + 3] = 255;
+			rgbBuffer[i] = pMappedBuffer[i];
 		}
 
 		// memcpy(rgbBuffer, pMappedBuffer, currentLength);
