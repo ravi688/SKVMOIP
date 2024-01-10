@@ -309,31 +309,16 @@ int main(int argc, const char* argv[])
 	if (!(*gHDMIStream))
 		return 0;
 
-	if(auto t = gHDMIStream->isCompressedFormat())
-		debug_log_info("IsCompressedFormat: %s", (t.value() == TRUE) ? "True" : "False");					
+	gHDMIStream->dump();
 
-	auto frameSize = gHDMIStream->getFrameSize();
-	if(frameSize)
-		debug_log_info("Frame Size: %lu, %lu", frameSize->first, frameSize->second);
-
-	f32 frameRate = 0;
-	if(auto t = gHDMIStream->getFrameRate())
-	{
-		frameRate = t->first / static_cast<f32>(t->second);
-		debug_log_info("Frame Rate %.2f", frameRate);
-	}
-
-	if(auto t = gHDMIStream->getSampleSizeInBytes())
-		debug_log_info("Sample Size in Bytes: %lu", t.value());
-
-	if(auto t = gHDMIStream->getEncodingFormatStr())
-		debug_log_info("Encoding Format: %s", t.value());
+	std::pair<u32, u32> frameSize = gHDMIStream->getOutputFrameSize();
+	u32 frameRate = gHDMIStream->getInputFrameRateF32();
 
 	Win32::DisplayRawInputDeviceList();
 	Win32::RegisterRawInputDevices({ Win32::RawInputDeviceType::Mouse, Win32::RawInputDeviceType::Keyboard });
 
 
-	Window window(frameSize->first, frameSize->second, "Scalable KVM Over IP");
+	Window window(frameSize.first, frameSize.second, "Scalable KVM Over IP");
 
 	gWin32DrawSurfaceUPtr = std::move(std::unique_ptr<Win32::Win32DrawSurface>(new Win32::Win32DrawSurface(window.getNativeHandle(), window.getSize().first, window.getSize().second, 32)));
 

@@ -15,7 +15,7 @@ namespace SKVMOIP
 
 	}
 
-	static const char* getEncodingString(const GUID& guid)
+	SKVMOIP_API const char* getEncodingString(const GUID& guid)
 	{
 		if(guid == MFVideoFormat_RGB8)
 			return "MFVideoFormat_RGB8";
@@ -202,11 +202,27 @@ namespace SKVMOIP
 
 	VideoSourceStream::VideoSourceStream(Win32::Win32SourceDevice& device, const std::vector<std::tuple<u32, u32, u32>>& resPrefList) : 
 																				m_sourceReader(NULL), 
-																				m_mediaType(NULL),
+																				m_inputMediaType(NULL),
 																				m_outputMediaType(NULL), 
 																				m_stagingMediaBuffer(NULL),
 																				m_videoColorConverter(NULL),
-																				m_outputSample(NULL)
+																				m_outputSample(NULL),
+																				m_inputSampleSize(0),
+																				m_outputSampleSize(0),
+																				m_inputFrameWidth(0),
+																				m_inputFrameHeight(0),
+																				m_outputFrameWidth(0),
+																				m_outputFrameHeight(0),
+																				m_inputFrameRateNumer(0),
+																				m_inputFrameRateDenom(0),
+																				m_outputFrameRateNumer(0),
+																				m_outputFrameRateDenom(0),
+																				m_isInputFixedSizedSamples(false),
+																				m_isOutputFixedSizedSamples(false),
+																				m_isInputTemporalCompression(false),
+																				m_isOutputTemporalCompression(false),
+																				m_isInputCompressedFormat(false),
+																				m_isOutputCompressedFormat(false)
 	{
 		if(MFCreateSourceReaderFromMediaSource(device.getInternalHandle(), NULL, &m_sourceReader) != S_OK)
 		{
@@ -215,41 +231,74 @@ namespace SKVMOIP
 			return;
 		}
 
-		m_mediaType = SelectMediaType(m_sourceReader, resPrefList);
-		if(m_mediaType == NULL)
+		m_inputMediaType = SelectMediaType(m_sourceReader, resPrefList);
+		if(m_inputMediaType == NULL)
 		{
 			debug_log_error("Failed to match any of the available media formats on the capture device");
 			goto RELEASE;
 		}
 
-		if(m_sourceReader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, m_mediaType) != S_OK)
+		if(m_sourceReader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, m_inputMediaType) != S_OK)
 		{
 			debug_log_error("Unable to set current media type");
 			goto RELEASE;
 		}
 
 		AM_MEDIA_TYPE* pInfo;
-		if(m_mediaType->GetRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void**>(&pInfo)) != S_OK)
+		if(m_inputMediaType->GetRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void**>(&pInfo)) != S_OK)
 		{
 			debug_log_error("Unable to get Representation");
 			goto RELEASE;
 		}
-		m_isFixedSizedSamples = (pInfo->bFixedSizeSamples == 1) ? true : false;
-		m_isTemporalCompression = (pInfo->bFixedSizeSamples == 1) ? true : false;
+		else
+		{
+			m_isInputFixedSizedSamples = pInfo->bFixedSizeSamples;
+			m_isInputTemporalCompression = pInfo->bTemporalCompression;
+			m_inputSampleSize = pInfo->lSampleSize;
+		}
 
-		_assert(m_isFixedSizedSamples == true);
-		// _assert(pInfo->bTemporalCompression = FALSE);
+		_assert(m_isInputFixedSizedSamples == true);
 
-		m_sampleSize = pInfo->lSampleSize;
-
-		if(m_mediaType->FreeRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void*>(pInfo)) != S_OK)
+		if(m_inputMediaType->FreeRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void*>(pInfo)) != S_OK)
 		{
 			debug_log_error("Unable to free Representation");
 			goto RELEASE;
 		}
 
+		BOOL isCompressed;
+		if(m_inputMediaType->IsCompressedFormat(&isCompressed) != S_OK)
+		{
+			debug_log_error("Unable to determine if the media type is compressed");
+			goto RELEASE;
+		}
+		else m_isInputCompressedFormat = isCompressed;
+
+		UINT32 width, height;
+		if(MFGetAttributeSize(m_inputMediaType, MF_MT_FRAME_SIZE, &width, &height) != S_OK)
+		{
+			debug_log_error("Unable to get the input frame size");
+			goto RELEASE;
+		}
+		else
+		{
+			m_inputFrameWidth = width;
+			m_inputFrameHeight = height;
+		}
+
+		UINT32 frNumerator, frDenominator;
+		if(MFGetAttributeSize(m_inputMediaType, MF_MT_FRAME_RATE, &frNumerator, &frDenominator) != S_OK)
+		{
+			debug_log_error("Unable to get the input frame rate");
+			goto RELEASE;
+		}
+		else
+		{
+			m_inputFrameRateNumer = frNumerator;
+			m_inputFrameRateDenom = frDenominator;
+		}
+
 		GUID majorType;
-		if(m_mediaType->GetMajorType(&majorType) == S_OK)
+		if(m_inputMediaType->GetMajorType(&majorType) == S_OK)
 			_assert(majorType == MFMediaType_Video);
 		else
 		{
@@ -257,27 +306,13 @@ namespace SKVMOIP
 			goto RELEASE;
 		}
 
-		if(m_mediaType->GetGUID(MF_MT_SUBTYPE, &m_encodingFormat) != S_OK)
+		if(m_inputMediaType->GetGUID(MF_MT_SUBTYPE, &m_inputEncodingFormat) != S_OK)
 		{
 			debug_log_error("Unable to get encoding");
 			goto RELEASE;
 		}
 
-
-		IMFTransform* pVideoColorConverter;
-		if(CoCreateInstance(CLSID_CColorConvertDMO, NULL, CLSCTX_INPROC_SERVER, IID_IMFTransform, reinterpret_cast<void**>(&pVideoColorConverter)) != S_OK)
-		{
-			debug_log_error("Failed to create CLSID_CColorConvertDMO");
-			goto RELEASE;
-		}
-
-		m_videoColorConverter = pVideoColorConverter;
-
-		if(pVideoColorConverter->SetInputType(0, m_mediaType, 0) != S_OK)
-		{
-			debug_log_error("Failed to set input type");
-			goto RELEASE;
-		}
+		/*  Create Output Media Type */
 
 		if(MFCreateMediaType(&m_outputMediaType) != S_OK)
 		{
@@ -285,7 +320,7 @@ namespace SKVMOIP
 			goto RELEASE;
 		}
 
-		if(m_mediaType->CopyAllItems(m_outputMediaType) != S_OK)
+		if(m_inputMediaType->CopyAllItems(m_outputMediaType) != S_OK)
 		{
 			debug_log_error("Failed to copy all items from input media to output media");
 			goto RELEASE;
@@ -300,6 +335,72 @@ namespace SKVMOIP
 		if(m_outputMediaType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB24) != S_OK)
 		{
 			debug_log_error("Failed to set sub type on output media type");
+			goto RELEASE;
+		}
+		else m_outputEncodingFormat = MFVideoFormat_RGB24;
+
+		if(m_outputMediaType->GetRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void**>(&pInfo)) != S_OK)
+		{
+			debug_log_error("Unable to get Representation");
+			goto RELEASE;
+		}
+		else
+		{
+			m_isOutputFixedSizedSamples = pInfo->bFixedSizeSamples;
+			m_isOutputTemporalCompression = pInfo->bTemporalCompression;
+			m_outputSampleSize = pInfo->lSampleSize;
+		}
+
+		_assert(m_isOutputFixedSizedSamples == true);
+
+		if(m_outputMediaType->FreeRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void*>(pInfo)) != S_OK)
+		{
+			debug_log_error("Unable to free Representation");
+			goto RELEASE;
+		}
+
+		if(m_outputMediaType->IsCompressedFormat(&isCompressed) != S_OK)
+		{
+			debug_log_error("Unable to determine if the media type is compressed");
+			goto RELEASE;
+		}
+		else m_isOutputCompressedFormat = isCompressed;
+
+		if(MFGetAttributeSize(m_outputMediaType, MF_MT_FRAME_SIZE, &width, &height) != S_OK)
+		{
+			debug_log_error("Unable to get the output frame size");
+			goto RELEASE;
+		}
+		else
+		{
+			m_outputFrameWidth = width;
+			m_outputFrameHeight = height;
+		}
+
+		if(MFGetAttributeSize(m_outputMediaType, MF_MT_FRAME_RATE, &frNumerator, &frDenominator) != S_OK)
+		{
+			debug_log_error("Unable to get the output frame rate");
+			goto RELEASE;
+		}
+		else
+		{
+			m_outputFrameRateNumer = frNumerator;
+			m_outputFrameRateDenom = frDenominator;
+		}
+
+		/* Created Video Stream Color Converter */
+
+		IMFTransform* pVideoColorConverter;
+		if(CoCreateInstance(CLSID_CColorConvertDMO, NULL, CLSCTX_INPROC_SERVER, IID_IMFTransform, reinterpret_cast<void**>(&pVideoColorConverter)) != S_OK)
+		{
+			debug_log_error("Failed to create CLSID_CColorConvertDMO");
+			goto RELEASE;
+		}
+		else m_videoColorConverter = pVideoColorConverter;
+
+		if(pVideoColorConverter->SetInputType(0, m_inputMediaType, 0) != S_OK)
+		{
+			debug_log_error("Failed to set input type");
 			goto RELEASE;
 		}
 
@@ -334,7 +435,6 @@ namespace SKVMOIP
 		if((outputStreamInfo.dwFlags & MFT_OUTPUT_STREAM_PROVIDES_SAMPLES) != MFT_OUTPUT_STREAM_PROVIDES_SAMPLES)
 		{
 			_assert(m_outputSampleSize == outputStreamInfo.cbSize);
-			debug_log_info("Output Sample Size: %lu", outputStreamInfo.cbSize);
 			if(MFCreateMemoryBuffer(outputStreamInfo.cbSize, &m_stagingMediaBuffer) != S_OK)
 			{
 				debug_log_error("Unable to create Media Buffer");
@@ -351,8 +451,6 @@ namespace SKVMOIP
 				goto RELEASE;
 			}
 		}
-		else
-			m_outputSample = NULL;
 
 		if(pVideoColorConverter->ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0) != S_OK)
 		{
@@ -363,33 +461,33 @@ namespace SKVMOIP
 		m_isValid = true;
 		return;
 
-		RELEASE:
-			if(m_outputSample != NULL)
-				m_outputSample->Release();
-			m_outputSample = NULL;
-			if(m_stagingMediaBuffer != NULL)
-				m_stagingMediaBuffer->Release();
-			m_stagingMediaBuffer = NULL;
-			if(m_videoColorConverter != NULL)
-				m_videoColorConverter->Release();
-			if(m_sourceReader != NULL)
-				m_sourceReader->Release();
-			m_isValid = false;
-			return;
+RELEASE:
+		if(m_outputSample != NULL)
+			m_outputSample->Release();
+		m_outputSample = NULL;
+		if(m_stagingMediaBuffer != NULL)
+			m_stagingMediaBuffer->Release();
+		m_stagingMediaBuffer = NULL;
+		if(m_videoColorConverter != NULL)
+			m_videoColorConverter->Release();
+		if(m_sourceReader != NULL)
+			m_sourceReader->Release();
+		m_isValid = false;
+		return;
 	}
 
 	VideoSourceStream::VideoSourceStream(VideoSourceStream&& stream) : m_sourceReader(stream.m_sourceReader),
 																	   m_stagingMediaBuffer(stream.m_stagingMediaBuffer),
 																	   m_videoColorConverter(stream.m_videoColorConverter),
 																	   m_outputSample(stream.m_outputSample),
-																	   m_mediaType(stream.m_mediaType),
+																	   m_inputMediaType(stream.m_inputMediaType),
 																	   m_isValid(stream.m_isValid)
 	{
 		stream.m_sourceReader = NULL;
 		stream.m_stagingMediaBuffer = NULL;
 		stream.m_videoColorConverter = NULL;
 		stream.m_outputSample = NULL;
-		stream.m_mediaType = NULL;
+		stream.m_inputMediaType = NULL;
 		stream.m_isValid = false;
 	}
 
@@ -406,7 +504,7 @@ namespace SKVMOIP
 			if(m_outputSample != NULL)
 				m_outputSample->Release();
 			m_outputSample = NULL;
-			m_mediaType = NULL;
+			m_inputMediaType = NULL;
 			m_isValid = false;
 		}
 	}
@@ -416,52 +514,48 @@ namespace SKVMOIP
 		destroy();
 	}
 
-	std::optional<bool> VideoSourceStream::isCompressedFormat()
+	static inline const char* BoolToString(bool value)
 	{
-		BOOL isCompressed;
-		if(m_mediaType->IsCompressedFormat(&isCompressed) != S_OK)
-		{
-			debug_log_error("Unable to determine if the media type is compressed");
-			return { };
-		}
-		return { isCompressed };
+		return value ? "true" : "false";
 	}
 
-	std::optional<u32> VideoSourceStream::getSampleSizeInBytes() const
+	void VideoSourceStream::dump() const
 	{
-		if(!m_isValid)
-			return { };
-		return { m_sampleSize };
-	}
+		const char* formatStr = 
+		"VideoSourceStream:\n"
+		"\tInput Sample Size: %lu\n"
+		"\tOutput Sample Size: %lu\n"
+		"\tInput Encoding: %s\n"
+		"\tOutput Encoding: %s\n"
+		"\tisInputCompressedFormat: %s\n"
+		"\tisOutputCompressedFormat: %s\n"
+		"\tisInputTemporalCompression: %s\n"
+		"\tisOuputTemporalCompression: %s\n"
+		"\tisInputFixedSizedSamples: %s\n"
+		"\tisOutputFixedSizedSamples: %s\n"
+		"\tinput frame size: %lu x %lu\n"
+		"\toutput frame size: %lu x %lu\n"
+		"\tinput frame rate: %.2f\n"
+		"\tonput frame rate: %.2f";
 
-	std::optional<std::pair<u32, u32>> VideoSourceStream::getFrameSize()
-	{
-		UINT32 width, height;
-		if(MFGetAttributeSize(m_mediaType, MF_MT_FRAME_SIZE, &width, &height) != S_OK)
-		{
-			debug_log_error("Unable to get the frame size");
-			return { };
-		}
-		return { { width, height } };
-	}
+		auto inputFrameSize = getInputFrameSize();
+		auto outputFrameSize = getOutputFrameSize();
 
-	std::optional<std::pair<u32, u32>> VideoSourceStream::getFrameRate()
-	{
-		UINT32 frNumerator, frDenominator;
-		if(MFGetAttributeRatio(m_mediaType, MF_MT_FRAME_RATE, &frNumerator, &frDenominator) != S_OK)
-		{
-			debug_log_error("Unable to get the frame rate");
-			return { };
-		}
-		return { { frNumerator, frDenominator } };
-	}
-
-	std::optional<const char*> VideoSourceStream::getEncodingFormatStr()
-	{
-		if(m_isValid)
-			return { getEncodingString(m_encodingFormat) };
-		else
-			return { };
+		debug_log_info(formatStr,
+								getInputSampleSize(),
+								getOuputSampleSize(),
+								getInputEncodingFormatStr(),
+								getOutputEncodingFormatStr(),
+								BoolToString(isInputCompressedFormat()),
+								BoolToString(isOutputCompressedFormat()),
+								BoolToString(isInputTemporalCompression()),
+								BoolToString(isOuputTemporalCompression()),
+								BoolToString(isInputFixedSizedSamples()),
+								BoolToString(isOutputFixedSizedSamples()),
+								inputFrameSize.first, inputFrameSize.second,
+								outputFrameSize.first, outputFrameSize.second,
+								getInputFrameRateF32(),
+								getOutputFrameRateF32());
 	}
 
 	static u32 GetTotalMaxSize(IMFSample* pSample)
@@ -516,14 +610,14 @@ namespace SKVMOIP
 		DWORD totalLength;
 		if(pSample->GetTotalLength(&totalLength) == S_OK)
 		{
-			_assert(totalLength <= m_sampleSize);
+			_assert(totalLength <= m_inputSampleSize);
 		}
 		else
 			debug_log_error("Unable to verify total sample length");
 
 		// pSample->AddRef();
 		// auto totalMaxSize = GetTotalMaxSize(pSample);
-		// _assert(totalMaxSize == m_sampleSize);
+		// _assert(totalMaxSize == m_inputSampleSize);
 
 PROCESS_INPUT:
 
