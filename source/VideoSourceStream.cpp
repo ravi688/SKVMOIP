@@ -235,20 +235,20 @@ namespace SKVMOIP
 		if(m_inputMediaType == NULL)
 		{
 			debug_log_error("Failed to match any of the available media formats on the capture device");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 
 		if(m_sourceReader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, m_inputMediaType) != S_OK)
 		{
 			debug_log_error("Unable to set current media type");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 
 		AM_MEDIA_TYPE* pInfo;
 		if(m_inputMediaType->GetRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void**>(&pInfo)) != S_OK)
 		{
 			debug_log_error("Unable to get Representation");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 		else
 		{
@@ -262,14 +262,14 @@ namespace SKVMOIP
 		if(m_inputMediaType->FreeRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void*>(pInfo)) != S_OK)
 		{
 			debug_log_error("Unable to free Representation");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 
 		BOOL isCompressed;
 		if(m_inputMediaType->IsCompressedFormat(&isCompressed) != S_OK)
 		{
 			debug_log_error("Unable to determine if the media type is compressed");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 		else m_isInputCompressedFormat = isCompressed;
 
@@ -277,7 +277,7 @@ namespace SKVMOIP
 		if(MFGetAttributeSize(m_inputMediaType, MF_MT_FRAME_SIZE, &width, &height) != S_OK)
 		{
 			debug_log_error("Unable to get the input frame size");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 		else
 		{
@@ -289,7 +289,7 @@ namespace SKVMOIP
 		if(MFGetAttributeSize(m_inputMediaType, MF_MT_FRAME_RATE, &frNumerator, &frDenominator) != S_OK)
 		{
 			debug_log_error("Unable to get the input frame rate");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 		else
 		{
@@ -303,13 +303,13 @@ namespace SKVMOIP
 		else
 		{
 			debug_log_error("Unable to get major type");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 
 		if(m_inputMediaType->GetGUID(MF_MT_SUBTYPE, &m_inputEncodingFormat) != S_OK)
 		{
 			debug_log_error("Unable to get encoding");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 
 		/*  Create Output Media Type */
@@ -317,32 +317,32 @@ namespace SKVMOIP
 		if(MFCreateMediaType(&m_outputMediaType) != S_OK)
 		{
 			debug_log_error("Failed to create output media type");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 
 		if(m_inputMediaType->CopyAllItems(m_outputMediaType) != S_OK)
 		{
 			debug_log_error("Failed to copy all items from input media to output media");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 
 		if(m_outputMediaType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video) != S_OK)
 		{
 			debug_log_error("Failed to set major type on output media type");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 
 		if(m_outputMediaType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB24) != S_OK)
 		{
 			debug_log_error("Failed to set sub type on output media type");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 		else m_outputEncodingFormat = MFVideoFormat_RGB24;
 
 		if(m_outputMediaType->GetRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void**>(&pInfo)) != S_OK)
 		{
 			debug_log_error("Unable to get Representation");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 		else
 		{
@@ -356,20 +356,20 @@ namespace SKVMOIP
 		if(m_outputMediaType->FreeRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void*>(pInfo)) != S_OK)
 		{
 			debug_log_error("Unable to free Representation");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 
 		if(m_outputMediaType->IsCompressedFormat(&isCompressed) != S_OK)
 		{
 			debug_log_error("Unable to determine if the media type is compressed");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 		else m_isOutputCompressedFormat = isCompressed;
 
 		if(MFGetAttributeSize(m_outputMediaType, MF_MT_FRAME_SIZE, &width, &height) != S_OK)
 		{
 			debug_log_error("Unable to get the output frame size");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 		else
 		{
@@ -380,7 +380,7 @@ namespace SKVMOIP
 		if(MFGetAttributeSize(m_outputMediaType, MF_MT_FRAME_RATE, &frNumerator, &frDenominator) != S_OK)
 		{
 			debug_log_error("Unable to get the output frame rate");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 		else
 		{
@@ -394,26 +394,26 @@ namespace SKVMOIP
 		if(CoCreateInstance(CLSID_CColorConvertDMO, NULL, CLSCTX_INPROC_SERVER, IID_IMFTransform, reinterpret_cast<void**>(&pVideoColorConverter)) != S_OK)
 		{
 			debug_log_error("Failed to create CLSID_CColorConvertDMO");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 		else m_videoColorConverter = pVideoColorConverter;
 
 		if(pVideoColorConverter->SetInputType(0, m_inputMediaType, 0) != S_OK)
 		{
 			debug_log_error("Failed to set input type");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 
 		if(pVideoColorConverter->SetOutputType(0, m_outputMediaType, 0) != S_OK)
 		{
 			debug_log_error("Failed to set output type");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}		
 
 		if(m_outputMediaType->GetRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void**>(&pInfo)) != S_OK)
 		{
 			debug_log_error("Unable to get Representation for output media type (RGB24) ");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 		
 		m_outputSampleSize = pInfo->lSampleSize;
@@ -421,14 +421,14 @@ namespace SKVMOIP
 		if(m_outputMediaType->FreeRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void*>(pInfo)) != S_OK)
 		{
 			debug_log_error("Unable to free Representation");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 
 		MFT_OUTPUT_STREAM_INFO outputStreamInfo;
 		if(m_videoColorConverter->GetOutputStreamInfo(0, &outputStreamInfo) != S_OK)
 		{
 			debug_log_error("Unable to get output stream info");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 
 
@@ -438,30 +438,30 @@ namespace SKVMOIP
 			if(MFCreateMemoryBuffer(outputStreamInfo.cbSize, &m_stagingMediaBuffer) != S_OK)
 			{
 				debug_log_error("Unable to create Media Buffer");
-				goto RELEASE;
+				goto RELEASE_RES;
 			}
 			if(MFCreateSample(&m_outputSample) != S_OK)
 			{
 				debug_log_error("Failed to create IMFSample for output stream");
-				goto RELEASE;
+				goto RELEASE_RES;
 			}
 			if(m_outputSample->AddBuffer(m_stagingMediaBuffer) != S_OK)
 			{
 				debug_log_error("Failed to add staging buffer into the output sample");
-				goto RELEASE;
+				goto RELEASE_RES;
 			}
 		}
 
 		if(pVideoColorConverter->ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0) != S_OK)
 		{
 			debug_log_error("Failed to Process Message MFT_MESSAGE_NOTIFY_BEGIN_STREAMING");
-			goto RELEASE;
+			goto RELEASE_RES;
 		}
 
 		m_isValid = true;
 		return;
 
-RELEASE:
+RELEASE_RES:
 		if(m_outputSample != NULL)
 			m_outputSample->Release();
 		m_outputSample = NULL;
@@ -638,7 +638,7 @@ PROCESS_INPUT:
 			if(result != E_NOTIMPL)
 			{
 				debug_log_error("Transform type is not set");
-				goto RELEASE_FALSE;
+				goto RELEASE_RES_FALSE;
 			}
 		}
 		else if(flags != MFT_OUTPUT_STATUS_SAMPLE_READY)
@@ -665,7 +665,7 @@ PROCESS_INPUT:
 		if(m_stagingMediaBuffer->Lock(&pMappedBuffer, NULL, &currentLength) != S_OK)
 		{
 			debug_log_error("Failed to lock the staging media buffer");
-			goto RELEASE_FALSE;
+			goto RELEASE_RES_FALSE;
 		}
 
 		/* convert to RGB and the copy the data to the RGB Buffer */
@@ -685,7 +685,7 @@ PROCESS_INPUT:
 		pSample->Release();
 		return true;
 
-RELEASE_FALSE:
+RELEASE_RES_FALSE:
 		pSample->Release();
 		return false;
 	}
