@@ -200,6 +200,142 @@ namespace SKVMOIP
 		return NULL;
 	}
 
+	static void dumpMediaType(IMFMediaType* mediaType)
+	{
+		debug_log_info("MediaType Dump: ");
+
+		AM_MEDIA_TYPE* pInfo;
+		if(mediaType->GetRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void**>(&pInfo)) != S_OK)
+		{
+			debug_log_error("Unable to get Representation");
+			return;
+		}
+		else
+		{
+			debug_log_info("\tIsFixedSizedSamples: %lu", pInfo->bFixedSizeSamples);
+			debug_log_info("\tIsInputTemporalCompression: %lu", pInfo->bTemporalCompression);
+			debug_log_info("\tInputSampleSize: %lu", pInfo->lSampleSize);
+		}
+
+		if(mediaType->FreeRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void*>(pInfo)) != S_OK)
+		{
+			debug_log_error("Unable to free Representation");
+			return;
+		}
+
+		BOOL isCompressed;
+		if(mediaType->IsCompressedFormat(&isCompressed) != S_OK)
+		{
+			debug_log_error("Unable to determine if the media type is compressed");
+			return;
+		}
+		else
+		{
+			debug_log_info("\tIsCompressed: %lu", isCompressed);
+		}
+
+		UINT32 width, height;
+		if(MFGetAttributeSize(mediaType, MF_MT_FRAME_SIZE, &width, &height) != S_OK)
+		{
+			debug_log_error("Unable to get the input frame size");
+			return;
+		}
+		else
+		{
+			debug_log_info("\twidth=%lu", width);
+			debug_log_info("\theight=%lu", height);
+		}
+
+		UINT32 frNumerator, frDenominator;
+		if(MFGetAttributeSize(mediaType, MF_MT_FRAME_RATE, &frNumerator, &frDenominator) != S_OK)
+		{
+			debug_log_error("Unable to get the input frame rate");
+			return;
+		}
+		else
+		{
+			 debug_log_info("\tFrameRateNumerator: %lu", frNumerator);
+			 debug_log_info("\tFrameRateDenominator: %lu", frDenominator);
+		}
+
+		GUID majorType;
+		if(mediaType->GetMajorType(&majorType) == S_OK)
+			_assert(majorType == MFMediaType_Video);
+		else
+		{
+			debug_log_error("Unable to get major type");
+			return;
+		}
+
+		GUID encoding;
+		if(mediaType->GetGUID(MF_MT_SUBTYPE, &encoding) != S_OK)
+		{
+			debug_log_error("Unable to get encoding");
+			return;
+		}
+		else
+		{
+			debug_log_info("\tEncoding: %s", getEncodingString(encoding));
+		}
+	}
+
+
+	static const char* HRESULTToString(HRESULT result)
+	{
+		switch(result)
+		{
+			case S_OK: return "S_OK";
+			case MF_E_INVALIDMEDIATYPE: return "MF_E_INVALIDMEDIATYPE";
+			case MF_E_INVALIDSTREAMNUMBER: return "MF_E_INVALIDSTREAMNUMBER";
+			case MF_E_INVALIDTYPE: return "MF_E_INVALIDTYPE";
+			case MF_E_TRANSFORM_CANNOT_CHANGE_MEDIATYPE_WHILE_PROCESSING: return "MF_E_TRANSFORM_CANNOT_CHANGE_MEDIATYPE_WHILE_PROCESSING";
+			case MF_E_TRANSFORM_TYPE_NOT_SET: return "MF_E_TRANSFORM_TYPE_NOT_SET";
+			case MF_E_UNSUPPORTED_D3D_TYPE: return "MF_E_UNSUPPORTED_D3D_TYPE";
+			default: return "failed to convert to string";
+				break;
+		}
+		return "";
+	}
+
+	static IMFMediaType* FindMediaTypeEncoder(IMFTransform *pReader, const std::tuple<u32, u32, u32, GUID>& res)
+	{
+	    DWORD dwMediaTypeIndex = 0;
+	    HRESULT hr = S_OK;	
+	    while (SUCCEEDED(hr))
+	    {
+	        IMFMediaType *pType = NULL;
+	        hr = pReader->GetInputAvailableType(0, dwMediaTypeIndex, &pType);
+	        if (hr != S_OK)
+	        {
+	            hr = S_OK;
+	            break;
+	        }
+	        else if (SUCCEEDED(hr))
+	        {
+	        	dumpMediaType(pType);
+	            // Examine the media type. (Not shown.)
+	            GUID m_encodingFormat;
+	            if(pType->GetGUID(MF_MT_SUBTYPE, &m_encodingFormat) != S_OK)
+					debug_log_error("Unable to get encoding");
+				else
+				{
+	        		UINT32 frNumerator, frDenominator;
+					if(MFGetAttributeRatio(pType, MF_MT_FRAME_RATE, &frNumerator, &frDenominator) != S_OK)
+						debug_log_error("\tUnable to get the frame rate");
+					UINT32 width, height;
+					if(MFGetAttributeSize(pType, MF_MT_FRAME_SIZE, &width, &height) != S_OK)
+						debug_log_error("\tUnable to get the frame size");
+					if(((frNumerator / frDenominator) == std::get<2>(res)) && (width == std::get<0>(res)) && (height == std::get<1>(res)) && (m_encodingFormat == std::get<3>(res)))
+						return pType;
+				}
+	            pType->Release();
+
+	        }
+	        ++dwMediaTypeIndex;
+	    }
+	    return NULL;
+	}	
+
 	VideoSourceStream::VideoSourceStream(Win32::Win32SourceDevice& device, const std::vector<std::tuple<u32, u32, u32>>& resPrefList) : 
 																				m_sourceReader(NULL), 
 																				m_inputMediaType(NULL),
