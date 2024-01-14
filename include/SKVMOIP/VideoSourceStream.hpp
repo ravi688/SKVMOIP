@@ -94,6 +94,6 @@ namespace SKVMOIP
 
 		bool doReadyRGBReader();
 		bool readRGBFrameToBuffer(u8* const rgbBuffer, u32 rgbBufferSize);
-		bool readNV12(u8* const nv12Buffer, u32 nv12BufferSize);
+		bool readNV12FrameToBuffer(u8* const nv12Buffer, u32 nv12BufferSize);
 	};
 }

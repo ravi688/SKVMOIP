@@ -483,6 +483,11 @@ namespace SKVMOIP
 			debug_log_error("Unable to get encoding");
 			goto RELEASE_RES;
 		}
+		else
+		{
+			/* For now we want to stick with NV12, as it is available on most devices */
+			_assert(m_inputEncodingFormat == MFVideoFormat_NV12);
+		}
 
 		if((m_usage == Usage::RGB32Read) || (m_usage == Usage::RGB24Read))
 		{
@@ -626,6 +631,26 @@ namespace SKVMOIP
 				}
 			}
 		}
+		else
+		{
+			m_outputSampleSize = m_inputSampleSize;
+			m_outputFrameWidth = m_inputFrameWidth;
+			m_outputFrameHeight = m_inputFrameHeight;
+			m_outputFrameRateNumer = m_inputFrameRateNumer;
+			m_outputFrameRateDenom = m_inputFrameRateDenom;
+			m_outputEncodingFormat = m_inputEncodingFormat;
+			m_isOutputFixedSizedSamples = m_isInputFixedSizedSamples;
+			m_isOutputTemporalCompression = m_isInputTemporalCompression;
+			m_isOutputCompressedFormat = m_isInputCompressedFormat;
+
+			_assert(m_inputSampleSize == ((m_inputFrameWidth * m_inputFrameHeight * 3) >> 1));
+
+			if(MFCreateMemoryBuffer(m_inputSampleSize, &m_stagingMediaBuffer) != S_OK)
+			{
+					debug_log_error("Unable to create Media Buffer");
+					goto RELEASE_RES;
+			}
+		}
 
 		m_isValid = true;
 		return;
@@ -668,8 +693,11 @@ RELEASE_RES:
 			m_sourceReader = NULL;
 			m_stagingMediaBuffer->Release();
 			m_stagingMediaBuffer = NULL;
-			m_videoColorConverter->Release();
-			m_videoColorConverter = NULL;
+			if(m_videoColorConverter != NULL)
+			{
+				m_videoColorConverter->Release();
+				m_videoColorConverter = NULL;
+			}
 			if(m_outputSample != NULL)
 				m_outputSample->Release();
 			m_outputSample = NULL;
@@ -906,7 +934,7 @@ RELEASE_RES_FALSE:
 		return false;
 	}
 
-	bool VideoSourceStream::readNV12(u8* const nv12Buffer, u32 nv12BufferSize)
+	bool VideoSourceStream::readNV12FrameToBuffer(u8* const nv12Buffer, u32 nv12BufferSize)
 	{
 		_assert(m_usage == Usage::NV12Read);
 
@@ -922,6 +950,23 @@ RELEASE_RES_FALSE:
 		if(pSample == NULL)
 		{
 			debug_log_error("IMFSample data is NULL");
+			return false;
+		}
+
+		DWORD totalLength;
+		if(pSample->GetTotalLength(&totalLength) != S_OK)
+		{
+			debug_log_error("Unable to get total length of the IMFSample");
+			pSample->Release();
+			return false;
+		}
+		else _assert(totalLength == m_inputSampleSize);
+
+		/* copy the non-contiguous data to the staging media buffer */
+		if(pSample->CopyToBuffer(m_stagingMediaBuffer) != S_OK)
+		{
+			debug_log_error("Failed to copy to the staging media buffer");
+			pSample->Release();
 			return false;
 		}
 

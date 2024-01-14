@@ -22,7 +22,7 @@
 #include <mfidl.h>
 #include <mferror.h>
 #include <mfreadwrite.h>
-
+#include <bufferlib/buffer.h>
 
 using namespace SKVMOIP;
 
@@ -39,6 +39,8 @@ static std::deque<Win32::KMInputData> gInputQueue;
 static std::array<Win32::KMInputData, NETWORK_THREAD_BUFFER_SIZE> gNetworkThreadBuffer;
 
 static u8 gModifierKeys = 0;
+
+static buffer_t gNV12Buffer;
 
 static void NetworkHandler(Network::Socket& networkStream)
 {
@@ -177,26 +179,19 @@ static u32 counter = 0;
 
 static void WindowPaintHandler(void* paintInfo, void* userData)
 {
-	u8* pixels = gWin32DrawSurfaceUPtr->getPixels();
-	memset(pixels, 255, gWin32DrawSurfaceUPtr->getBufferSize());
+	// u8* pixels = gWin32DrawSurfaceUPtr->getPixels();
+	// memset(pixels, 255, gWin32DrawSurfaceUPtr->getBufferSize());
 
 	auto drawSurfaceSize = gWin32DrawSurfaceUPtr->getSize();
-	// for(u32 i = 0; i < drawSurfaceSize.second; i++)
+
+	// if(!gHDMIStream->readRGBFrameToBuffer(, gWin32DrawSurfaceUPtr->getBufferSize()))
 	// {
-	// 	for(u32 j = 0; j < drawSurfaceSize.first; j++)
-	// 	{
-	// 		u32 offset = i * drawSurfaceSize.first * 4;
-	// 		pixels[offset + j * 4 + 0] = 0; // B
-	// 		pixels[offset + j * 4 + 1] = 0;   // G
-	// 		pixels[offset + j * 4 + 2] = 255; // R
-	// 		pixels[offset + j * 4 + 3] = 255;
-	// 	}
+	// 	return;
 	// }
 
-	if(!gHDMIStream->readRGBFrameToBuffer(pixels, gWin32DrawSurfaceUPtr->getBufferSize()))
-	{
-		return;
-	}
+	u8* buffer = reinterpret_cast<u8*>(buf_get_ptr(&gNV12Buffer));
+	u32 data_size = static_cast<u32>(buf_get_capacity(&gNV12Buffer));
+	if(!gHDMIStream->readNV12FrameToBuffer(buffer, data_size));
 	debug_log_info("Reading frame : %u", ++counter);
 
 	Win32::WindowPaintInfo* winPaintInfo = reinterpret_cast<Win32::WindowPaintInfo*>(paintInfo);
@@ -304,16 +299,19 @@ int main(int argc, const char* argv[])
 		{ 960, 720, 30 }
 	};
 
-	gHDMIStream = std::move(std::unique_ptr<VideoSourceStream>(new VideoSourceStream(device.value(), VideoSourceStream::Usage::RGB32Read, preferenceList)));
+	// gHDMIStream = std::move(std::unique_ptr<VideoSourceStream>(new VideoSourceStream(device.value(), VideoSourceStream::Usage::RGB32Read, preferenceList)));
+	gHDMIStream = std::move(std::unique_ptr<VideoSourceStream>(new VideoSourceStream(device.value(), VideoSourceStream::Usage::NV12Read, preferenceList)));
 
 	if (!(*gHDMIStream))
 		return 0;
 
 	gHDMIStream->dump();
-	gHDMIStream->doReadyRGBReader();
+	// gHDMIStream->doReadyRGBReader();
 
 	std::pair<u32, u32> frameSize = gHDMIStream->getOutputFrameSize();
 	u32 frameRate = gHDMIStream->getInputFrameRateF32();
+
+	gNV12Buffer = buf_create(sizeof(u8), (frameSize.first * frameSize.second * 3) >> 1, 0);
 
 	Win32::DisplayRawInputDeviceList();
 	Win32::RegisterRawInputDevices({ Win32::RawInputDeviceType::Mouse, Win32::RawInputDeviceType::Keyboard });
@@ -351,6 +349,8 @@ int main(int argc, const char* argv[])
 
 	// networkThread.join();
 
+
+	buf_free(&gNV12Buffer);
 
 	window.getEvent(Window::EventType::Paint).unsubscribe(windowPaintHandle);
 	window.getEvent(Window::EventType::MouseInput).unsubscribe(mouseInputHandle);
