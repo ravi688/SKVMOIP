@@ -18,7 +18,18 @@ namespace SKVMOIP
 
 	class VideoSourceStream
 	{
+
+	public:
+
+		enum class Usage
+		{
+			RGB32Read,
+			RGB24Read,
+			NV12Read
+		};
+
 	private:
+		Usage m_usage;
 		IMFSourceReader* m_sourceReader;
 		IMFMediaType* m_inputMediaType;
 		IMFMediaType* m_outputMediaType;
@@ -53,7 +64,7 @@ namespace SKVMOIP
 		VideoSourceStream& operator=(VideoSourceStream& stream) = delete;
 
 		VideoSourceStream(VideoSourceDeviceConnectionID deviceID);
-		VideoSourceStream(Win32::Win32SourceDevice& device, const std::vector<std::tuple<u32, u32, u32>>& resPrefList);
+		VideoSourceStream(Win32::Win32SourceDevice& device, Usage usage, const std::vector<std::tuple<u32, u32, u32>>& resPrefList);
 		VideoSourceStream(VideoSourceStream&& stream);
 		~VideoSourceStream();
 
@@ -81,6 +92,8 @@ namespace SKVMOIP
 		f32 getInputFrameRateF32() const { return static_cast<f32>(m_inputFrameRateNumer) / m_inputFrameRateDenom; }
 		f32 getOutputFrameRateF32() const { return static_cast<f32>(m_outputFrameRateNumer) / m_outputFrameRateDenom; }
 
+		bool doReadyRGBReader();
 		bool readRGBFrameToBuffer(u8* const rgbBuffer, u32 rgbBufferSize);
+		bool readNV12(u8* const nv12Buffer, u32 nv12BufferSize);
 	};
 }

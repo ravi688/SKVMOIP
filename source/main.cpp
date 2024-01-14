@@ -197,7 +197,7 @@ static void WindowPaintHandler(void* paintInfo, void* userData)
 	{
 		return;
 	}
-	// debug_log_info("Reading frame : %u", ++counter);
+	debug_log_info("Reading frame : %u", ++counter);
 
 	Win32::WindowPaintInfo* winPaintInfo = reinterpret_cast<Win32::WindowPaintInfo*>(paintInfo);
 	BitBlt(winPaintInfo->deviceContext, 0, 0, drawSurfaceSize.first, drawSurfaceSize.second, gWin32DrawSurfaceUPtr->getHDC(), 0, 0, SRCCOPY);
@@ -304,12 +304,13 @@ int main(int argc, const char* argv[])
 		{ 960, 720, 30 }
 	};
 
-	gHDMIStream = std::move(std::unique_ptr<VideoSourceStream>(new VideoSourceStream(device.value(), preferenceList)));
+	gHDMIStream = std::move(std::unique_ptr<VideoSourceStream>(new VideoSourceStream(device.value(), VideoSourceStream::Usage::RGB32Read, preferenceList)));
 
 	if (!(*gHDMIStream))
 		return 0;
 
 	gHDMIStream->dump();
+	gHDMIStream->doReadyRGBReader();
 
 	std::pair<u32, u32> frameSize = gHDMIStream->getOutputFrameSize();
 	u32 frameRate = gHDMIStream->getInputFrameRateF32();
