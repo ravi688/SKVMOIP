@@ -11,6 +11,7 @@
 #include <SKVMOIP/Win32/Win32ImagingDevice.hpp>
 #include <SKVMOIP/VideoSourceStream.hpp>
 #include <SKVMOIP/Win32/Win32DrawSurface.hpp>
+#include <SKVMOIP/StopWatch.hpp>
 
 #include <deque>
 #include <array>
@@ -23,6 +24,10 @@
 #include <mferror.h>
 #include <mfreadwrite.h>
 #include <bufferlib/buffer.h>
+
+#include <x264/include/x264.h>
+#include <x264/include/x264_config.h>
+
 
 using namespace SKVMOIP;
 
@@ -39,8 +44,6 @@ static std::deque<Win32::KMInputData> gInputQueue;
 static std::array<Win32::KMInputData, NETWORK_THREAD_BUFFER_SIZE> gNetworkThreadBuffer;
 
 static u8 gModifierKeys = 0;
-
-static buffer_t gNV12Buffer;
 
 static void NetworkHandler(Network::Socket& networkStream)
 {
@@ -174,8 +177,106 @@ static void KeyboardInputHandler(void* keyboardInputData, void* userData)
 
 static std::unique_ptr<Win32::Win32DrawSurface> gWin32DrawSurfaceUPtr;
 static std::unique_ptr<VideoSourceStream> gHDMIStream;
+static buffer_t gNV12Buffer;
 
 static u32 counter = 0;
+
+class Encoder
+{
+private:
+	x264_param_t param;
+    x264_picture_t pic;
+    x264_picture_t pic_out;
+    x264_t *h;
+    x264_nal_t *nal;
+    int i_nal;
+    u32 m_width;
+    u32 m_height;
+    u32 m_frameCount;
+ 	bool m_isValid;
+public:
+	Encoder(u32 width, u32 height);
+	~Encoder();
+
+	bool encodeNV12(u8* const nv12Data, u32 nv12DataSize);
+};
+
+Encoder::Encoder(u32 width, u32 height) : m_width(width), m_height(height), m_frameCount(0), m_isValid(false)
+{
+	if(x264_param_default_preset( &param, "medium", NULL ) < 0)
+	{
+		debug_log_error("x264: Failed to set default preset");
+		return;
+	}
+
+	/* Configure non-default params */
+    param.i_bitdepth = 8;
+    param.i_csp = X264_CSP_I420;
+    param.i_width  = width;
+    param.i_height = height;
+    param.b_vfr_input = 0;
+    param.b_repeat_headers = 1;
+    param.b_annexb = 1;
+
+    if(x264_param_apply_profile( &param, "high" ) < 0)
+    {
+    	debug_log_error("x264: Failed to apply profile restrictions");
+    	return;
+    }
+
+    if(x264_picture_alloc( &pic, param.i_csp, param.i_width, param.i_height ) < 0)
+    {
+    	debug_log_error("x264: Failed to allocate picture");
+    	return;
+    }
+
+    h = x264_encoder_open( &param );
+    if( !h )
+    {
+    	debug_log_error("Failed to open the encoder");
+    	x264_picture_clean( &pic );
+    	return;
+    }
+
+    m_isValid = true;
+}
+
+Encoder::~Encoder()
+{
+	if(!m_isValid) return;
+	 x264_encoder_close( h );
+	x264_picture_clean( &pic );
+}
+
+bool Encoder::encodeNV12(u8* const nv12Data, u32 nv12DataSize)
+{
+	_assert(m_isValid);
+
+	u32 luma_size = m_width * m_height;
+	u32 chroma_size = luma_size >> 2;
+
+	memcpy(pic.img.plane[0], nv12Data,  luma_size);
+	memcpy(pic.img.plane[1], nv12Data + luma_size, chroma_size);
+	memcpy(pic.img.plane[2], nv12Data + luma_size + chroma_size, chroma_size);
+
+        pic.i_pts = m_frameCount;
+        auto i_frame_size = x264_encoder_encode( h, &nal, &i_nal, &pic, &pic_out );
+        if( i_frame_size < 0 )
+        {
+        	debug_log_error("Failed to encode");
+        	return false;
+        }
+        else if( i_frame_size )
+        {
+            // if( !fwrite( nal->p_payload, i_frame_size, 1, stdout ) )
+            //     goto fail;
+        }
+
+    ++m_frameCount;
+	return true;
+}
+
+static std::unique_ptr<Encoder> gH264Encoder;
 
 static void WindowPaintHandler(void* paintInfo, void* userData)
 {
@@ -189,10 +290,21 @@ static void WindowPaintHandler(void* paintInfo, void* userData)
 	// 	return;
 	// }
 
+	buf_clear(&gNV12Buffer, NULL);
 	u8* buffer = reinterpret_cast<u8*>(buf_get_ptr(&gNV12Buffer));
-	u32 data_size = static_cast<u32>(buf_get_capacity(&gNV12Buffer));
-	if(!gHDMIStream->readNV12FrameToBuffer(buffer, data_size));
-	debug_log_info("Reading frame : %u", ++counter);
+	u32 bufferSize = static_cast<u32>(buf_get_capacity(&gNV12Buffer));
+	if(!gHDMIStream->readNV12FrameToBuffer(buffer, bufferSize))
+	{
+		return;
+	}
+	// debug_log_info("Encoding frame : %u", ++counter);
+	StopWatch timer;
+	if(!gH264Encoder->encodeNV12(buffer, bufferSize))
+	{
+		debug_log_error("Failed to encode");
+		return;
+	}
+	timer.stop();
 
 	Win32::WindowPaintInfo* winPaintInfo = reinterpret_cast<Win32::WindowPaintInfo*>(paintInfo);
 	BitBlt(winPaintInfo->deviceContext, 0, 0, drawSurfaceSize.first, drawSurfaceSize.second, gWin32DrawSurfaceUPtr->getHDC(), 0, 0, SRCCOPY);
@@ -312,6 +424,8 @@ int main(int argc, const char* argv[])
 	u32 frameRate = gHDMIStream->getInputFrameRateF32();
 
 	gNV12Buffer = buf_create(sizeof(u8), (frameSize.first * frameSize.second * 3) >> 1, 0);
+
+	gH264Encoder = std::move(std::unique_ptr<Encoder>(new Encoder(frameSize.first, frameSize.second)));
 
 	Win32::DisplayRawInputDeviceList();
 	Win32::RegisterRawInputDevices({ Win32::RawInputDeviceType::Mouse, Win32::RawInputDeviceType::Keyboard });

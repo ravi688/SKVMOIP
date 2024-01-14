@@ -8,9 +8,6 @@
 #include <mftransform.h>
 #include <mferror.h>
 
-#include <x264/include/x264.h>
-#include <x264/include/x264_config.h>
-
 namespace SKVMOIP
 {
 	VideoSourceStream::VideoSourceStream(VideoSourceDeviceConnectionID deviceID)
@@ -670,18 +667,37 @@ RELEASE_RES:
 		return;
 	}
 
-	VideoSourceStream::VideoSourceStream(VideoSourceStream&& stream) : m_sourceReader(stream.m_sourceReader),
+	VideoSourceStream::VideoSourceStream(VideoSourceStream&& stream) :
+																	   m_usage(stream.m_usage),
+																	   m_sourceReader(stream.m_sourceReader), 
+																	   m_inputMediaType(stream.m_inputMediaType),
+																	   m_outputMediaType(stream.m_outputMediaType), 
 																	   m_stagingMediaBuffer(stream.m_stagingMediaBuffer),
 																	   m_videoColorConverter(stream.m_videoColorConverter),
 																	   m_outputSample(stream.m_outputSample),
-																	   m_inputMediaType(stream.m_inputMediaType),
-																	   m_isValid(stream.m_isValid)
+																	   m_inputSampleSize(stream.m_inputSampleSize),
+																	   m_outputSampleSize(stream.m_outputSampleSize),
+																	   m_inputFrameWidth(stream.m_inputFrameWidth),
+																	   m_inputFrameHeight(stream.m_inputFrameHeight),
+																	   m_outputFrameWidth(stream.m_outputFrameWidth),
+																	   m_outputFrameHeight(stream.m_outputFrameHeight),
+																	   m_inputFrameRateNumer(stream.m_inputFrameRateNumer),
+																	   m_inputFrameRateDenom(stream.m_inputFrameRateDenom),
+																	   m_outputFrameRateNumer(stream.m_outputFrameRateNumer),
+																	   m_outputFrameRateDenom(stream.m_outputFrameRateDenom),
+																	   m_isInputFixedSizedSamples(stream.m_isInputFixedSizedSamples),
+																	   m_isOutputFixedSizedSamples(stream.m_isOutputFixedSizedSamples),
+																	   m_isInputTemporalCompression(stream.m_isInputTemporalCompression),
+																	   m_isOutputTemporalCompression(stream.m_isOutputTemporalCompression),
+																	   m_isInputCompressedFormat(stream.m_isInputCompressedFormat),
+																	   m_isOutputCompressedFormat(stream.m_isOutputCompressedFormat)
 	{
 		stream.m_sourceReader = NULL;
+		stream.m_inputMediaType = NULL;
+		stream.m_outputMediaType = NULL;
 		stream.m_stagingMediaBuffer = NULL;
 		stream.m_videoColorConverter = NULL;
 		stream.m_outputSample = NULL;
-		stream.m_inputMediaType = NULL;
 		stream.m_isValid = false;
 	}
 
