@@ -28,6 +28,9 @@
 #include <x264/include/x264.h>
 #include <x264/include/x264_config.h>
 
+#include <NvidiaCodec/include/cuviddec.h>
+#include <NvidiaCodec/include/nvcuvid.h>
+#include <NvidiaCodec/include/nvEncodeAPI.h>
 
 using namespace SKVMOIP;
 
@@ -210,6 +213,7 @@ Encoder::Encoder(u32 width, u32 height) : m_width(width), m_height(height), m_fr
 	}
 
 	/* Configure non-default params */
+	param.i_threads = 4;
     param.i_bitdepth = 8;
     param.i_csp = X264_CSP_I420;
     param.i_width  = width;
@@ -290,6 +294,7 @@ static void WindowPaintHandler(void* paintInfo, void* userData)
 	// 	return;
 	// }
 
+	StopWatch timer;
 	buf_clear(&gNV12Buffer, NULL);
 	u8* buffer = reinterpret_cast<u8*>(buf_get_ptr(&gNV12Buffer));
 	u32 bufferSize = static_cast<u32>(buf_get_capacity(&gNV12Buffer));
@@ -297,8 +302,6 @@ static void WindowPaintHandler(void* paintInfo, void* userData)
 	{
 		return;
 	}
-	// debug_log_info("Encoding frame : %u", ++counter);
-	StopWatch timer;
 	if(!gH264Encoder->encodeNV12(buffer, bufferSize))
 	{
 		debug_log_error("Failed to encode");
