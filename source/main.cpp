@@ -18,6 +18,7 @@
 #undef assert
 #undef _assert
 #include <SKVMOIP/third_party/NvDecoder.hpp>
+#include <SKVMOIP/third_party/AppDecUtils.hpp>
 #pragma pop_macro("assert")
 #pragma pop_macro("_assert")
 
@@ -210,7 +211,7 @@ public:
 	Encoder(u32 width, u32 height);
 	~Encoder();
 
-	bool encodeNV12(u8* const nv12Data, u32 nv12DataSize);
+	bool encodeNV12(u8* const nv12Data, u32 nv12DataSize, u8* &outputBuffer, u32& outputBufferSize);
 };
 
 Encoder::Encoder(u32 width, u32 height) : m_width(width), m_height(height), m_frameCount(0), m_isValid(false)
@@ -261,7 +262,7 @@ Encoder::~Encoder()
 	x264_picture_clean( &pic );
 }
 
-bool Encoder::encodeNV12(u8* const nv12Data, u32 nv12DataSize)
+bool Encoder::encodeNV12(u8* const nv12Data, u32 nv12DataSize, u8* &outputBuffer, u32& outputBufferSize)
 {
 	_assert(m_isValid);
 
@@ -280,9 +281,8 @@ bool Encoder::encodeNV12(u8* const nv12Data, u32 nv12DataSize)
         }
         else if( i_frame_size )
         {
-        	debug_log_info("Encoded frame size: %lu", nal->i_payload);
-            // if( !fwrite( nal->p_payload, i_frame_size, 1, stdout ) )
-            //     goto fail;
+        	outputBuffer = nal->p_payload;
+        	outputBufferSize = i_frame_size;
         }
 
     ++m_frameCount;
@@ -312,12 +312,32 @@ static void WindowPaintHandler(void* paintInfo, void* userData)
 	{
 		return;
 	}
-	if(!gH264Encoder->encodeNV12(buffer, bufferSize))
+	u8* outputBuffer;
+	u32 outputBufferSize;
+	if(!gH264Encoder->encodeNV12(buffer, bufferSize, outputBuffer, outputBufferSize))
 	{
 		debug_log_error("Failed to encode");
 		return;
 	}
-	timer.stop();
+
+	int nFrameReturned = 0;
+	static int nFrame = 0;
+
+	nFrameReturned = gNvDecoder->Decode(outputBuffer, outputBufferSize);
+            if (nFrameReturned)
+            {
+            	u8* frame = gNvDecoder->GetFrame();
+            	debug_log_info("[%lu ms] Decoded: %lu frames, width: %lu, height: %lu, bit depth: %lu", timer.stop(), nFrameReturned, gNvDecoder->GetWidth(), gNvDecoder->GetHeight(), gNvDecoder->GetBitDepth());            	
+            }
+            else
+            {
+            	debug_log_error("Failed to decode, return value %d", nFrameReturned);
+            }
+
+            nFrame += nFrameReturned;
+            // for (int i = 0; i < nFrameReturned; i++) {
+                // pFrame = gNvDecoder->GetFrame();
+                // fpOut.write(reinterpret_cast<char*>(pFrame), gNvDecoder->GetFrameSize());
 
 	Win32::WindowPaintInfo* winPaintInfo = reinterpret_cast<Win32::WindowPaintInfo*>(paintInfo);
 	BitBlt(winPaintInfo->deviceContext, 0, 0, drawSurfaceSize.first, drawSurfaceSize.second, gWin32DrawSurfaceUPtr->getHDC(), 0, 0, SRCCOPY);
@@ -403,7 +423,7 @@ int main(int argc, const char* argv[])
 		return 0;
 	}
 			
-	std::optional<Win32::Win32SourceDevice> device = deviceList->activateDevice(0);
+	std::optional<Win32::Win32SourceDevice> device = deviceList->activateDevice(1);
 	if(!device)
 	{
 		debug_log_error("Unable to create video source device with index: %lu ", 0);
@@ -439,6 +459,23 @@ int main(int argc, const char* argv[])
 	gNV12Buffer = buf_create(sizeof(u8), (frameSize.first * frameSize.second * 3) >> 1, 0);
 
 	gH264Encoder = std::move(std::unique_ptr<Encoder>(new Encoder(frameSize.first, frameSize.second)));
+
+
+		int iGpu = 0;
+     ck(cuInit(0));
+        int nGpu = 0;
+        ck(cuDeviceGetCount(&nGpu));
+        if (iGpu < 0 || iGpu >= nGpu)
+        {
+            std::ostringstream err;
+            err << "GPU ordinal out of range. Should be within [" << 0 << ", " << nGpu - 1 << "]" << std::endl;
+            throw std::invalid_argument(err.str());
+        }
+
+        CUcontext cuContext = NULL;
+        createCudaContext(&cuContext, iGpu, 0);
+
+	gNvDecoder = std::move(std::unique_ptr<NvDecoder>(new NvDecoder(cuContext, false, cudaVideoCodec_H264, false, false)));
 
 	Win32::DisplayRawInputDeviceList();
 	Win32::RegisterRawInputDevices({ Win32::RawInputDeviceType::Mouse, Win32::RawInputDeviceType::Keyboard });

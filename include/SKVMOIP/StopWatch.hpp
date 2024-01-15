@@ -2,6 +2,7 @@
 
 #include <SKVMOIP/defines.hpp>
 #include <SKVMOIP/debug.h>
+#include <SKVMOIP/assert.h>
 #include <chrono>
 
 namespace SKVMOIP
@@ -34,12 +35,27 @@ namespace SKVMOIP
 			}
 		}
 
-		void stop() noexcept
+		void stopLog() noexcept
 		{
 			if(m_isStarted)
 			{
 				logTimeElapsed();
 				m_isStarted = false;
+			}
+		}
+
+		u32 stop() noexcept	
+		{
+			if(m_isStarted)
+			{
+					auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - m_start).count();
+					m_isStarted	= false;
+					return elapsed;
+			}
+			else
+			{
+				_assert(false);
+				return 0;
 			}
 		}
 
