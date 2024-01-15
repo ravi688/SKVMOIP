@@ -13,6 +13,14 @@
 #include <SKVMOIP/Win32/Win32DrawSurface.hpp>
 #include <SKVMOIP/StopWatch.hpp>
 
+#pragma push_macro("assert")
+#pragma push_macro("_assert")
+#undef assert
+#undef _assert
+#include <SKVMOIP/third_party/NvDecoder.hpp>
+#pragma pop_macro("assert")
+#pragma pop_macro("_assert")
+
 #include <deque>
 #include <array>
 #include <thread>
@@ -31,6 +39,7 @@
 #include <NvidiaCodec/include/cuviddec.h>
 #include <NvidiaCodec/include/nvcuvid.h>
 #include <NvidiaCodec/include/nvEncodeAPI.h>
+
 
 using namespace SKVMOIP;
 
@@ -215,7 +224,7 @@ Encoder::Encoder(u32 width, u32 height) : m_width(width), m_height(height), m_fr
 	/* Configure non-default params */
 	param.i_threads = 4;
     param.i_bitdepth = 8;
-    param.i_csp = X264_CSP_I420;
+    param.i_csp = X264_CSP_NV12;
     param.i_width  = width;
     param.i_height = height;
     param.b_vfr_input = 0;
@@ -260,8 +269,7 @@ bool Encoder::encodeNV12(u8* const nv12Data, u32 nv12DataSize)
 	u32 chroma_size = luma_size >> 2;
 
 	memcpy(pic.img.plane[0], nv12Data,  luma_size);
-	memcpy(pic.img.plane[1], nv12Data + luma_size, chroma_size);
-	memcpy(pic.img.plane[2], nv12Data + luma_size + chroma_size, chroma_size);
+	memcpy(pic.img.plane[1], nv12Data + luma_size, chroma_size + chroma_size);
 
         pic.i_pts = m_frameCount;
         auto i_frame_size = x264_encoder_encode( h, &nal, &i_nal, &pic, &pic_out );
@@ -272,6 +280,7 @@ bool Encoder::encodeNV12(u8* const nv12Data, u32 nv12DataSize)
         }
         else if( i_frame_size )
         {
+        	debug_log_info("Encoded frame size: %lu", nal->i_payload);
             // if( !fwrite( nal->p_payload, i_frame_size, 1, stdout ) )
             //     goto fail;
         }
@@ -281,6 +290,7 @@ bool Encoder::encodeNV12(u8* const nv12Data, u32 nv12DataSize)
 }
 
 static std::unique_ptr<Encoder> gH264Encoder;
+static std::unique_ptr<NvDecoder> gNvDecoder; 
 
 static void WindowPaintHandler(void* paintInfo, void* userData)
 {
@@ -294,10 +304,10 @@ static void WindowPaintHandler(void* paintInfo, void* userData)
 	// 	return;
 	// }
 
-	StopWatch timer;
 	buf_clear(&gNV12Buffer, NULL);
 	u8* buffer = reinterpret_cast<u8*>(buf_get_ptr(&gNV12Buffer));
 	u32 bufferSize = static_cast<u32>(buf_get_capacity(&gNV12Buffer));
+	SKVMOIP::StopWatch timer;
 	if(!gHDMIStream->readNV12FrameToBuffer(buffer, bufferSize))
 	{
 		return;

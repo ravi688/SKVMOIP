@@ -15,6 +15,7 @@ PROJECT_NAME = SKVMOIP
 STATIC_LIB_NAME = skvmoip.a
 DYNAMIC_LIB_NAME = skvmoip.dll
 EXECUTABLE_NAME = main
+MAIN_SOURCE_LANG = cpp
 EXTERNAL_INCLUDES = -I./external-dependencies/ -I./external-dependencies/NvidiaCodec/include/ -I"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.3/include/"
 EXTERNAL_LIBS = -L"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.3/lib/x64" -l:cuda.lib -L./external-dependencies/NvidiaCodec/ -l:nvcuvid.lib -l:nvencodeapi.lib -L./external-dependencies/x264  -lx264 -lx264 -lws2_32 -lole32 -loleaut32 -lmfreadwrite -lmfplat -lmf -lmfuuid -lgdi32 -lwmcodecdspuuid
 
@@ -109,7 +110,14 @@ TARGET = $(__EXECUTABLE_NAME)
 DEPENDENCY_INCLUDES = $(addsuffix /include, $(__DEPENDENCIES))
 SHARED_DEPENDENCY_INCLUDES = $(addsuffix /include, $(__SHARED_DEPENDENCIES))
 
-MAIN_SOURCE=source/main.cpp
+ifeq ($(MAIN_SOURCE_LANG),cpp)
+	MAIN_SOURCE=source/main.cpp
+endif
+
+ifeq ($(MAIN_SOURCE_LANG),c)
+	MAIN_SOURCE=source/main.c
+endif
+
 MAIN_OBJECT=$(addsuffix .o, $(MAIN_SOURCE))
 INCLUDES= -I./include $(EXTERNAL_INCLUDES) $(addprefix -I, $(DEPENDENCY_INCLUDES) $(SHARED_DEPENDENCY_INCLUDES))
 C_SOURCES=$(wildcard source/*.c source/*/*.c)
@@ -121,7 +129,7 @@ LIBS = $(EXTERNAL_LIBS)
 #Flags and Defines
 DEBUG_DEFINES =  -DGLOBAL_DEBUG -DDEBUG -DLOG_DEBUG
 RELEASE_DEFINES =  -DGLOBAL_RELEASE -DRELEASE -DLOG_RELEASE
-DEFINES = -DCOMMON_HINT_OUT_IN_ALREADY_DEFINED
+DEFINES =
 
 COMPILER_FLAGS= -m64
 C_COMPILER_FLAGS = $(COMPILER_FLAGS)
@@ -171,7 +179,9 @@ ifeq ($(NOOPT),1)
 endif
 
 DEBUG_COMPILER_FLAGS= -g #-fsanitize=integer-divide-by-zero // why it is not working on windows 64 bit?
+RELEASE_COMPILER_FLAGS= -O3 
 DEBUG_LINKER_FLAGS= -g #-fsanitize=integer-divide-by-zero  // why it is not working on windows 64 bit?
+RELEASE_LINKER_FLAGS= -flto
 
 TARGET_DYNAMIC_IMPORT_LIB = $(addprefix $(dir $(TARGET_DYNAMIC_LIB)), $(addprefix lib, $(notdir $(TARGET_DYNAMIC_LIB).a)))
 
@@ -199,6 +209,8 @@ lib-static-debug: LINKER_FLAGS += $(DEBUG_LINKER_FLAGS)
 lib-static-debug: $(TARGET_STATIC_LIB)
 lib-static-release: DEFINES += $(RELEASE_DEFINES) -DBUILD_STATIC_LIBRARY
 lib-static-release: __STATIC_LIB_COMMAND = lib-static-release
+lib-static-release: COMPILER_FLAGS += $(RELEASE_COMPILER_FLAGS)
+lib-static-release: LINKER_FLAGS += $(RELEASE_LINKER_FLAGS)
 lib-static-release: $(TARGET_STATIC_LIB)
 
 lib-dynamic: lib-dynamic-release
@@ -209,8 +221,8 @@ lib-dynamic-debug: LINKER_FLAGS += $(DEBUG_LINKER_FLAGS) -fPIC
 lib-dynamic-debug: $(TARGET_DYNAMIC_LIB)
 lib-dynamic-release: DEFINES += $(RELEASE_DEFINES) -DBUILD_DYNAMIC_LIBRARY
 lib-dynamic-release: __STATIC_LIB_COMMAND = lib-static-dynamic-release
-lib-dynamic-release: COMPILER_FLAGS += -fPIC
-lib-dynamic-release: LINKER_FLAGS += -fPIC
+lib-dynamic-release: COMPILER_FLAGS += $(RELEASE_COMPILER_FLAGS) -fPIC
+lib-dynamic-release: LINKER_FLAGS += $(RELEASE_LINKER_FLAGS) -fPIC
 lib-dynamic-release: $(TARGET_DYNAMIC_LIB)
 
 .PHONY: lib-dynamic-packed-debug

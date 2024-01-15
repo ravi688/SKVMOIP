@@ -1,6 +1,7 @@
 #include <SKVMOIP/VideoSourceStream.hpp>
 #include <SKVMOIP/debug.h>
 #include <SKVMOIP/assert.h>
+#include <SKVMOIP/StopWatch.hpp>
 #include <strmif.h>
 #include <mfapi.h>
 #include <unknwn.h>
@@ -976,11 +977,13 @@ RELEASE_RES_FALSE:
 		DWORD streamFlags;
 		LONGLONG timeStamp;
 		IMFSample* pSample;
+		// StopWatch stopwatch;
 		if(m_sourceReader->ReadSample(MF_SOURCE_READER_FIRST_VIDEO_STREAM, 0, &streamIndex, &streamFlags, &timeStamp, &pSample) != S_OK)
 		{
 			debug_log_error("Unable to read sample");
 			return false;
 		}
+		// stopwatch.stop();
 		if(pSample == NULL)
 		{
 			debug_log_error("IMFSample data is NULL");
