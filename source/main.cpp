@@ -216,43 +216,46 @@ public:
 
 Encoder::Encoder(u32 width, u32 height) : m_width(width), m_height(height), m_frameCount(0), m_isValid(false)
 {
-	if(x264_param_default_preset(&param, "medium", NULL) < 0)
+	if(x264_param_default_preset(&param, "ultrafast", "zerolatency") < 0)
 	{
 		debug_log_error("x264: Failed to set default preset");
 		return;
 	}
 
 	/* Configure non-default params */
-	param.i_threads = 4;
-    param.i_bitdepth = 8;
-    param.i_csp = X264_CSP_NV12;
-    param.i_width  = width;
-    param.i_height = height;
-    param.b_vfr_input = 0;
-    param.b_repeat_headers = 1;
-    param.b_annexb = 1;
+	param.i_threads = 6;
+	param.i_bitdepth = 8;
+	param.i_csp = X264_CSP_NV12;
+	param.i_width  = width;
+	param.i_height = height;
+	param.b_vfr_input = 0;
+	param.b_repeat_headers = 1;
+	param.b_annexb = 1;
+	param.b_vfr_input = 0;
+	param.b_opencl = 1;
+	param.i_fps_num = 144;
+	param.i_fps_den = 1;
 
-    if(x264_param_apply_profile(&param, "high") < 0)
-    {
-    	debug_log_error("x264: Failed to apply profile restrictions");
-    	return;
-    }
+  	if(x264_param_apply_profile(&param, "high444") < 0)
+  	{
+  		debug_log_error("x264: Failed to apply profile restrictions");
+  		return;
+  	}
 
-    if(x264_picture_alloc(&pic, param.i_csp, param.i_width, param.i_height) < 0)
-    {
-    	debug_log_error("x264: Failed to allocate picture");
-    	return;
-    }
+   if(x264_picture_alloc(&pic, param.i_csp, param.i_width, param.i_height) < 0)
+   {
+   	debug_log_error("x264: Failed to allocate picture");
+   	return;
+   }
 
-    h = x264_encoder_open(&param);
-    if(!h)
-    {
-    	debug_log_error("Failed to open the encoder");
-    	x264_picture_clean(&pic);
-    	return;
-    }
-
-    m_isValid = true;
+   h = x264_encoder_open(&param);
+   if(!h)
+   {
+   	debug_log_error("Failed to open the encoder");
+   	x264_picture_clean(&pic);
+   	return;
+   }
+   m_isValid = true;
 }
 
 Encoder::~Encoder()
@@ -346,7 +349,7 @@ static void WindowPaintHandler(void* paintInfo, void* userData)
 			auto rgbDataSize = gCSConverter->getRGBDataSize();
 			_assert(rgbDataSize == gWin32DrawSurfaceUPtr->getBufferSize());
 			memcpy(pixels, rgbData, gCSConverter->getRGBDataSize());
-			debug_log_info("Time info: encode: %lu, decode: %lu, convert: %lu", encodeTime, decodeTime, convertTime);
+			debug_log_info("Time info: encode: %lu, decode: %lu, convert: %lu, encodedSize: %.2f kb", encodeTime, decodeTime, convertTime, outputBufferSize / 1024.0);
 		}
 		else { convertWatch.stop(); debug_log_error("Failed to convert color space"); }
 		nFrame += nFrameReturned;
@@ -490,7 +493,7 @@ int main(int argc, const char* argv[])
         CUcontext cuContext = NULL;
         createCudaContext(&cuContext, iGpu, 0);
 
-	gNvDecoder = std::move(std::unique_ptr<NvDecoder>(new NvDecoder(cuContext, false, cudaVideoCodec_H264, false, false)));
+	gNvDecoder = std::move(std::unique_ptr<NvDecoder>(new NvDecoder(cuContext, false, cudaVideoCodec_H264, true, false)));
 	gCSConverter = std::move(std::unique_ptr<NV12ToRGBConverter>(new NV12ToRGBConverter(frameSize.first, frameSize.second, frameRatePair.first, frameRatePair.second, 32)));
 
 	Win32::DisplayRawInputDeviceList();
