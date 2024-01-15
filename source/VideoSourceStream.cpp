@@ -400,7 +400,25 @@ namespace SKVMOIP
 			return;
 		}
 
-		m_inputMediaType = SelectMediaType(m_sourceReader, resPrefList, NativeMediaTypePreference::Any);
+		switch(m_usage)
+		{
+			case Usage::RGB24Read:
+			case Usage::RGB32Read:
+			{
+				m_inputMediaType = SelectMediaType(m_sourceReader, resPrefList, NativeMediaTypePreference::Any);
+				break;
+			}
+			case Usage::NV12Read:
+			{
+				m_inputMediaType = SelectMediaType(m_sourceReader, resPrefList, NativeMediaTypePreference::NV12);
+				break;
+			}
+			default:
+			{
+				m_inputMediaType = SelectMediaType(m_sourceReader, resPrefList, NativeMediaTypePreference::Any);
+				break;
+			}
+		}
 		if(m_inputMediaType == NULL)
 		{
 			debug_log_error("Failed to match any of the available media formats on the capture device");
