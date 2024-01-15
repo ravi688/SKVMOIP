@@ -216,7 +216,7 @@ public:
 
 Encoder::Encoder(u32 width, u32 height) : m_width(width), m_height(height), m_frameCount(0), m_isValid(false)
 {
-	if(x264_param_default_preset( &param, "medium", NULL ) < 0)
+	if(x264_param_default_preset(&param, "medium", NULL) < 0)
 	{
 		debug_log_error("x264: Failed to set default preset");
 		return;
@@ -232,23 +232,23 @@ Encoder::Encoder(u32 width, u32 height) : m_width(width), m_height(height), m_fr
     param.b_repeat_headers = 1;
     param.b_annexb = 1;
 
-    if(x264_param_apply_profile( &param, "high" ) < 0)
+    if(x264_param_apply_profile(&param, "high") < 0)
     {
     	debug_log_error("x264: Failed to apply profile restrictions");
     	return;
     }
 
-    if(x264_picture_alloc( &pic, param.i_csp, param.i_width, param.i_height ) < 0)
+    if(x264_picture_alloc(&pic, param.i_csp, param.i_width, param.i_height) < 0)
     {
     	debug_log_error("x264: Failed to allocate picture");
     	return;
     }
 
-    h = x264_encoder_open( &param );
-    if( !h )
+    h = x264_encoder_open(&param);
+    if(!h)
     {
     	debug_log_error("Failed to open the encoder");
-    	x264_picture_clean( &pic );
+    	x264_picture_clean(&pic);
     	return;
     }
 
@@ -258,8 +258,8 @@ Encoder::Encoder(u32 width, u32 height) : m_width(width), m_height(height), m_fr
 Encoder::~Encoder()
 {
 	if(!m_isValid) return;
-	 x264_encoder_close( h );
-	x264_picture_clean( &pic );
+	 x264_encoder_close(h);
+	x264_picture_clean(&pic);
 }
 
 bool Encoder::encodeNV12(u8* const nv12Data, u32 nv12DataSize, u8* &outputBuffer, u32& outputBufferSize)
@@ -272,18 +272,20 @@ bool Encoder::encodeNV12(u8* const nv12Data, u32 nv12DataSize, u8* &outputBuffer
 	memcpy(pic.img.plane[0], nv12Data,  luma_size);
 	memcpy(pic.img.plane[1], nv12Data + luma_size, chroma_size + chroma_size);
 
-        pic.i_pts = m_frameCount;
-        auto i_frame_size = x264_encoder_encode( h, &nal, &i_nal, &pic, &pic_out );
-        if( i_frame_size < 0 )
-        {
-        	debug_log_error("Failed to encode");
-        	return false;
-        }
-        else if( i_frame_size )
-        {
-        	outputBuffer = nal->p_payload;
-        	outputBufferSize = i_frame_size;
-        }
+	pic.i_pts = m_frameCount;
+	auto i_frame_size = x264_encoder_encode(h, &nal, &i_nal, &pic, &pic_out);
+	if(i_frame_size < 0)
+	{
+		debug_log_error("Failed to encode");
+		outputBuffer = NULL;
+		outputBufferSize = 0;
+		return false;
+	}
+	else if(i_frame_size)
+	{
+		outputBuffer = nal->p_payload;
+		outputBufferSize = i_frame_size;;
+	}
 
     ++m_frameCount;
 	return true;
@@ -291,11 +293,11 @@ bool Encoder::encodeNV12(u8* const nv12Data, u32 nv12DataSize, u8* &outputBuffer
 
 static std::unique_ptr<Encoder> gH264Encoder;
 static std::unique_ptr<NvDecoder> gNvDecoder; 
+static std::unique_ptr<NV12ToRGBConverter> gCSConverter;
 
 static void WindowPaintHandler(void* paintInfo, void* userData)
 {
-	// u8* pixels = gWin32DrawSurfaceUPtr->getPixels();
-	// memset(pixels, 255, gWin32DrawSurfaceUPtr->getBufferSize());
+	u8* pixels = gWin32DrawSurfaceUPtr->getPixels();
 
 	auto drawSurfaceSize = gWin32DrawSurfaceUPtr->getSize();
 
@@ -304,40 +306,52 @@ static void WindowPaintHandler(void* paintInfo, void* userData)
 	// 	return;
 	// }
 
-	buf_clear(&gNV12Buffer, NULL);
+	buf_clear_buffer(&gNV12Buffer, NULL);
 	u8* buffer = reinterpret_cast<u8*>(buf_get_ptr(&gNV12Buffer));
 	u32 bufferSize = static_cast<u32>(buf_get_capacity(&gNV12Buffer));
-	SKVMOIP::StopWatch timer;
 	if(!gHDMIStream->readNV12FrameToBuffer(buffer, bufferSize))
-	{
 		return;
-	}
+
 	u8* outputBuffer;
 	u32 outputBufferSize;
+	SKVMOIP::StopWatch encodeWatch;
 	if(!gH264Encoder->encodeNV12(buffer, bufferSize, outputBuffer, outputBufferSize))
 	{
+		encodeWatch.stop();
 		debug_log_error("Failed to encode");
 		return;
 	}
+	else if(outputBuffer == NULL)
+	{
+		encodeWatch.stop();
+		return;
+	}
+	auto encodeTime = encodeWatch.stop();
 
 	int nFrameReturned = 0;
 	static int nFrame = 0;
 
+	SKVMOIP::StopWatch decodeWatch;
 	nFrameReturned = gNvDecoder->Decode(outputBuffer, outputBufferSize);
-            if (nFrameReturned)
-            {
-            	u8* frame = gNvDecoder->GetFrame();
-            	debug_log_info("[%lu ms] Decoded: %lu frames, width: %lu, height: %lu, bit depth: %lu", timer.stop(), nFrameReturned, gNvDecoder->GetWidth(), gNvDecoder->GetHeight(), gNvDecoder->GetBitDepth());            	
-            }
-            else
-            {
-            	debug_log_error("Failed to decode, return value %d", nFrameReturned);
-            }
-
-            nFrame += nFrameReturned;
-            // for (int i = 0; i < nFrameReturned; i++) {
-                // pFrame = gNvDecoder->GetFrame();
-                // fpOut.write(reinterpret_cast<char*>(pFrame), gNvDecoder->GetFrameSize());
+	if (nFrameReturned)
+	{
+		auto decodeTime = decodeWatch.stop();
+		u8* frame = gNvDecoder->GetFrame();
+		_assert(gNvDecoder->GetFrameSize() == bufferSize);
+		u8* rgbData;
+		SKVMOIP::StopWatch convertWatch;
+		if((rgbData = gCSConverter->convert(frame, bufferSize)) != NULL)
+		{
+			auto convertTime = convertWatch.stop();
+			auto rgbDataSize = gCSConverter->getRGBDataSize();
+			_assert(rgbDataSize == gWin32DrawSurfaceUPtr->getBufferSize());
+			memcpy(pixels, rgbData, gCSConverter->getRGBDataSize());
+			debug_log_info("Time info: encode: %lu, decode: %lu, convert: %lu", encodeTime, decodeTime, convertTime);
+		}
+		else { convertWatch.stop(); debug_log_error("Failed to convert color space"); }
+		nFrame += nFrameReturned;
+	}
+	else { decodeWatch.stop(); debug_log_error("Failed to decode, return value %d", nFrameReturned); }
 
 	Win32::WindowPaintInfo* winPaintInfo = reinterpret_cast<Win32::WindowPaintInfo*>(paintInfo);
 	BitBlt(winPaintInfo->deviceContext, 0, 0, drawSurfaceSize.first, drawSurfaceSize.second, gWin32DrawSurfaceUPtr->getHDC(), 0, 0, SRCCOPY);
@@ -423,7 +437,7 @@ int main(int argc, const char* argv[])
 		return 0;
 	}
 			
-	std::optional<Win32::Win32SourceDevice> device = deviceList->activateDevice(1);
+	std::optional<Win32::Win32SourceDevice> device = deviceList->activateDevice((argc > 1) ? (atoi(argv[1])) : 0);
 	if(!device)
 	{
 		debug_log_error("Unable to create video source device with index: %lu ", 0);
@@ -454,6 +468,7 @@ int main(int argc, const char* argv[])
 	// gHDMIStream->doReadyRGBReader();
 
 	std::pair<u32, u32> frameSize = gHDMIStream->getOutputFrameSize();
+	std::pair<u32, u32> frameRatePair = gHDMIStream->getInputFrameRate();
 	u32 frameRate = gHDMIStream->getInputFrameRateF32();
 
 	gNV12Buffer = buf_create(sizeof(u8), (frameSize.first * frameSize.second * 3) >> 1, 0);
@@ -476,6 +491,7 @@ int main(int argc, const char* argv[])
         createCudaContext(&cuContext, iGpu, 0);
 
 	gNvDecoder = std::move(std::unique_ptr<NvDecoder>(new NvDecoder(cuContext, false, cudaVideoCodec_H264, false, false)));
+	gCSConverter = std::move(std::unique_ptr<NV12ToRGBConverter>(new NV12ToRGBConverter(frameSize.first, frameSize.second, frameRatePair.first, frameRatePair.second, 32)));
 
 	Win32::DisplayRawInputDeviceList();
 	Win32::RegisterRawInputDevices({ Win32::RawInputDeviceType::Mouse, Win32::RawInputDeviceType::Keyboard });
