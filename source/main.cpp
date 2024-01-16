@@ -12,15 +12,8 @@
 #include <SKVMOIP/VideoSourceStream.hpp>
 #include <SKVMOIP/Win32/Win32DrawSurface.hpp>
 #include <SKVMOIP/StopWatch.hpp>
-
-#pragma push_macro("assert")
-#pragma push_macro("_assert")
-#undef assert
-#undef _assert
-#include <SKVMOIP/third_party/NvDecoder.hpp>
-#include <SKVMOIP/third_party/AppDecUtils.hpp>
-#pragma pop_macro("assert")
-#pragma pop_macro("_assert")
+#include <SKVMOIP/Encoder.hpp>
+#include <SKVMOIP/Decoder.hpp>
 
 #include <deque>
 #include <array>
@@ -28,19 +21,7 @@
 #include <condition_variable>
 #include <memory>
 
-#include <mfapi.h>
-#include <mfidl.h>
-#include <mferror.h>
-#include <mfreadwrite.h>
 #include <bufferlib/buffer.h>
-
-#include <x264/include/x264.h>
-#include <x264/include/x264_config.h>
-
-#include <NvidiaCodec/include/cuviddec.h>
-#include <NvidiaCodec/include/nvcuvid.h>
-#include <NvidiaCodec/include/nvEncodeAPI.h>
-
 
 using namespace SKVMOIP;
 
@@ -192,110 +173,8 @@ static std::unique_ptr<Win32::Win32DrawSurface> gWin32DrawSurfaceUPtr;
 static std::unique_ptr<VideoSourceStream> gHDMIStream;
 static buffer_t gNV12Buffer;
 
-static u32 counter = 0;
-
-class Encoder
-{
-private:
-	x264_param_t param;
-    x264_picture_t pic;
-    x264_picture_t pic_out;
-    x264_t *h;
-    x264_nal_t *nal;
-    int i_nal;
-    u32 m_width;
-    u32 m_height;
-    u32 m_frameCount;
- 	bool m_isValid;
-public:
-	Encoder(u32 width, u32 height);
-	~Encoder();
-
-	bool encodeNV12(u8* const nv12Data, u32 nv12DataSize, u8* &outputBuffer, u32& outputBufferSize);
-};
-
-Encoder::Encoder(u32 width, u32 height) : m_width(width), m_height(height), m_frameCount(0), m_isValid(false)
-{
-	if(x264_param_default_preset(&param, "ultrafast", "zerolatency") < 0)
-	{
-		debug_log_error("x264: Failed to set default preset");
-		return;
-	}
-
-	/* Configure non-default params */
-	param.i_threads = 6;
-	param.i_bitdepth = 8;
-	param.i_csp = X264_CSP_NV12;
-	param.i_width  = width;
-	param.i_height = height;
-	param.b_vfr_input = 0;
-	param.b_repeat_headers = 1;
-	param.b_annexb = 1;
-	param.b_vfr_input = 0;
-	param.b_opencl = 1;
-	param.i_fps_num = 144;
-	param.i_fps_den = 1;
-
-  	if(x264_param_apply_profile(&param, "high444") < 0)
-  	{
-  		debug_log_error("x264: Failed to apply profile restrictions");
-  		return;
-  	}
-
-   if(x264_picture_alloc(&pic, param.i_csp, param.i_width, param.i_height) < 0)
-   {
-   	debug_log_error("x264: Failed to allocate picture");
-   	return;
-   }
-
-   h = x264_encoder_open(&param);
-   if(!h)
-   {
-   	debug_log_error("Failed to open the encoder");
-   	x264_picture_clean(&pic);
-   	return;
-   }
-   m_isValid = true;
-}
-
-Encoder::~Encoder()
-{
-	if(!m_isValid) return;
-	 x264_encoder_close(h);
-	x264_picture_clean(&pic);
-}
-
-bool Encoder::encodeNV12(u8* const nv12Data, u32 nv12DataSize, u8* &outputBuffer, u32& outputBufferSize)
-{
-	_assert(m_isValid);
-
-	u32 luma_size = m_width * m_height;
-	u32 chroma_size = luma_size >> 2;
-
-	memcpy(pic.img.plane[0], nv12Data,  luma_size);
-	memcpy(pic.img.plane[1], nv12Data + luma_size, chroma_size + chroma_size);
-
-	pic.i_pts = m_frameCount;
-	auto i_frame_size = x264_encoder_encode(h, &nal, &i_nal, &pic, &pic_out);
-	if(i_frame_size < 0)
-	{
-		debug_log_error("Failed to encode");
-		outputBuffer = NULL;
-		outputBufferSize = 0;
-		return false;
-	}
-	else if(i_frame_size)
-	{
-		outputBuffer = nal->p_payload;
-		outputBufferSize = i_frame_size;;
-	}
-
-    ++m_frameCount;
-	return true;
-}
-
-static std::unique_ptr<Encoder> gH264Encoder;
-static std::unique_ptr<NvDecoder> gNvDecoder; 
+static std::unique_ptr<Encoder> gEncoder;
+static std::unique_ptr<Decoder> gDecoder; 
 static std::unique_ptr<NV12ToRGBConverter> gCSConverter;
 
 static void WindowPaintHandler(void* paintInfo, void* userData)
@@ -318,7 +197,7 @@ static void WindowPaintHandler(void* paintInfo, void* userData)
 	u8* outputBuffer;
 	u32 outputBufferSize;
 	SKVMOIP::StopWatch encodeWatch;
-	if(!gH264Encoder->encodeNV12(buffer, bufferSize, outputBuffer, outputBufferSize))
+	if(!gEncoder->encodeNV12(buffer, bufferSize, outputBuffer, outputBufferSize))
 	{
 		encodeWatch.stop();
 		debug_log_error("Failed to encode");
@@ -331,16 +210,15 @@ static void WindowPaintHandler(void* paintInfo, void* userData)
 	}
 	auto encodeTime = encodeWatch.stop();
 
-	int nFrameReturned = 0;
+	u32 nFrameReturned = 0;
 	static int nFrame = 0;
 
 	SKVMOIP::StopWatch decodeWatch;
-	nFrameReturned = gNvDecoder->Decode(outputBuffer, outputBufferSize);
-	if (nFrameReturned)
+	if(gDecoder->decode(outputBuffer, outputBufferSize, nFrameReturned))
 	{
 		auto decodeTime = decodeWatch.stop();
-		u8* frame = gNvDecoder->GetFrame();
-		_assert(gNvDecoder->GetFrameSize() == bufferSize);
+		u8* frame = gDecoder->getFrame();
+		_assert(gDecoder->getFrameSize() == bufferSize);
 		u8* rgbData;
 		SKVMOIP::StopWatch convertWatch;
 		if((rgbData = gCSConverter->convert(frame, bufferSize)) != NULL)
@@ -476,24 +354,9 @@ int main(int argc, const char* argv[])
 
 	gNV12Buffer = buf_create(sizeof(u8), (frameSize.first * frameSize.second * 3) >> 1, 0);
 
-	gH264Encoder = std::move(std::unique_ptr<Encoder>(new Encoder(frameSize.first, frameSize.second)));
-
-
-		int iGpu = 0;
-     ck(cuInit(0));
-        int nGpu = 0;
-        ck(cuDeviceGetCount(&nGpu));
-        if (iGpu < 0 || iGpu >= nGpu)
-        {
-            std::ostringstream err;
-            err << "GPU ordinal out of range. Should be within [" << 0 << ", " << nGpu - 1 << "]" << std::endl;
-            throw std::invalid_argument(err.str());
-        }
-
-        CUcontext cuContext = NULL;
-        createCudaContext(&cuContext, iGpu, 0);
-
-	gNvDecoder = std::move(std::unique_ptr<NvDecoder>(new NvDecoder(cuContext, false, cudaVideoCodec_H264, true, false)));
+	gEncoder = std::move(std::unique_ptr<Encoder>(new Encoder(frameSize.first, frameSize.second)));
+	gDecoder = std::move(std::unique_ptr<Decoder>(new Decoder()));
+	
 	gCSConverter = std::move(std::unique_ptr<NV12ToRGBConverter>(new NV12ToRGBConverter(frameSize.first, frameSize.second, frameRatePair.first, frameRatePair.second, 32)));
 
 	Win32::DisplayRawInputDeviceList();
