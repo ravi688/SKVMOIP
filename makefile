@@ -16,8 +16,8 @@ STATIC_LIB_NAME = skvmoip.a
 DYNAMIC_LIB_NAME = skvmoip.dll
 EXECUTABLE_NAME = main
 MAIN_SOURCE_LANG = cpp
-EXTERNAL_INCLUDES = -I./external-dependencies/ -I./external-dependencies/NvidiaCodec/include/ -I"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.3/include/"
-EXTERNAL_LIBS = -L"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.3/lib/x64" -l:cuda.lib -L./external-dependencies/NvidiaCodec/ -l:nvcuvid.lib -l:nvencodeapi.lib -L./external-dependencies/x264  -lx264 -lx264 -lws2_32 -lole32 -loleaut32 -lmfreadwrite -lmfplat -lmf -lmfuuid -lgdi32 -lwmcodecdspuuid
+EXTERNAL_INCLUDES = $(shell pkg-config gtk4 --cflags) -I./external-dependencies/ -I./external-dependencies/NvidiaCodec/include/ -I"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.3/include/"
+EXTERNAL_LIBS = $(shell pkg-config gtk4 --libs) -L"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.3/lib/x64" -l:cuda.lib -L./external-dependencies/NvidiaCodec/ -l:nvcuvid.lib -l:nvencodeapi.lib -L./external-dependencies/x264  -lx264 -lx264 -lws2_32 -lole32 -loleaut32 -lmfreadwrite -lmfplat -lmf -lmfuuid -lgdi32 -lwmcodecdspuuid
 
 DEPENDENCIES = Common Common/dependencies/BufferLib Common/dependencies/BufferLib/dependencies/CallTrace
 DEPENDENCY_LIBS = Common/lib/common.a Common/dependencies/BufferLib/lib/bufferlib.a Common/dependencies/BufferLib/dependencies/CallTrace/lib/calltrace.a
