@@ -17,6 +17,7 @@ Therefore, I started this project to invent a Scalable KVM Over IP software suit
 ### What's in the Software Suite
 1. Firmware Software for STM32401CCU6 and W5500 WizChip
 2. Client Software for a Client Computer.
+3. Server Software for HDMI stream Encoder Server.
 
 ### Hardware Requirements
 1. STM32F401CCU6 Microcontroller
