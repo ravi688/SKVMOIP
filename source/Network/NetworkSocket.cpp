@@ -58,20 +58,46 @@ namespace SKVMOIP
 			return 0;
 		}
 
-		Socket::Socket(SocketType socketType, IPAddressFamily ipAddressFamily, IPProtocol ipProtocol) : 
+		Socket::Socket(SocketType socketType, IPAddressFamily ipAddressFamily, IPProtocol ipProtocol, SocketRole role) : 
 																							m_ipaFamily(GetWin32IPAddressFamily(ipAddressFamily)), 
 																							m_socketType(GetWin32SocketType(socketType)), 
-																							m_ipProtocol(GetWin32IPProtocol(ipProtocol))
+																							m_ipProtocol(GetWin32IPProtocol(ipProtocol)),
+																							m_role(role),
+																							m_isConnected(false),
+																							m_isValid(false)
 		{
 			m_socket = socket(m_ipaFamily, m_socketType, m_ipProtocol);
 
 			if(m_socket == INVALID_SOCKET)
-				debug_log_fetal_error("Unable to create socket, error code: %d", WSAGetLastError());
+			{
+				debug_log_error("Unable to create socket, error code: %d", WSAGetLastError());
+				return;
+			}
+
+			m_isValid = true;
+		}
+
+		Socket::Socket(Socket&& socket) :
+										m_socket(socket.m_socket),
+										m_ipaFamily(socket.m_ipaFamily),
+										m_socketType(socket.m_socketType),
+										m_ipProtocol(socket.m_ipProtocol),
+										m_role(socket.m_role),
+										m_isConnected(socket.m_isConnected),
+										m_isValid(socket.m_isValid)
+		{
+			socket.m_socket = INVALID_SOCKET;
+			socket.m_ipaFamily = 0;
+			socket.m_socketType = 0;
+			socket.m_ipProtocol = 0;
+			socket.m_isConnected = false;
+			socket.m_isValid = false;
 		}
 
 		Socket::~Socket()
 		{
-			close();
+			if(m_isValid)
+				close();
 		}
 
 		Result Socket::connect(const char* ipAddress, const char* portNumber)
@@ -86,7 +112,10 @@ namespace SKVMOIP
 			struct addrinfo* addressInfo = NULL;
 			INT result = getaddrinfo(ipAddress, portNumber, &hints, &addressInfo);
 			if(result != 0)
+			{
+				m_isValid = false;
 				return Result::Failed;
+			}
 
 			_assert((addressInfo->ai_family == m_ipaFamily) && (addressInfo->ai_socktype == m_socketType) && (addressInfo->ai_protocol == m_ipProtocol));
 
@@ -95,15 +124,24 @@ namespace SKVMOIP
 			if(result == SOCKET_ERROR)
 			{
 				freeaddrinfo(addressInfo);
+				m_isValid = false;
 				return Result::SocketError;
 			}
+
+			m_isConnected = true;
 			return Result::Success;
 		}
 
 		Result Socket::close()
 		{
 			if(closesocket(m_socket) == SOCKET_ERROR)
+			{
+				m_isValid = false;
+				m_isConnected = false;
 				return Result::SocketError;
+			}
+			m_isValid = false;
+			m_isConnected = false;
 			return Result::Success;
 		}
 
@@ -114,14 +152,18 @@ namespace SKVMOIP
 			{
 				int result = ::send(m_socket, reinterpret_cast<const char*>(bytes + numSentBytes), size - numSentBytes, 0);
 				if(result == SOCKET_ERROR)
+				{
+					m_isValid = false;
+					m_isConnected = false;
 					return Result::SocketError;
+				}
 				numSentBytes += static_cast<u32>(result);
 			}
 			// debug_log_info("Sent: %lu bytes", numSentBytes);
 			return Result::Success;
 		}
 
-		Result Socket::receive(const u8* bytes, u32 size)
+		Result Socket::receive(u8* bytes, u32 size)
 		{
 			return Result::Success;
 		}

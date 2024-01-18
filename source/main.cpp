@@ -258,7 +258,7 @@ static void HandleHDMIStream(Network::Protocols::USBToHDMIStreamControlProtocol&
 		std::vector<u8> buffer;
 		buffer.reserve(hdmiStream.getFrameSizeInBytes());
 
-		while(!streamProtocol.shouldClose())
+		while(!controlProtocol.shouldClose())
 		{
 			Encoding::ImageEncode(hdmiStream.getLatestFrame(), buffer);
 			streamProtocol.sendFrame(STATUS_OK, buffer);

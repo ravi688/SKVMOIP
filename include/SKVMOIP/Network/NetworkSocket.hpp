@@ -23,6 +23,12 @@ namespace SKVMOIP
 			/* TODO: Add more in future */
 		};
 
+		enum class SocketRole : int
+		{
+			Client,
+			Server
+		};
+
 		enum class IPProtocol : int
 		{
 			TCP,
@@ -44,17 +50,25 @@ namespace SKVMOIP
 			int m_ipaFamily;
 			int m_socketType;
 			int m_ipProtocol;
+			SocketRole m_role;
+			bool m_isConnected;
+			bool m_isValid;
 
 		public:
 
-			Socket(SocketType socketType, IPAddressFamily ipAddressFamily, IPProtocol ipProtocol);
+			Socket(SocketType socketType, IPAddressFamily ipAddressFamily, IPProtocol ipProtocol, SocketRole role = SocketRole::Client);
+			Socket(Socket&& socket);
+			Socket(Socket& socket) = delete;
+			Socket& operator=(Socket& socket) = delete;
 			~Socket();
 
+			bool isConnected() const noexcept { return m_isConnected && isValid(); }
+			bool isValid() const noexcept { return m_isValid; }
 			Result connect(const char* ipAddress, const char* port);
 			Result close();
 
 			Result send(const u8* bytes, u32 size);
-			Result receive(const u8* bytes, u32 size);
+			Result receive(u8* bytes, u32 size);
 
 		};
 	}
