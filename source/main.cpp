@@ -1,3 +1,4 @@
+#ifdef BUILD_TEST
 
 #include <SKVMOIP/defines.hpp>
 #include <SKVMOIP/debug.h>
@@ -436,3 +437,5 @@ int main(int argc, const char* argv[])
 }
 
 #endif
+
+#endif /* BUILD_TEST */
