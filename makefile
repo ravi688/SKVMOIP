@@ -16,8 +16,19 @@ STATIC_LIB_NAME = skvmoip.a
 DYNAMIC_LIB_NAME = skvmoip.dll
 EXECUTABLE_NAME = main
 MAIN_SOURCE_LANG = cpp
+MAIN_SOURCES=main.client.cpp main.server.cpp main.cpp
 EXTERNAL_INCLUDES = $(shell pkg-config gtk4 --cflags) -I./external-dependencies/ -I./external-dependencies/NvidiaCodec/include/ -I"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.3/include/"
 EXTERNAL_LIBS = $(shell pkg-config gtk4 --libs) -L"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.3/lib/x64" -l:cuda.lib -L./external-dependencies/NvidiaCodec/ -l:nvcuvid.lib -l:nvencodeapi.lib -L./external-dependencies/x264  -lx264 -lx264 -lws2_32 -lole32 -loleaut32 -lmfreadwrite -lmfplat -lmf -lmfuuid -lgdi32 -lwmcodecdspuuid
+BUILD_DEFINES=
+ifeq ($(BUILD),server)
+	BUILD_DEFINES+=-DBUILD_SERVER
+endif
+ifeq ($(BUILD),client)
+	BUILD_DEFINES+=-DBUILD_CLIENT
+endif
+ifeq ($(BUILD),)
+	BUILD_DEFINES+=-DBUILD_CLIENT
+endif
 
 DEPENDENCIES = Common Common/dependencies/BufferLib Common/dependencies/BufferLib/dependencies/CallTrace
 DEPENDENCY_LIBS = Common/lib/common.a Common/dependencies/BufferLib/lib/bufferlib.a Common/dependencies/BufferLib/dependencies/CallTrace/lib/calltrace.a
@@ -110,15 +121,7 @@ TARGET = $(__EXECUTABLE_NAME)
 DEPENDENCY_INCLUDES = $(addsuffix /include, $(__DEPENDENCIES))
 SHARED_DEPENDENCY_INCLUDES = $(addsuffix /include, $(__SHARED_DEPENDENCIES))
 
-ifeq ($(MAIN_SOURCE_LANG),cpp)
-	MAIN_SOURCE=source/main.cpp
-endif
-
-ifeq ($(MAIN_SOURCE_LANG),c)
-	MAIN_SOURCE=source/main.c
-endif
-
-MAIN_OBJECT=$(addsuffix .o, $(MAIN_SOURCE))
+MAIN_OBJECT=$(addsuffix .o, $(wildcard $(MAIN_SOURCES)))
 INCLUDES= -I./include $(EXTERNAL_INCLUDES) $(addprefix -I, $(DEPENDENCY_INCLUDES) $(SHARED_DEPENDENCY_INCLUDES))
 C_SOURCES=$(wildcard source/*.c source/*/*.c)
 CPP_SOURCES=$(wildcard source/*.cpp source/*/*.cpp)
@@ -129,7 +132,7 @@ LIBS = $(EXTERNAL_LIBS)
 #Flags and Defines
 DEBUG_DEFINES =  -DGLOBAL_DEBUG -DDEBUG -DLOG_DEBUG
 RELEASE_DEFINES =  -DGLOBAL_RELEASE -DRELEASE -DLOG_RELEASE
-DEFINES =
+DEFINES = $(BUILD_DEFINES)
 
 COMPILER_FLAGS= -m64
 C_COMPILER_FLAGS = $(COMPILER_FLAGS)
@@ -289,6 +292,7 @@ RM_DIR := rm -rf
 
 bin-clean:
 	$(RM) $(OBJECTS)
+	$(RM) $(MAIN_OBJECT)
 	$(RM) $(__EXECUTABLE_NAME)
 	$(RM) $(TARGET_STATIC_LIB)
 	$(RM) $(TARGET_DYNAMIC_LIB)
