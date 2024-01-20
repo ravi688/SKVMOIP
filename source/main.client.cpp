@@ -1,4 +1,6 @@
-#ifdef BUILD_CLIENT
+#ifndef BUILD_CLIENT
+#error "BUILD_CLIENT is not defined, but still main.client.cpp is being built"
+#endif
 
 #include <SKVMOIP/defines.hpp>
 #include <SKVMOIP/debug.h>
@@ -233,6 +235,3 @@ int main(int argc, const char* argv[])
 	Win32::DeinitializeMediaFoundationAndCOM();
 	return 0;
 }
-
-
-#endif /* Client */

@@ -1,4 +1,6 @@
-#ifdef BUILD_SERVER
+#ifndef BUILD_SERVER
+#error "BUILD_SERVER is not defined, but still main.server.cpp is being compiled"
+#endif
 
 #include <SKVMOIP/defines.hpp>
 #include <SKVMOIP/debug.h>
@@ -215,5 +217,3 @@ int main(int argc, const char* argv[])
 	Win32::DeinitializeMediaFoundationAndCOM();
 	return 0;
 }
-
-#endif /* Server */

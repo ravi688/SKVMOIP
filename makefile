@@ -17,17 +17,48 @@ DYNAMIC_LIB_NAME = skvmoip.dll
 EXECUTABLE_NAME = main
 MAIN_SOURCE_LANG = cpp
 MAIN_SOURCES=main.cpp main.client.cpp main.server.cpp
-EXTERNAL_INCLUDES = $(shell pkg-config gtk4 --cflags) -I./external-dependencies/ -I./external-dependencies/NvidiaCodec/include/ -I"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.3/include/"
-EXTERNAL_LIBS = $(shell pkg-config gtk4 --libs) -L"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.3/lib/x64" -l:cuda.lib -L./external-dependencies/NvidiaCodec/ -l:nvcuvid.lib -l:nvencodeapi.lib -L./external-dependencies/x264  -lx264 -lx264 -lws2_32 -lole32 -loleaut32 -lmfreadwrite -lmfplat -lmf -lmfuuid -lgdi32 -lwmcodecdspuuid
+EXCLUDE_SOURCES=
+EXTERNAL_INCLUDES = -I./external-dependencies/
+EXTERNAL_LIBS = -lws2_32 -lole32 -loleaut32 -lmfreadwrite -lmfplat -lmf -lmfuuid -lgdi32 -lwmcodecdspuuid
 BUILD_DEFINES=
+
+EXTERNAL_SERVER_INCLUDES=
+EXTERNAL_SERVER_LIBS=-L./external-dependencies/x264  -lx264 -lx264
+
+EXTERNAL_CLIENT_INCLUDES=$(shell pkg-config gtk4 --cflags) \
+						-I./external-dependencies/NvidiaCodec/include/ \
+						-I"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.3/include/"
+EXTERNAL_CLIENT_LIBS=$(shell pkg-config gtk4 --libs) \
+					-L"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.3/lib/x64" -l:cuda.lib \
+					-L./external-dependencies/NvidiaCodec/ -l:nvcuvid.lib -l:nvencodeapi.lib
+
 ifeq ($(BUILD),server)
 	BUILD_DEFINES+=-DBUILD_SERVER
+	EXCLUDE_SOURCES+=source/third_party/NvDecoder.cpp \
+					 source/Decoder.cpp \
+					 source/main.cpp \
+					 source/main.client.cpp \
+					 source/Window.cpp \
+					 source/Win32/Win32DrawSurface.cpp \
+					 source/Win32/Win32RawInput.cpp \
+					 source/Win32/Win32Window.cpp \
+					 source/HDMIDecoderNetStream.cpp \
+					 source/HIDUsageID.cpp
+	EXTERNAL_INCLUDES+=$(EXTERNAL_SERVER_INCLUDES)
+	EXTERNAL_LIBS+=$(EXTERNAL_SERVER_LIBS)
 endif
 ifeq ($(BUILD),client)
 	BUILD_DEFINES+=-DBUILD_CLIENT
+	EXCLUDE_SOURCES+=source/Encoder.cpp \
+					 source/main.cpp \
+					 source/main.server.cpp
+	EXTERNAL_INCLUDES+=$(EXTERNAL_CLIENT_INCLUDES)
+	EXTERNAL_LIBS+=$(EXTERNAL_CLIENT_LIBS)
 endif
 ifeq ($(BUILD),)
 	BUILD_DEFINES+=-DBUILD_TEST
+	EXTERNAL_INCLUDES+=$(EXTERNAL_SERVER_INCLUDES) $(EXTERNAL_CLIENT_INCLUDES)
+	EXTERNAL_LIBS+=$(EXTERNAL_SERVER_LIBS) $(EXTERNAL_CLIENT_LIBS)
 endif
 
 ifneq ($(OUT),)
@@ -129,7 +160,7 @@ MAIN_OBJECT=$(addsuffix .o, $(wildcard $(MAIN_SOURCES)))
 INCLUDES= -I./include $(EXTERNAL_INCLUDES) $(addprefix -I, $(DEPENDENCY_INCLUDES) $(SHARED_DEPENDENCY_INCLUDES))
 C_SOURCES=$(wildcard source/*.c source/*/*.c)
 CPP_SOURCES=$(wildcard source/*.cpp source/*/*.cpp)
-SOURCES= $(C_SOURCES) $(CPP_SOURCES)
+SOURCES= $(filter-out $(EXCLUDE_SOURCES), $(C_SOURCES) $(CPP_SOURCES))
 OBJECTS= $(addsuffix .o, $(SOURCES))
 LIBS = $(EXTERNAL_LIBS)
 

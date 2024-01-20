@@ -1,4 +1,6 @@
-#ifdef BUILD_TEST
+#ifndef BUILD_TEST
+#error "BUILD_TEST is not defined, but still main.cpp is being compiled"
+#endif
 
 #include <SKVMOIP/defines.hpp>
 #include <SKVMOIP/debug.h>
@@ -439,5 +441,3 @@ int main(int argc, const char* argv[])
 }
 
 #endif
-
-#endif /* BUILD_TEST */
