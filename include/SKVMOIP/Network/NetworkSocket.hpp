@@ -58,6 +58,7 @@ namespace SKVMOIP
 
 			Socket(SocketType socketType, IPAddressFamily ipAddressFamily, IPProtocol ipProtocol, SocketRole role = SocketRole::Client);
 			Socket(Socket&& socket);
+			Socket& operator=(Socket&& socket);
 			Socket(Socket& socket) = delete;
 			Socket& operator=(Socket& socket) = delete;
 			~Socket();

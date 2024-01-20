@@ -22,13 +22,23 @@ namespace SKVMOIP
         m_isValid = true;
 	}
 
-	Decoder::Decoder(Decoder&& decoder) : m_cudaContext(decoder.m_cudaContext), 
+/*	Decoder::Decoder(Decoder&& decoder) : m_cudaContext(decoder.m_cudaContext), 
 										  m_nvDecoder(std::move(decoder.m_nvDecoder)),
 										  m_isValid(decoder.m_isValid)
 	{
 		decoder.m_cudaContext = NULL;
 		decoder.m_isValid = false;
 	}
+
+	Decoder& Decoder::operator=(Decoder&& decoder)
+	{
+		m_cudaContext = decoder.m_cudaContext;
+		m_nvDecoder = std::move(decoder.m_nvDecoder),
+		m_isValid = decoder.m_isValid;
+		decoder.m_cudaContext = NULL;
+		decoder.m_isValid = false;
+		return *this;
+	}*/
 
 	Decoder::~Decoder()
 	{

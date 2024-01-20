@@ -43,6 +43,7 @@ public:
 	OptionalReference(OptionalReference& ref) : m_value(ref.m_value), m_hasValue(ref.m_hasValue) { }
 	OptionalReference& operator=(T& value) { m_value = value; m_hasValue = true; return *this; }
 
+	T& value() { return m_value; }
 	operator bool() const noexcept { return m_hasValue; }
 	bool hasValue() const noexcept { return m_hasValue; }
 	T& operator*() { return m_value; }

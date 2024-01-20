@@ -14,11 +14,13 @@ namespace SKVMOIP
 			static WSADATA gWSAData;
 			if(WSAStartup(MAKEWORD(2, 2), &gWSAData) != 0)
 				debug_log_fetal_error("WSAStartup failed");
+			debug_log_info("Initialized Windows Socket : Success");
 		}
 
 		DESTRUCTOR_FUNCTION void DeinitializeWSA()
 		{
 			WSACleanup();
+			debug_log_info("Windows Socket uninitialized");
 		}
 
 		static int GetWin32IPAddressFamily(IPAddressFamily ipaFamily)
@@ -92,6 +94,26 @@ namespace SKVMOIP
 			socket.m_ipProtocol = 0;
 			socket.m_isConnected = false;
 			socket.m_isValid = false;
+		}
+
+		Socket& Socket::operator=(Socket&& socket)
+		{
+			m_socket = socket.m_socket;
+			m_ipaFamily = socket.m_ipaFamily;
+			m_socketType = socket.m_socketType;
+			m_ipProtocol = socket.m_ipProtocol;
+			m_role = socket.m_role;
+			m_isConnected = socket.m_isConnected;
+			m_isValid = socket.m_isValid;
+
+			socket.m_socket = INVALID_SOCKET;
+			socket.m_ipaFamily = 0;
+			socket.m_socketType = 0;
+			socket.m_ipProtocol = 0;
+			socket.m_isConnected = false;
+			socket.m_isValid = false;
+
+			return *this;
 		}
 
 		Socket::~Socket()

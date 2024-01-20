@@ -6,8 +6,6 @@
 
 #include <mfapi.h>
 #include <mfidl.h>
-#include <mfreadwrite.h>
-
 
 namespace Win32
 {

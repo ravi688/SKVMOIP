@@ -731,6 +731,43 @@ RELEASE_RES:
 		stream.m_isValid = false;
 	}
 
+	VideoSourceStream& VideoSourceStream::operator=(VideoSourceStream&& stream)
+	{
+		m_usage = stream.m_usage;
+		m_sourceReader = stream.m_sourceReader;
+		m_inputMediaType = stream.m_inputMediaType;
+		m_outputMediaType = stream.m_outputMediaType;
+		m_stagingMediaBuffer = stream.m_stagingMediaBuffer;
+		m_videoColorConverter = stream.m_videoColorConverter;
+		m_outputSample = stream.m_outputSample;
+		m_inputSampleSize = stream.m_inputSampleSize;
+		m_outputSampleSize = stream.m_outputSampleSize;
+		m_inputFrameWidth = stream.m_inputFrameWidth;
+		m_inputFrameHeight = stream.m_inputFrameHeight;
+		m_outputFrameWidth = stream.m_outputFrameWidth;
+		m_outputFrameHeight = stream.m_outputFrameHeight;
+		m_inputFrameRateNumer = stream.m_inputFrameRateNumer;
+		m_inputFrameRateDenom = stream.m_inputFrameRateDenom;
+		m_outputFrameRateNumer = stream.m_outputFrameRateNumer;
+		m_outputFrameRateDenom = stream.m_outputFrameRateDenom;
+		m_isInputFixedSizedSamples = stream.m_isInputFixedSizedSamples;
+		m_isOutputFixedSizedSamples = stream.m_isOutputFixedSizedSamples;
+		m_isInputTemporalCompression = stream.m_isInputTemporalCompression;
+		m_isOutputTemporalCompression = stream.m_isOutputTemporalCompression;
+		m_isInputCompressedFormat = stream.m_isInputCompressedFormat;
+		m_isOutputCompressedFormat = stream.m_isOutputCompressedFormat;
+
+		stream.m_sourceReader = NULL;
+		stream.m_inputMediaType = NULL;
+		stream.m_outputMediaType = NULL;
+		stream.m_stagingMediaBuffer = NULL;
+		stream.m_videoColorConverter = NULL;
+		stream.m_outputSample = NULL;
+		stream.m_isValid = false;
+
+		return *this;
+	}
+
 	void VideoSourceStream::destroy()
 	{
 		if(m_sourceReader != NULL)
@@ -1295,7 +1332,7 @@ RELEASE_RES:
 			m_colorConverter->Release();
 	}
 
-	NV12ToRGBConverter::NV12ToRGBConverter(NV12ToRGBConverter&& converter) :
+/*	NV12ToRGBConverter::NV12ToRGBConverter(NV12ToRGBConverter&& converter) :
 																			m_inputMediaType(converter.m_inputMediaType),
 																			m_outputMediaType(converter.m_outputMediaType),
 																			m_inputMediaBuffer(converter.m_inputMediaBuffer),
@@ -1326,6 +1363,41 @@ RELEASE_RES:
 		converter.m_isOutputMediaBufferLocked = false;
 		converter.m_isValid = false;
 	}
+
+	NV12ToRGBConverter& NV12ToRGBConverter::operator=(NV12ToRGBConverter&& converter)
+	{
+		m_inputMediaType = converter.m_inputMediaType;
+		m_outputMediaType = converter.m_outputMediaType;
+		m_inputMediaBuffer = converter.m_inputMediaBuffer;
+		m_outputMediaBuffer = converter.m_outputMediaBuffer;
+		m_inputSample = converter.m_inputSample;
+		m_outputSample = converter.m_outputSample;
+		m_colorConverter = converter.m_colorConverter;
+		m_width = converter.m_width;
+		m_height = converter.m_height;
+		m_bitsPerPixel = converter.m_bitsPerPixel;
+		m_inputSampleSize = converter.m_inputSampleSize;
+		m_outputSampleSize = converter.m_outputSampleSize;
+		m_isOutputMediaBufferLocked = converter.m_isOutputMediaBufferLocked;
+		m_isValid = converter.m_isValid;
+
+		converter.m_inputMediaType = NULL;
+		converter.m_outputMediaType = NULL;
+		converter.m_inputMediaBuffer = NULL;
+		converter.m_outputMediaBuffer = NULL;
+		converter.m_inputSample = NULL;
+		converter.m_outputSample = NULL;
+		converter.m_colorConverter = NULL;
+		converter.m_width = 0;
+		converter.m_height = 0;
+		converter.m_bitsPerPixel = 0;
+		converter.m_inputSampleSize = 0;
+		converter.m_outputSampleSize = 0;
+		converter.m_isOutputMediaBufferLocked = false;
+		converter.m_isValid = false;
+
+		return *this;
+	}*/
 
 	NV12ToRGBConverter::~NV12ToRGBConverter()
 	{

@@ -4,6 +4,7 @@
 #include <SKVMOIP/Win32/Win32ImagingDevice.hpp>
 #include <utility>
 #include <vector>
+#include <mfreadwrite.h>
 
 namespace SKVMOIP
 {
@@ -66,6 +67,7 @@ namespace SKVMOIP
 		VideoSourceStream(VideoSourceDeviceConnectionID deviceID);
 		VideoSourceStream(Win32::Win32SourceDevice& device, Usage usage, const std::vector<std::tuple<u32, u32, u32>>& resPrefList);
 		VideoSourceStream(VideoSourceStream&& stream);
+		VideoSourceStream& operator=(VideoSourceStream&& stream);
 		~VideoSourceStream();
 
 		bool isValid() const { return m_isValid; }
@@ -118,7 +120,8 @@ namespace SKVMOIP
 		bool m_isValid;
 	public:
 		NV12ToRGBConverter(u32 width, u32 height, u32 frameRateNum, u32 frameRateDen, u32 bitsPerPixel);
-		NV12ToRGBConverter(NV12ToRGBConverter&& converter);
+		NV12ToRGBConverter(NV12ToRGBConverter&& converter) = delete;
+		NV12ToRGBConverter& operator=(NV12ToRGBConverter&& converter) = delete;
 		NV12ToRGBConverter(NV12ToRGBConverter& converter) = delete;
 		NV12ToRGBConverter& operator =(NV12ToRGBConverter& converter) = delete;
 		~NV12ToRGBConverter();

@@ -340,6 +340,7 @@ int main (int argc, char *argv[]) {
 
 int main(int argc, const char* argv[])
 {
+	Win32::InitializeMediaFundationAndCOM();
 	debug_log_info("Platform is Windows");
 
 	std::optional<Win32::Win32SourceDeviceListGuard> deviceList = Win32::Win32GetSourceDeviceList(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
@@ -433,6 +434,7 @@ int main(int argc, const char* argv[])
 	window.getEvent(Window::EventType::MouseInput).unsubscribe(mouseInputHandle);
 	window.getEvent(Window::EventType::KeyboardInput).unsubscribe(keyboardInputHandle);
 
+	Win32::DeinitializeMediaFoundationAndCOM();
 	return 0;
 }
 

@@ -1,30 +1,8 @@
 #include <SKVMOIP/Win32/Win32ImagingDevice.hpp>
 #include <SKVMOIP/debug.h>
-#include <mfidl.h>
-#include <mferror.h>
 
 namespace Win32
 {
-	CONSTRUCTOR_FUNCTION void InitializeMediaFundationAndCOM()
-	{
-		/* COM Runtime */
-		HRESULT result = CoInitializeEx(0, COINIT_MULTITHREADED);
-		if (SUCCEEDED(result))
-		{
-			/* Media Foundation */
-			result = MFStartup(MF_VERSION);
-			if(FAILED(result))
-				debug_log_fetal_error("Failed to initialize Media Foundation");
-		}
-		else debug_log_fetal_error("Failed to initialize COM Runtime");
-	}
-
-	DESTRUCTOR_FUNCTION void DeinitializeMediaFoundationAndCOM()
-	{
-		MFShutdown();
-		CoUninitialize();
-	}
-
 	Win32SourceDevice::Win32SourceDevice(IMFMediaSource* source) : m_source(source)
 	{
 

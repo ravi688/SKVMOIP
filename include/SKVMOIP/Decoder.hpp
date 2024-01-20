@@ -24,7 +24,8 @@ namespace SKVMOIP
 
 	public:
 		Decoder();
-		Decoder(Decoder&& decoder);
+		Decoder(Decoder&& decoder) = delete;
+		Decoder& operator=(Decoder&& decoder) = delete;
 		Decoder(Decoder& decoder) = delete;
 		Decoder& operator=(Decoder& decoder) = delete;
 		~Decoder();
