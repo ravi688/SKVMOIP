@@ -122,6 +122,53 @@ namespace SKVMOIP
 				close();
 		}
 
+		Result Socket::listen()
+		{
+			if(::listen(m_socket, SOMAXCONN) == SOCKET_ERROR)
+				return Result::SocketError;
+			return Result::Success;
+		}
+
+		std::optional<Socket> Socket::accept()
+		{
+			SOCKET acceptedSocket = INVALID_SOCKET;
+			acceptedSocket = ::accept(m_socket, NULL, NULL);
+			if(acceptedSocket == INVALID_SOCKET)
+				return { };
+			return { Socket::CreateAcceptedSocket(acceptedSocket, m_socketType, m_ipaFamily, m_ipProtocol) };
+		}
+
+		Result Socket::bind(const char* ipAddress, const char* portNumber)
+		{
+			struct addrinfo hints;
+
+			ZeroMemory(&hints, sizeof(hints));
+			hints.ai_family = m_ipaFamily;
+			hints.ai_socktype = m_socketType;
+			hints.ai_protocol = m_ipProtocol;
+
+			struct addrinfo* addressInfo = NULL;
+			INT result = getaddrinfo(ipAddress, portNumber, &hints, &addressInfo);
+			if(result != 0)
+			{
+				m_isValid = false;
+				return Result::Failed;
+			}
+
+			_assert((addressInfo->ai_family == m_ipaFamily) && (addressInfo->ai_socktype == m_socketType) && (addressInfo->ai_protocol == m_ipProtocol));
+
+			result = ::bind(m_socket, addressInfo->ai_addr, (int)addressInfo->ai_addrlen);
+
+			if(result == SOCKET_ERROR)
+			{
+				freeaddrinfo(addressInfo);
+				m_isValid = false;
+				return Result::SocketError;
+			}
+
+			return Result::Success;			
+		}
+
 		Result Socket::connect(const char* ipAddress, const char* portNumber)
 		{
 			struct addrinfo hints;
@@ -187,6 +234,26 @@ namespace SKVMOIP
 
 		Result Socket::receive(u8* bytes, u32 size)
 		{
+			if(!m_isConnected)
+				return Result::SocketError;
+
+			u32 numReceivedBytes = 0;
+			while(numReceivedBytes < size)
+			{
+				int result = ::recv(m_socket, reinterpret_cast<char*>(bytes + numReceivedBytes), size - numReceivedBytes, 0);
+				if(result == SOCKET_ERROR)
+				{
+					m_isValid = false;
+					m_isConnected = false;
+					return Result::SocketError;
+				}
+				else if(result == 0)
+				{
+					m_isConnected = false;
+					return Result::SocketError;
+				}
+				numReceivedBytes += static_cast<u32>(result);
+			}
 			return Result::Success;
 		}
 	}

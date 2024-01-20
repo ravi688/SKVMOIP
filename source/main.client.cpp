@@ -23,8 +23,8 @@
 
 using namespace SKVMOIP;
 
-#define SERVER_IP_ADDRESS "192.168.1.113"
-#define SERVER_PORT_NUMBER "2000"
+#define SERVER_IP_ADDRESS "localhost"
+#define SERVER_PORT_NUMBER "2020"
 
 #define NETWORK_THREAD_BUFFER_SIZE 1024
 
@@ -210,6 +210,7 @@ int main(int argc, const char* argv[])
 	Event::SubscriptionHandle keyboardInputHandle = window.getEvent(Window::EventType::KeyboardInput).subscribe(KeyboardInputHandler, NULL);
 	Event::SubscriptionHandle windowPaintHandle = window.getEvent(Window::EventType::Paint).subscribe(WindowPaintHandler, NULL);
 
+	debug_log_info("Trying to connect to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
 	/* pauses (acquires mutex from) the network thread and waiting for connecting with the server */
 	if(gHDMIDecodeNetStream->connect(SERVER_IP_ADDRESS, SERVER_PORT_NUMBER) == Network::Result::Success)
 		debug_log_info("Connected to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);

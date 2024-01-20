@@ -74,6 +74,8 @@ namespace SKVMOIP
 
 				void add(Type type)
 				{
+					_assert((m_format.size() != 0) || (type != Type::Data));
+
 				 	if(type == Type::Data)
 				 		_assert((m_format.back() == Type::LengthU32) || (m_format.back() == Type::LengthU64)); 
 					m_format.push_back(type); 
@@ -86,8 +88,6 @@ namespace SKVMOIP
 					if(m_count >= m_format.size()) 
 						return { };
 					Type type = m_format[m_count++];
-					if(type == Type::Data)
-						return { { m_lengthFeedback, Type::Data } };
 					return { { getSizeFromType(type), type } };
 				}
 

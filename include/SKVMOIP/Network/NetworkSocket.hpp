@@ -3,6 +3,8 @@
 #include <SKVMOIP/defines.hpp>
 #include <winsock2.h>
 
+#include <optional>
+
 namespace SKVMOIP
 {
 	namespace Network
@@ -54,7 +56,32 @@ namespace SKVMOIP
 			bool m_isConnected;
 			bool m_isValid;
 
+
+			Socket() : m_socket(INVALID_SOCKET) { }
+			static Socket CreateAcceptedSocket(SOCKET socket, int socketType, int ipAddressFamily, int ipProtocol)
+			{
+				Socket s;
+				s.m_socket = socket;
+				s.m_ipaFamily = ipAddressFamily;
+				s.m_socketType = socketType;
+				s.m_role = SocketRole::Client;
+				s.m_isConnected = true;
+				s.m_isValid = true;
+				return s;
+			}
+
 		public:
+
+			static Socket CreateInvalid()
+			{
+				Socket s;
+				s.m_socket = INVALID_SOCKET;
+				s.m_ipaFamily = 0;
+				s.m_socketType = 0;
+				s.m_isConnected = false;
+				s.m_isValid = false;
+				return s;
+			}
 
 			Socket(SocketType socketType, IPAddressFamily ipAddressFamily, IPProtocol ipProtocol, SocketRole role = SocketRole::Client);
 			Socket(Socket&& socket);
@@ -65,6 +92,9 @@ namespace SKVMOIP
 
 			bool isConnected() const noexcept { return m_isConnected && isValid(); }
 			bool isValid() const noexcept { return m_isValid; }
+			Result listen();
+			std::optional<Socket> accept();
+			Result bind(const char* ipAddress, const char* portNumber);
 			Result connect(const char* ipAddress, const char* port);
 			Result close();
 

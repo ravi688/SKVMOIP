@@ -58,7 +58,7 @@ namespace SKVMOIP
 		}
 	
 		u8* AsyncQueueSocket::Transxn::getBufferPtr() { return buf_get_ptr_typeof(&m_buffer, u8); }
-		u32 AsyncQueueSocket::Transxn::getBufferSize() { return static_cast<u32>(buf_get_element_size(&m_buffer)); }
+		u32 AsyncQueueSocket::Transxn::getBufferSize() { return static_cast<u32>(buf_get_element_count(&m_buffer)); }
 	
 		bool AsyncQueueSocket::Transxn::doit(Socket& socket)
 		{

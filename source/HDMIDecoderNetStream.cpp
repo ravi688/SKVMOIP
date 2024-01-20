@@ -114,19 +114,26 @@ namespace SKVMOIP
 		HDMIDecodeNetStream* decodeStream = reinterpret_cast<HDMIDecodeNetStream*>(userData);
 		
 		std::unique_lock<std::mutex> lock(decodeStream->m_mutex);
+		debug_log_info	("Data Received");
 		/* wait until decode thread has ran out of data */
 		while(decodeStream->m_isDataAvailable)
 		{
-			debug_log_info("Data is ready to be received, waiting decode thread to finish previous decode");
+			debug_log_info("...waiting decode thread to finish previous decode");
 			decodeStream->m_dataAvailableCV.wait(lock);
 		}
 		
 		/* copy the data from the network stream to the decode thread */
 		buf_set_element_count(&decodeStream->m_decodeBuffer, 0);
-		buf_pushv(&decodeStream->m_decodeBuffer, reinterpret_cast<void*>(const_cast<u8*>(data)), dataSize);
-		decodeStream->m_isDataAvailable = true;
-		lock.unlock();
-		decodeStream->m_dataAvailableCV.notify_one();
+		_assert(dataSize >= sizeof(u32));
+		
+		/* if the payload (after length data) is of zero size then we don't we to process the frame */
+		if(dataSize > sizeof(u32))
+		{
+			buf_pushv(&decodeStream->m_decodeBuffer, reinterpret_cast<void*>(const_cast<u8*>(data) + sizeof(u32)), dataSize - sizeof(u32));
+			decodeStream->m_isDataAvailable = true;
+			lock.unlock();
+			decodeStream->m_dataAvailableCV.notify_one();
+		}
 	}
 	
 	void HDMIDecodeNetStream::decodeThreadHandler()
