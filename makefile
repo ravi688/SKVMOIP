@@ -30,6 +30,10 @@ ifeq ($(BUILD),)
 	BUILD_DEFINES+=-DBUILD_TEST
 endif
 
+ifneq ($(OUT),)
+	EXECUTABLE_NAME = $(OUT)
+endif
+
 DEPENDENCIES = Common Common/dependencies/BufferLib Common/dependencies/BufferLib/dependencies/CallTrace
 DEPENDENCY_LIBS = Common/lib/common.a Common/dependencies/BufferLib/lib/bufferlib.a Common/dependencies/BufferLib/dependencies/CallTrace/lib/calltrace.a
 DEPENDENCIES_DIR = ./dependencies
