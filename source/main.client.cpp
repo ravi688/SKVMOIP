@@ -25,8 +25,8 @@
 
 using namespace SKVMOIP;
 
-#define SERVER_IP_ADDRESS "localhost"
-#define SERVER_PORT_NUMBER "2020"
+#define SERVER_IP_ADDRESS "192.168.1.20"
+#define SERVER_PORT_NUMBER "6020"
 
 #define NETWORK_THREAD_BUFFER_SIZE 1024
 
@@ -179,12 +179,15 @@ static std::unique_ptr<HDMIDecodeNetStream> gHDMIDecodeNetStream;
 
 static void WindowPaintHandler(void* paintInfo, void* userData)
 {
-	if(std::optional<FIFOPool<HDMIDecodeNetStream::FrameData>::ItemType> frame = gHDMIDecodeNetStream->borrowFrameData())
+	if(auto frame = gHDMIDecodeNetStream->borrowFrameData())
 	{
-		HDMIDecodeNetStream::FrameData& frameData = frame->first;
-		_assert(frameData.getSize() == gWin32DrawSurfaceUPtr->getBufferSize());
-		memcpy(gWin32DrawSurfaceUPtr->getPixels(), frameData.getPtr(), frameData.getSize());
-		gHDMIDecodeNetStream->returnFrameData(*frame);
+		// debug_log_info("FrameData borrowed");
+		auto frameData = FIFOPool<HDMIDecodeNetStream::FrameData>::GetValue(frame);
+		_assert(frameData.has_value());
+		_assert(frameData->getSize() == gWin32DrawSurfaceUPtr->getBufferSize());
+		memcpy(gWin32DrawSurfaceUPtr->getPixels(), frameData->getPtr(), frameData->getSize());
+		gHDMIDecodeNetStream->returnFrameData(frame);
+		// debug_log_info("FrameData returned");
 	}
 
 	auto drawSurfaceSize = gWin32DrawSurfaceUPtr->getSize();
@@ -208,8 +211,8 @@ int main(int argc, const char* argv[])
 
 	gWin32DrawSurfaceUPtr = std::move(std::unique_ptr<Win32::Win32DrawSurface>(new Win32::Win32DrawSurface(window.getNativeHandle(), window.getSize().first, window.getSize().second, 32)));
 
-	Event::SubscriptionHandle mouseInputHandle = window.getEvent(Window::EventType::MouseInput).subscribe(MouseInputHandler, NULL);
-	Event::SubscriptionHandle keyboardInputHandle = window.getEvent(Window::EventType::KeyboardInput).subscribe(KeyboardInputHandler, NULL);
+	// Event::SubscriptionHandle mouseInputHandle = window.getEvent(Window::EventType::MouseInput).subscribe(MouseInputHandler, NULL);
+	// Event::SubscriptionHandle keyboardInputHandle = window.getEvent(Window::EventType::KeyboardInput).subscribe(KeyboardInputHandler, NULL);
 	Event::SubscriptionHandle windowPaintHandle = window.getEvent(Window::EventType::Paint).subscribe(WindowPaintHandler, NULL);
 
 	debug_log_info("Trying to connect to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
@@ -229,8 +232,8 @@ int main(int argc, const char* argv[])
 	// networkThread.join();
 
 	window.getEvent(Window::EventType::Paint).unsubscribe(windowPaintHandle);
-	window.getEvent(Window::EventType::MouseInput).unsubscribe(mouseInputHandle);
-	window.getEvent(Window::EventType::KeyboardInput).unsubscribe(keyboardInputHandle);
+	// window.getEvent(Window::EventType::MouseInput).unsubscribe(mouseInputHandle);
+	// window.getEvent(Window::EventType::KeyboardInput).unsubscribe(keyboardInputHandle);
 
 	Win32::DeinitializeMediaFoundationAndCOM();
 	return 0;

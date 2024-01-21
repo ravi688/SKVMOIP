@@ -4,7 +4,6 @@
 
 #include <vector>
 #include <deque>
-#include <optional>
 
 namespace SKVMOIP
 {
@@ -13,7 +12,8 @@ namespace SKVMOIP
 	{
 	public:
 		typedef typename std::vector<T>::size_type ItemIdType;
-		typedef std::pair<T&, ItemIdType> ItemType;
+		typedef Pair<T, ItemIdType> ItemType;
+		typedef Optional<typename FIFOPool<T>::ItemType> PoolItemType;
 	private:
 		std::vector<T> m_buffer;
 	
@@ -21,6 +21,13 @@ namespace SKVMOIP
 		std::vector<ItemIdType> m_inactiveQueue;
 	
 	public:
+
+		static OptionalReference<T> GetValue(PoolItemType itemType)
+		{
+			if(!itemType) return { };
+			return { itemType->first };
+		}
+
 		FIFOPool();
 		FIFOPool(FIFOPool&& pool);
 		FIFOPool& operator=(FIFOPool&& pool);
@@ -28,10 +35,12 @@ namespace SKVMOIP
 		FIFOPool& operator=(FIFOPool& pool) = delete;
 		~FIFOPool();
 	
-		std::optional<ItemType> getActive();
-		void returnActive(ItemType value);
-		std::optional<ItemType> getInactive();
-		void returnInactive(ItemType value);
+		PoolItemType getActive();
+		bool hasActive() const { return !m_activeQueue.empty(); }
+		void returnActive(PoolItemType item);
+		PoolItemType getInactive();
+		bool hasInactive() const { return !m_inactiveQueue.empty(); }
+		void returnInactive(PoolItemType item);
 		template<typename... Args>
 		void createInactive(Args... args);
 	};
@@ -59,7 +68,7 @@ namespace SKVMOIP
 	FIFOPool<T>::~FIFOPool() { }
 	
 	template<typename T>
-	std::optional<typename FIFOPool<T>::ItemType> FIFOPool<T>::getActive()
+	typename FIFOPool<T>::PoolItemType FIFOPool<T>::getActive()
 	{
 		if(m_activeQueue.empty())
 			return { };
@@ -69,14 +78,15 @@ namespace SKVMOIP
 	}
 	
 	template<typename T>
-	void FIFOPool<T>::returnActive(ItemType value)
+	void FIFOPool<T>::returnActive(PoolItemType item)
 	{
-		_assert(value.second < m_buffer.size());
-		m_inactiveQueue.push_back(value.second);
+		if(!item) return;
+		_assert(item->second < m_buffer.size());
+		m_inactiveQueue.push_back(item->second);
 	}
 	
 	template<typename T>
-	std::optional<typename FIFOPool<T>::ItemType> FIFOPool<T>::getInactive()
+	typename FIFOPool<T>::PoolItemType FIFOPool<T>::getInactive()
 	{
 		if(m_inactiveQueue.empty())
 			return { };
@@ -84,12 +94,13 @@ namespace SKVMOIP
 		m_inactiveQueue.pop_back();
 		return { ItemType(m_buffer[id], id) };
 	}
-	
+
 	template<typename T>
-	void FIFOPool<T>::returnInactive(ItemType value)
+	void FIFOPool<T>::returnInactive(PoolItemType item)
 	{
-		_assert(value.second < m_buffer.size());
-		m_activeQueue.push_front(value.second);
+		if(!item) return;
+		_assert(item->second < m_buffer.size());
+		m_activeQueue.push_front(item->second);
 	}
 
 	template<typename T>

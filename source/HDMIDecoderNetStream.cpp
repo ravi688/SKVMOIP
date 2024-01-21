@@ -32,17 +32,17 @@ namespace SKVMOIP
 	
 	const u8* HDMIDecodeNetStream::FrameData::getPtr() const
 	{
-		return buf_get_ptr_typeof(const_cast<buffer_t*>(&m_buffer), u8);
+		return m_isValid ? buf_get_ptr_typeof(const_cast<buffer_t*>(&m_buffer), u8) : NULL;
 	}
 	
 	u8* HDMIDecodeNetStream::FrameData::getPtr()
 	{
-		return buf_get_ptr_typeof(&m_buffer, u8);
+		return m_isValid ? buf_get_ptr_typeof(&m_buffer, u8) : NULL;
 	}
 	
 	u32 HDMIDecodeNetStream::FrameData::getSize() const
 	{
-		return static_cast<u32>(buf_get_capacity(const_cast<buffer_t*>(&m_buffer)));
+		return m_isValid ? static_cast<u32>(buf_get_capacity(const_cast<buffer_t*>(&m_buffer))) : 0;
 	}
 	
 	
@@ -58,10 +58,17 @@ namespace SKVMOIP
 												m_isDataAvailable(false),
 												AsyncQueueSocket(std::move(Network::Socket(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP)))
 	{
+		/* This buffer stores the decoded data - which is in NV12 format */
 		m_nv12Buffer = buf_create_byte_buffer(getUncompressedFrameSize());
 		buf_clear(&m_nv12Buffer, NULL);
-		m_decodeBuffer = buf_create_byte_buffer(4096);
+
+		/* This buffer stores the encoded data which is just received from Network Thread to be decoded */
+		m_decodeBuffer = buf_create_byte_buffer(30 * 1024);
 		buf_clear(&m_decodeBuffer, NULL);
+
+		/* Encoded (to be Received from Network) Packet structure 
+		 * first: is the length of the encoded frame 
+		 * second: is the data of size 'length' (above) */
 		m_receiveFormatter.add(BinaryFormatter::Type::LengthU32);
 		m_receiveFormatter.add(BinaryFormatter::Type::Data);
 	}
@@ -97,15 +104,15 @@ namespace SKVMOIP
 		buf_free(&m_nv12Buffer);
 	}
 	
-	std::optional<FIFOPool<HDMIDecodeNetStream::FrameData>::ItemType> HDMIDecodeNetStream::borrowFrameData()
+	typename FIFOPool<HDMIDecodeNetStream::FrameData>::PoolItemType HDMIDecodeNetStream::borrowFrameData()
 	{
-		std::lock_guard<std::mutex> lock_guard(m_mutex);
+		std::lock_guard<std::mutex> lock_guard(m_ClientMutex);
 		return m_frameDataPool.getActive();
 	}
 	
-	void HDMIDecodeNetStream::returnFrameData(FIFOPool<FrameData>::ItemType frameData)
+	void HDMIDecodeNetStream::returnFrameData(typename FIFOPool<HDMIDecodeNetStream::FrameData>::PoolItemType frameData)
 	{
-		std::lock_guard<std::mutex> lock_guard(m_mutex);
+		std::lock_guard<std::mutex> lock_guard(m_ClientMutex);
 		m_frameDataPool.returnActive(frameData);
 	}
 	
@@ -114,7 +121,7 @@ namespace SKVMOIP
 		HDMIDecodeNetStream* decodeStream = reinterpret_cast<HDMIDecodeNetStream*>(userData);
 		
 		std::unique_lock<std::mutex> lock(decodeStream->m_mutex);
-		debug_log_info	("Data Received");
+		// debug_log_info	("Data Received");
 		/* wait until decode thread has ran out of data */
 		while(decodeStream->m_isDataAvailable)
 		{
@@ -129,7 +136,10 @@ namespace SKVMOIP
 		/* if the payload (after length data) is of zero size then we don't we to process the frame */
 		if(dataSize > sizeof(u32))
 		{
-			buf_pushv(&decodeStream->m_decodeBuffer, reinterpret_cast<void*>(const_cast<u8*>(data) + sizeof(u32)), dataSize - sizeof(u32));
+			dataSize = dataSize - sizeof(u32);
+			buf_ensure_capacity(&decodeStream->m_decodeBuffer, dataSize);
+			memcpy(buf_get_ptr(&decodeStream->m_decodeBuffer), reinterpret_cast<void*>(const_cast<u8*>(data) + sizeof(u32)), dataSize);
+			buf_set_element_count(&decodeStream->m_decodeBuffer, dataSize);
 			decodeStream->m_isDataAvailable = true;
 			lock.unlock();
 			decodeStream->m_dataAvailableCV.notify_one();
@@ -143,22 +153,26 @@ namespace SKVMOIP
 			std::unique_lock<std::mutex> lock(m_mutex);
 			while(!m_isDataAvailable)
 			{
-				debug_log_info("Data not available, making request");
+				// debug_log_info("Data not available, making request");
 				receive(ReceiveCallbackHandler, reinterpret_cast<void*>(this), m_receiveFormatter);
 				m_dataAvailableCV.wait(lock);
 			}
 
 			if(m_isDataAvailable)
 			{
-				debug_log_info("Data available, Decoding...");
+				// debug_log_info("Data available, Decoding...");
+				auto decodeBufferSize = buf_get_element_count(&m_decodeBuffer);
+				auto decodeBufferPtr = buf_get_ptr_typeof(&m_decodeBuffer, u8);
+				_assert(decodeBufferSize != 0);
 				u32 nFrameReturned = 0;
 				SKVMOIP::StopWatch decodeWatch;
-				if(m_decoder.decode(buf_get_ptr_typeof(&m_decodeBuffer, u8), buf_get_element_count(&m_decodeBuffer), nFrameReturned))
+				if(m_decoder.decode(decodeBufferPtr, decodeBufferSize, nFrameReturned))
 				{
+					/* needs more data for the next frame decode - so notify the network thread to start receiving */
 					m_isDataAvailable = false;
+					lock.unlock();
+					m_dataAvailableCV.notify_one();
 
-					std::pair<FrameData&, FIFOPool<FrameData>::ItemIdType>* frameIdPair;
-					
 					_assert(nFrameReturned == 1);
 					auto decodeTime = decodeWatch.stop();
 					u8* frame = m_decoder.getFrame();
@@ -169,27 +183,22 @@ namespace SKVMOIP
 					{
 						auto convertTime = convertWatch.stop();
 						
-						auto result = m_frameDataPool.getInactive();
-						if (!result)
+						std::lock_guard<std::mutex> lock(m_ClientMutex);
+						if (!m_frameDataPool.hasInactive())
 						{
 							debug_log_info("Allocating new FrameData object");
 							m_frameDataPool.createInactive(getUncompressedConvertedFrameSize());
-							auto result = m_frameDataPool.getInactive();
-							_assert(result.has_value());
-							frameIdPair = &result.value();
 						}
-						else
+
+						if(auto result = m_frameDataPool.getInactive())
 						{
-							debug_log_info("Using existing FrameData object");
-							frameIdPair = &result.value();
+							auto rgbDataSize = m_converter.getRGBDataSize();
+							_assert(rgbDataSize == FIFOPool<FrameData>::GetValue(result)->getSize());
+							_assert(rgbDataSize == getUncompressedConvertedFrameSize());
+							memcpy(FIFOPool<FrameData>::GetValue(result)->getPtr(), rgbData, rgbDataSize);
+							m_frameDataPool.returnInactive(result);
 						}
-						
-						auto rgbDataSize = m_converter.getRGBDataSize();
-						_assert(rgbDataSize == frameIdPair->first.getSize());
-						_assert(rgbDataSize == getUncompressedConvertedFrameSize());
-						memcpy(frameIdPair->first.getPtr(), rgbData, m_converter.getRGBDataSize());
-						m_frameDataPool.returnInactive(*frameIdPair);
-						debug_log_info("Time info: decode: %lu, convert: %lu, encodedSize: %.2f kb", decodeTime, convertTime, buf_get_element_count(&m_decodeBuffer) / 1024.0);
+						// debug_log_info("Time info: decode: %lu, convert: %lu, encodedSize: %.2f kb", decodeTime, convertTime, buf_get_element_count(&m_decodeBuffer) / 1024.0);
 					}
 					else 
 					{ 

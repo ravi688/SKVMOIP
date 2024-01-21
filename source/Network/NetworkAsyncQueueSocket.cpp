@@ -71,7 +71,7 @@ namespace SKVMOIP
 				}
 				case Type::Receive:
 				{
-					debug_log_info("Receiving Data...");
+					// debug_log_info("Receiving Data...");
 					std::pair<Socket*, decltype(this)> socketTransxnPair { &socket, this };
 
 					bool result = m_receiveFormatter->format([](u32 size, void* userData) -> void* 
@@ -183,7 +183,7 @@ namespace SKVMOIP
 				std::unique_lock<std::mutex> lock(m_mutex);
 				while(m_transxnQueue.empty())
 					m_dataAvailableCV.wait(lock);
-				debug_log_info("Request received for Data Receive");
+				// debug_log_info("Request received for Data Receive");
 				Transxn transxn(std::move(m_transxnQueue.back()));
 				/* now we are done moving/copying, and let the client thread add more send and receive transactions into the queue */
 				lock.unlock();

@@ -24,11 +24,12 @@ namespace SKVMOIP
 			bool m_isValid;
 	
 		public:
+			FrameData() : m_isValid(false) { }
 			FrameData(u32 capacity);
 			FrameData(FrameData&& data);
 			FrameData& operator=(FrameData&& data);
-			FrameData(FrameData& data) = delete;
-			FrameData& operator=(FrameData& data) = delete;
+			FrameData(FrameData& data) = default;
+			FrameData& operator=(FrameData& data) = default;
 			~FrameData();
 	
 			const u8* getPtr() const;
@@ -41,6 +42,7 @@ namespace SKVMOIP
 		std::condition_variable m_dataAvailableCV;
 		std::thread m_decodeThread;
 		std::mutex m_mutex;
+		std::mutex m_ClientMutex;
 		buffer_t m_nv12Buffer;
 		buffer_t m_decodeBuffer;
 		Decoder m_decoder;
@@ -72,7 +74,7 @@ namespace SKVMOIP
 		~HDMIDecodeNetStream();
 	
 		/* Following two functions are supposed to be callled from another client thread (main thread) */
-		std::optional<FIFOPool<FrameData>::ItemType> borrowFrameData();
-		void returnFrameData(FIFOPool<FrameData>::ItemType frameData);
+		typename FIFOPool<FrameData>::PoolItemType borrowFrameData();
+		void returnFrameData(typename FIFOPool<FrameData>::PoolItemType frameData);
 	};
 }
