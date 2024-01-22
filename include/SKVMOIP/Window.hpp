@@ -3,6 +3,8 @@
 #include <SKVMOIP/defines.hpp>
 #include <SKVMOIP/Event.hpp>
 
+#include <SKVMOIP/Win32/Win32Window.hpp>
+
 #ifdef PLATFORM_WINDOWS
 #	define WIN32_LEAN_AND_MEAN
 #	include <Windows.h>
