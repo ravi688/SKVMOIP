@@ -25,35 +25,46 @@ BUILD_DEFINES=
 EXTERNAL_SERVER_INCLUDES=
 EXTERNAL_SERVER_LIBS=-L./external-dependencies/x264  -lx264 -lx264
 
-EXTERNAL_CLIENT_INCLUDES=$(shell pkg-config gtk4 --cflags) \
+EXTERNAL_GTK_INCLUDES=$(shell pkg-config gtk4 --cflags)
+EXTERNAL_GTK_LIBS=$(shell pkg-config gtk4 --libs)
+EXTERNAL_CLIENT_INCLUDES=$(EXTERNAL_GTK_INCLUDES) \
 						-I./external-dependencies/NvidiaCodec/include/ \
 						-I"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.3/include/"
-EXTERNAL_CLIENT_LIBS=$(shell pkg-config gtk4 --libs) \
+EXTERNAL_CLIENT_LIBS=$(EXTERNAL_GTK_LIBS) \
 					-L"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.3/lib/x64" -l:cuda.lib \
 					-L./external-dependencies/NvidiaCodec/ -l:nvcuvid.lib -l:nvencodeapi.lib
 
+SERVER_SOURCES=source/Encoder.cpp \
+				source/main.server.cpp
+CLIENT_SOURCES=source/third_party/NvDecoder.cpp \
+				source/Decoder.cpp \
+				source/main.client.cpp \
+				source/Window.cpp \
+				source/Win32/Win32DrawSurface.cpp \
+				source/Win32/Win32RawInput.cpp \
+				source/Win32/Win32Window.cpp \
+				source/HDMIDecoderNetStream.cpp \
+				source/HIDUsageID.cpp
+TEST_SOURCES=source/main.cpp
+GUITEST_SOURCES=source/main.guitest.cpp
+
 ifeq ($(BUILD),server)
 	BUILD_DEFINES+=-DBUILD_SERVER
-	EXCLUDE_SOURCES+=source/third_party/NvDecoder.cpp \
-					 source/Decoder.cpp \
-					 source/main.cpp \
-					 source/main.client.cpp \
-					 source/Window.cpp \
-					 source/Win32/Win32DrawSurface.cpp \
-					 source/Win32/Win32RawInput.cpp \
-					 source/Win32/Win32Window.cpp \
-					 source/HDMIDecoderNetStream.cpp \
-					 source/HIDUsageID.cpp
+	EXCLUDE_SOURCES+=$(CLIENT_SOURCES) $(TEST_SOURCES) $(GUITEST_SOURCES)
 	EXTERNAL_INCLUDES+=$(EXTERNAL_SERVER_INCLUDES)
 	EXTERNAL_LIBS+=$(EXTERNAL_SERVER_LIBS)
 endif
 ifeq ($(BUILD),client)
 	BUILD_DEFINES+=-DBUILD_CLIENT
-	EXCLUDE_SOURCES+=source/Encoder.cpp \
-					 source/main.cpp \
-					 source/main.server.cpp
+	EXCLUDE_SOURCES+=$(SERVER_SOURCES) $(TEST_SOURCES) $(GUITEST_SOURCES)
 	EXTERNAL_INCLUDES+=$(EXTERNAL_CLIENT_INCLUDES)
 	EXTERNAL_LIBS+=$(EXTERNAL_CLIENT_LIBS)
+endif
+ifeq ($(BUILD),guitest)
+	BUILD_DEFINES+=-DBUILD_GUITEST
+	EXCLUDE_SOURCES+=$(SERVER_SOURCES) $(CLIENT_SOURCES) $(TEST_SOURCES)
+	EXTERNAL_INCLUDES+=$(EXTERNAL_GTK_INCLUDES)
+	EXTERNAL_LIBS+=$(EXTERNAL_GTK_LIBS)
 endif
 ifeq ($(BUILD),)
 	BUILD_DEFINES+=-DBUILD_TEST
