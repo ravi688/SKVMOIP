@@ -5,8 +5,30 @@
 #include <vector>
 #include <deque>
 
+#include <bufferlib/buffer.h>
+
 namespace SKVMOIP
 {
+	class DataBuffer
+	{
+	private:
+		buffer_t m_buffer;
+		bool m_isValid;
+	
+	public:
+		DataBuffer() : m_isValid(false) { }
+		DataBuffer(u32 capacity);
+		DataBuffer(DataBuffer&& data);
+		DataBuffer& operator=(DataBuffer&& data);
+		DataBuffer(DataBuffer& data) = default;
+		DataBuffer& operator=(DataBuffer& data) = default;
+		~DataBuffer();
+	
+		const u8* getPtr() const;
+		u8* getPtr();
+		u32 getSize() const;
+	};	
+
 	template<typename T>
 	class FIFOPool
 	{

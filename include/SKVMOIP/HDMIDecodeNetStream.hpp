@@ -12,30 +12,12 @@
 
 namespace SKVMOIP
 {
-	void ReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData);
+	static void FrameReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData);
 
 	class HDMIDecodeNetStream : public Network::AsyncQueueSocket
 	{
 	public:
-		class FrameData
-		{
-		private:
-			buffer_t m_buffer;
-			bool m_isValid;
-	
-		public:
-			FrameData() : m_isValid(false) { }
-			FrameData(u32 capacity);
-			FrameData(FrameData&& data);
-			FrameData& operator=(FrameData&& data);
-			FrameData(FrameData& data) = default;
-			FrameData& operator=(FrameData& data) = default;
-			~FrameData();
-	
-			const u8* getPtr() const;
-			u8* getPtr();
-			u32 getSize() const;
-		};
+		typedef DataBuffer FrameData;
 
 	private:
 		FIFOPool<FrameData> m_frameDataPool;
@@ -56,7 +38,7 @@ namespace SKVMOIP
 		Network::AsyncQueueSocket::BinaryFormatter m_receiveFormatter;
 		bool m_isDataAvailable;
 
-		friend void ReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData);
+		friend void FrameReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData);
 	
 		void decodeThreadHandler();
 	

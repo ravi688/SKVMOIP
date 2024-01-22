@@ -7,45 +7,7 @@
 
 namespace SKVMOIP
 {
-	HDMIDecodeNetStream::FrameData::FrameData(u32 capacity)
-	{
-		m_buffer = buf_create(sizeof(u8), capacity, 0);
-		buf_clear(&m_buffer, NULL);
-	}
-	HDMIDecodeNetStream::FrameData::FrameData(FrameData&& data) : m_isValid(data.m_isValid)
-	{
-		buf_move(&data.m_buffer, &m_buffer);
-		data.m_isValid = false;
-	}
-	HDMIDecodeNetStream::FrameData& HDMIDecodeNetStream::FrameData::operator=(FrameData&& data)
-	{
-		m_isValid = data.m_isValid;
-		buf_move(&data.m_buffer, &m_buffer);
-		data.m_isValid = false;
-		return *this;
-	}
-	HDMIDecodeNetStream::FrameData::~FrameData()
-	{
-		if(!m_isValid) return;
-		buf_free(&m_buffer);
-	}
-	
-	const u8* HDMIDecodeNetStream::FrameData::getPtr() const
-	{
-		return m_isValid ? buf_get_ptr_typeof(const_cast<buffer_t*>(&m_buffer), u8) : NULL;
-	}
-	
-	u8* HDMIDecodeNetStream::FrameData::getPtr()
-	{
-		return m_isValid ? buf_get_ptr_typeof(&m_buffer, u8) : NULL;
-	}
-	
-	u32 HDMIDecodeNetStream::FrameData::getSize() const
-	{
-		return m_isValid ? static_cast<u32>(buf_get_capacity(const_cast<buffer_t*>(&m_buffer))) : 0;
-	}
-	
-	
+
 	HDMIDecodeNetStream::HDMIDecodeNetStream(u32 width, u32 height, u32 frNum, u32 frDen, u32 bitsPerPixel) : 
 												m_decodeThread(decodeThreadHandler, this),
 												m_decoder(),
@@ -116,7 +78,7 @@ namespace SKVMOIP
 		m_frameDataPool.returnActive(frameData);
 	}
 	
-	void ReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData)
+	static void FrameReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData)
 	{
 		HDMIDecodeNetStream* decodeStream = reinterpret_cast<HDMIDecodeNetStream*>(userData);
 		
@@ -154,7 +116,7 @@ namespace SKVMOIP
 			while(!m_isDataAvailable)
 			{
 				// debug_log_info("Data not available, making request");
-				receive(ReceiveCallbackHandler, reinterpret_cast<void*>(this), m_receiveFormatter);
+				receive(FrameReceiveCallbackHandler, reinterpret_cast<void*>(this), m_receiveFormatter);
 				m_dataAvailableCV.wait(lock);
 			}
 
