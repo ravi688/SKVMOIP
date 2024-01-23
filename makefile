@@ -25,8 +25,8 @@ BUILD_DEFINES=
 EXTERNAL_SERVER_INCLUDES=
 EXTERNAL_SERVER_LIBS=-L./external-dependencies/x264  -lx264 -lx264
 
-EXTERNAL_GTK_INCLUDES=$(shell pkg-config gtk4 --cflags)
-EXTERNAL_GTK_LIBS=$(shell pkg-config gtk4 --libs)
+EXTERNAL_GTK_INCLUDES=$(shell pkg-config gtk+-3.0 --cflags)
+EXTERNAL_GTK_LIBS=$(shell pkg-config gtk+-3.0 --libs)
 EXTERNAL_CLIENT_INCLUDES=$(EXTERNAL_GTK_INCLUDES) \
 						-I./external-dependencies/NvidiaCodec/include/ \
 						-I"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.3/include/"
