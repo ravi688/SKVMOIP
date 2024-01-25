@@ -38,6 +38,7 @@ private:
   GtkWidget* m_labelBox;
   GtkWidget* m_DashboardBox;
   GtkWidget* m_topLevelBox;
+  GtkWidget* m_topLevelButton;
 
   std::pair<Callback, void*> m_videoCallback;
   std::pair<Callback, void*> m_powerCallback;
@@ -72,9 +73,12 @@ MachineDashboard::MachineDashboard(const char* name) :
                                                         m_buttonBox(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0)),
                                                         m_labelBox(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0)),
                                                         m_DashboardBox(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0)),
-                                                        m_topLevelBox(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0))
+                                                        m_topLevelBox(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0)),
+                                                        m_topLevelButton(gtk_check_button_new())
 
 {
+
+  gtk_widget_set_margin_end(m_buttonBox, 40);
   gtk_box_pack_start(GTK_BOX(m_buttonBox), m_videoButton, FALSE, FALSE, 0);
   gtk_box_pack_start(GTK_BOX(m_buttonBox), m_powerButton, FALSE, FALSE, 0);
   gtk_box_pack_start(GTK_BOX(m_buttonBox), m_resetButton, FALSE, FALSE, 0);
@@ -83,11 +87,13 @@ MachineDashboard::MachineDashboard(const char* name) :
   gtk_box_pack_start(GTK_BOX(m_labelBox), m_outputAddressLabel, FALSE, FALSE, 0);
   gtk_box_pack_start(GTK_BOX(m_labelBox), m_inputAddressLabel, FALSE, FALSE, 0);
 
-  gtk_box_pack_start(GTK_BOX(m_DashboardBox), m_labelBox, TRUE, TRUE, 0);
-  gtk_box_pack_start(GTK_BOX(m_DashboardBox), m_buttonBox, TRUE, TRUE, 0);
+  gtk_container_add(GTK_CONTAINER(m_topLevelButton), m_labelBox);
+  gtk_box_pack_start(GTK_BOX(m_DashboardBox), m_topLevelButton, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(m_DashboardBox), m_buttonBox, FALSE, FALSE, 0);
 
   gtk_box_pack_start(GTK_BOX(m_topLevelBox), m_nameLabel, FALSE, FALSE, 0);
   gtk_box_pack_start(GTK_BOX(m_topLevelBox), m_DashboardBox, TRUE, TRUE, 0);
+
 }
 
 MachineDashboard::~MachineDashboard()
@@ -97,29 +103,34 @@ MachineDashboard::~MachineDashboard()
 
 void MachineDashboard::setOutputAddress(const char* ipAddress, const char* portNumber)
 {
+  const char* desc = "Video Output: ";
+  auto len0 = strlen(desc);
   auto len1 = strlen(ipAddress);
   auto len2 = strlen(portNumber);
-  char buffer[len1 + len2 + 2];
-  memcpy(buffer, ipAddress, len1);
-  buffer[len1] = ':';
-  memcpy(buffer + len1 + 1, portNumber, len2);
-  buffer[len1 + len2 + 1] = 0;
+  char buffer[len0 + len1 + len2 + 2];
+  memcpy(buffer, desc, len0);
+  memcpy(buffer + len0, ipAddress, len1);
+  buffer[len0 + len1] = ':';
+  memcpy(buffer + len0 + len1 + 1, portNumber, len2);
+  buffer[len0 + len1 + len2 + 1] = 0;
 
-  // gtk_label_set_text(GTK_LABEL(m_outputAddressLabel), buffer);
-  gtk_label_set_markup(GTK_LABEL(m_outputAddressLabel), "<span background=\"red\">Address</span>");
+  gtk_label_set_text(GTK_LABEL(m_outputAddressLabel), buffer);
 }
 
 void MachineDashboard::setInputAddress(const char* ipAddress, const char* portNumber)
 {
+  const char* desc = "KM Input: ";
+  auto len0 = strlen(desc);
   auto len1 = strlen(ipAddress);
   auto len2 = strlen(portNumber);
-  char buffer[len1 + len2 + 2];
-  memcpy(buffer, ipAddress, len1);
-  buffer[len1] = ':';
-  memcpy(buffer + len1 + 1, portNumber, len2);
-  buffer[len1 + len2 + 1] = 0;
+  char buffer[len0 + len1 + len2 + 2];
+  memcpy(buffer, desc, len0);
+  memcpy(buffer + len0, ipAddress, len1);
+  buffer[len0 + len1] = ':';
+  memcpy(buffer + len0 + len1 + 1, portNumber, len2);
+  buffer[len0 + len1 + len2 + 1] = 0;
 
-  gtk_label_set_text(GTK_LABEL(m_nameLabel), buffer);
+  gtk_label_set_text(GTK_LABEL(m_inputAddressLabel), buffer);
 }
 
 
@@ -141,21 +152,34 @@ static void on_activate (GtkApplication *app) {
           GtkWidget* findMachineLabel = gtk_label_new("Find Machine");
           GtkWidget* textInputField = gtk_entry_new();
           GtkWidget* connectStatusLabel = gtk_label_new("");
+        GtkWidget* buttonCont = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
         GtkWidget* connectButton = gtk_button_new_with_label("Connect");
+        GtkWidget* addButton = gtk_button_new_with_label("Add");
+        GtkWidget* editButton = gtk_button_new_with_label("Edit");
+        GtkWidget* removeButton = gtk_button_new_with_label("Remove");
     GtkWidget* scrolledWindow = gtk_scrolled_window_new(NULL, NULL);
     GtkWidget* bottomCont = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
 
-  gtk_box_pack_start(GTK_BOX(searchInOutCont), findMachineLabel, TRUE, TRUE, 0);
-  gtk_box_pack_start(GTK_BOX(searchInOutCont), textInputField, TRUE, TRUE, 0);
-  gtk_box_pack_start(GTK_BOX(searchInOutCont), connectStatusLabel, TRUE, TRUE, 0);
 
-  gtk_box_set_spacing(GTK_BOX(searchCont), 20);
+  gtk_box_set_spacing(GTK_BOX(searchInOutCont), 20);
+  gtk_box_pack_start(GTK_BOX(searchInOutCont), findMachineLabel, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(searchInOutCont), textInputField, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(searchInOutCont), connectStatusLabel, FALSE, FALSE, 0);
+
+  gtk_box_pack_start(GTK_BOX(buttonCont), connectButton, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(buttonCont), addButton, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(buttonCont), editButton, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(buttonCont), removeButton, FALSE, FALSE, 0);
+
+  gtk_widget_set_margin_top(searchCont, 40);
+  gtk_box_set_spacing(GTK_BOX(searchCont), 10);
   gtk_box_pack_start(GTK_BOX(searchCont), searchInOutCont, TRUE, TRUE, 0);
-  gtk_box_pack_start(GTK_BOX(searchCont), connectButton, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(searchCont), buttonCont, FALSE, FALSE, 0);
 
+  gtk_widget_set_margin_bottom(searchCont, 10);
   gtk_box_pack_start(GTK_BOX(topCont), bannerLabel, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(topCont), searchCont, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(topCont), searchCont, FALSE, FALSE, 0);
 
   gtk_paned_add1(GTK_PANED(topLevelCont), topCont);
   std::vector<MachineDashboard> machines;
@@ -164,12 +188,13 @@ static void on_activate (GtkApplication *app) {
   {
     machines.emplace_back("Dummy Machine");
     GtkWidget* button = machines[i];
-    machines[i].setOutputAddress("dfd", "323");
+    machines[i].setOutputAddress("192.168.1.12", "323");
+    machines[i].setInputAddress("192.168.1.12", "323");
     gtk_box_pack_start(GTK_BOX(bottomCont), button, FALSE, FALSE, 5);
   }
   gtk_container_add(GTK_CONTAINER(scrolledWindow), bottomCont);
   gtk_paned_add2(GTK_PANED(topLevelCont), scrolledWindow);
-  gtk_paned_set_position(GTK_PANED(topLevelCont), 200);
+  gtk_paned_set_position(GTK_PANED(topLevelCont), 210);
 
   gtk_container_set_border_width(GTK_CONTAINER(window), 10);
   gtk_container_add(GTK_CONTAINER(window), topLevelCont);
