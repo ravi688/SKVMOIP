@@ -8,6 +8,11 @@ namespace SKVMOIP
 {
 	namespace GUI
 	{
+
+			static void ButtonToggledHandler(GtkToggleButton* toggleButton, void* userData);
+			static void VideoButtonClickHandler(GtkWidget* widget, void* userData);
+			static void PowerButtonClickHandler(GtkWidget* widget, void* userData);
+			static void ResetButtonClickHandler(GtkWidget* widget, void* userData);
 		
 		/*
 		  _______________________________________
@@ -19,10 +24,26 @@ namespace SKVMOIP
 		*/
 		class MachineDashboard
 		{
+
+			friend void ButtonToggledHandler(GtkToggleButton* toggleButton, void* userData);
+			friend void VideoButtonClickHandler(GtkWidget* widget, void* userData);
+			friend void PowerButtonClickHandler(GtkWidget* widget, void* userData);
+			friend void ResetButtonClickHandler(GtkWidget* widget, void* userData);
+
 		public:
-		  typedef std::function<void(u32, void*)> Callback;
+		  // typedef std::function<void(u32, void*)> Callback;
+		  typedef void (*Callback)(u32, void*);
+
+		  struct HandlerInfo { u32 id; std::pair<Callback, void*> handler; };
+		  struct ToggleHandlerInfo
+		  { 
+		  	u32 id; 
+		  	std::pair<Callback, void*> selectHandler;
+		  	std::pair<Callback, void*> deselectHandler;
+		  };
 		
 		private:
+		  u32 m_id;
 		  GtkWidget* m_nameLabel;           /* Machine Name */
 		  GtkWidget* m_statusLabel;         /* Connection Status */
 		  GtkWidget* m_outputAddressLabel;  /* IP address and Port number of the video server - Video Output */
@@ -36,14 +57,15 @@ namespace SKVMOIP
 		  GtkWidget* m_topLevelBox;
 		  GtkWidget* m_topLevelButton;
 		
-		  std::pair<Callback, void*> m_videoCallback;
-		  std::pair<Callback, void*> m_powerCallback;
-		  std::pair<Callback, void*> m_resetCallback;
+		  ToggleHandlerInfo m_toggleCallbackHandlerInfo;;
+		  HandlerInfo m_videoCallbackHandlerInfo;
+		  HandlerInfo m_powerCallbackHandlerInfo;
+		  HandlerInfo m_resetCallbackHandlerInfo;
 		
 		public:
 		
 		  MachineDashboard() = delete;
-		  MachineDashboard(const char* name);
+		  MachineDashboard(u32 id, const char* name = "Untitled");
 		  ~MachineDashboard();
 		
 		  operator GtkWidget*() { return m_topLevelBox; }
@@ -52,9 +74,10 @@ namespace SKVMOIP
 		  void setStatus(const char* status) { gtk_label_set_text(GTK_LABEL(m_statusLabel), status); }
 		  void setOutputAddress(const char* ipAddress, const char* portNumber);
 		  void setInputAddress(const char* ipAddress, const char* portNumber);
-		  void setVideoButtonCallback(Callback callback, void* userData) { m_videoCallback.first = callback; m_videoCallback.second = userData;  }
-		  void setPowerButtonCallback(Callback callback, void* userData) { m_powerCallback.first = callback; m_powerCallback.second = userData; }
-		  void setResetButtonCallback(Callback callback, void* userData) { m_resetCallback.first = callback; m_resetCallback.second = userData; }
+		  void setSelectDeselectCallback(Callback selectCallback, Callback deslectCallback, void* userData);
+		  void setVideoButtonCallback(Callback callback, void* userData);
+		  void setPowerButtonCallback(Callback callback, void* userData);
+		  void setResetButtonCallback(Callback callback, void* userData);
 		};
 	}
 }
