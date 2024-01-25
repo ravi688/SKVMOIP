@@ -1,11 +1,11 @@
-#include <SKVMOIP/GUI/MachineDashboard.hpp>
+#include <SKVMOIP/GUI/MachineUI.hpp>
 #include <SKVMOIP/assert.h>
 
 namespace SKVMOIP
 {
 	namespace GUI
 	{
-		MachineDashboard::MachineDashboard(u32 id, const char* name) :  m_id(id),
+		MachineUI::MachineUI(u32 id, const char* name) :  m_id(id),
 		                                                        m_nameLabel(gtk_label_new(name)),
 		                                                        m_statusLabel(gtk_label_new("S: <unkown>")),
 		                                                        m_outputAddressLabel(gtk_label_new("O: <unknown>")),
@@ -41,14 +41,15 @@ namespace SKVMOIP
 		  gtk_box_pack_start(GTK_BOX(m_topLevelBox), m_nameLabel, FALSE, FALSE, 0);
 		  gtk_box_pack_start(GTK_BOX(m_topLevelBox), m_DashboardBox, TRUE, TRUE, 0);
 
+		  gtk_widget_show_all(m_topLevelBox);
 		}
 		
-		MachineDashboard::~MachineDashboard()
+		MachineUI::~MachineUI()
 		{
 		
 		}
 		
-		void MachineDashboard::setOutputAddress(const char* ipAddress, const char* portNumber)
+		void MachineUI::setOutputAddress(const char* ipAddress, const char* portNumber)
 		{
 		  const char* desc = "Video Output: ";
 		  auto len0 = strlen(desc);
@@ -64,7 +65,7 @@ namespace SKVMOIP
 		  gtk_label_set_text(GTK_LABEL(m_outputAddressLabel), buffer);
 		}
 		
-		void MachineDashboard::setInputAddress(const char* ipAddress, const char* portNumber)
+		void MachineUI::setInputAddress(const char* ipAddress, const char* portNumber)
 		{
 		  const char* desc = "KM Input: ";
 		  auto len0 = strlen(desc);
@@ -82,7 +83,7 @@ namespace SKVMOIP
 
 		static void ButtonToggledHandler(GtkToggleButton* toggleButton, void* userData)
 		{
-			MachineDashboard* machine = reinterpret_cast<MachineDashboard*>(userData);
+			MachineUI* machine = reinterpret_cast<MachineUI*>(userData);
 			if(gtk_toggle_button_get_active(toggleButton))
 			{
 				_assert(machine->m_toggleCallbackHandlerInfo.selectHandler.first != NULL);
@@ -97,26 +98,26 @@ namespace SKVMOIP
 
 		static void VideoButtonClickHandler(GtkWidget* widget, void* userData)
 		{
-			MachineDashboard* machine = reinterpret_cast<MachineDashboard*>(userData);
+			MachineUI* machine = reinterpret_cast<MachineUI*>(userData);
 			_assert(machine->m_videoCallbackHandlerInfo.handler.first != NULL);
 			machine->m_videoCallbackHandlerInfo.handler.first(machine->m_videoCallbackHandlerInfo.id, machine->m_videoCallbackHandlerInfo.handler.second);
 		}
 
 		static void PowerButtonClickHandler(GtkWidget* widget, void* userData)
 		{
-			MachineDashboard* machine = reinterpret_cast<MachineDashboard*>(userData);
+			MachineUI* machine = reinterpret_cast<MachineUI*>(userData);
 			_assert(machine->m_powerCallbackHandlerInfo.handler.first != NULL);
 			machine->m_powerCallbackHandlerInfo.handler.first(machine->m_powerCallbackHandlerInfo.id, machine->m_powerCallbackHandlerInfo.handler.second);
 		}
 
 		static void ResetButtonClickHandler(GtkWidget* widget, void* userData)
 		{
-			MachineDashboard* machine = reinterpret_cast<MachineDashboard*>(userData);
+			MachineUI* machine = reinterpret_cast<MachineUI*>(userData);
 			_assert(machine->m_resetCallbackHandlerInfo.handler.first != NULL);
 			machine->m_resetCallbackHandlerInfo.handler.first(machine->m_resetCallbackHandlerInfo.id, machine->m_resetCallbackHandlerInfo.handler.second);
 		}
 
-		void MachineDashboard::setSelectDeselectCallback(Callback selectCallback, Callback deslectCallback, void* userData)
+		void MachineUI::setSelectDeselectCallback(Callback selectCallback, Callback deslectCallback, void* userData)
 		{ 
 			m_toggleCallbackHandlerInfo.selectHandler.first = selectCallback; m_toggleCallbackHandlerInfo.selectHandler.second = userData; 
 			m_toggleCallbackHandlerInfo.deselectHandler.first = deslectCallback; m_toggleCallbackHandlerInfo.deselectHandler.second = userData; 
@@ -124,17 +125,17 @@ namespace SKVMOIP
 			g_signal_connect(G_OBJECT(m_topLevelButton), "toggled", G_CALLBACK(ButtonToggledHandler), reinterpret_cast<void*>(this));
 		}
 
-		void MachineDashboard::setVideoButtonCallback(Callback callback, void* userData)
+		void MachineUI::setVideoButtonCallback(Callback callback, void* userData)
 		{ 
 			m_videoCallbackHandlerInfo.handler.first = callback; m_videoCallbackHandlerInfo.handler.second = userData; 
 			g_signal_connect(G_OBJECT(m_videoButton), "clicked", G_CALLBACK(VideoButtonClickHandler), reinterpret_cast<void*>(this));
 		}
-		void MachineDashboard::setPowerButtonCallback(Callback callback, void* userData)
+		void MachineUI::setPowerButtonCallback(Callback callback, void* userData)
 		{ 
 			m_powerCallbackHandlerInfo.handler.first = callback; m_powerCallbackHandlerInfo.handler.second = userData;
 			g_signal_connect(G_OBJECT(m_powerButton), "clicked", G_CALLBACK(PowerButtonClickHandler), reinterpret_cast<void*>(this));
 		}
-		void MachineDashboard::setResetButtonCallback(Callback callback, void* userData)
+		void MachineUI::setResetButtonCallback(Callback callback, void* userData)
 		{ 
 			m_resetCallbackHandlerInfo.handler.first = callback; m_resetCallbackHandlerInfo.handler.second = userData;
 			g_signal_connect(G_OBJECT(m_resetButton), "clicked", G_CALLBACK(ResetButtonClickHandler), reinterpret_cast<void*>(this));

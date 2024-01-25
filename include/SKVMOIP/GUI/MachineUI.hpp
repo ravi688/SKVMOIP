@@ -22,7 +22,7 @@ namespace SKVMOIP
 		 | I: 192.168.1.17:101        | Reset |  |
 		 |_______________________________________|
 		*/
-		class MachineDashboard
+		class MachineUI
 		{
 
 			friend void ButtonToggledHandler(GtkToggleButton* toggleButton, void* userData);
@@ -64,12 +64,17 @@ namespace SKVMOIP
 		
 		public:
 		
-		  MachineDashboard() = delete;
-		  MachineDashboard(u32 id, const char* name = "Untitled");
-		  ~MachineDashboard();
+		  MachineUI() = default;
+		  MachineUI(u32 id, const char* name = "Untitled");
+		  MachineUI(MachineUI&) = default;
+		  MachineUI& operator=(MachineUI&) = default;
+		  MachineUI(MachineUI&&) = default;
+		  MachineUI& operator=(MachineUI&&) = default;
+		  ~MachineUI();
 		
 		  operator GtkWidget*() { return m_topLevelBox; }
 		
+		  u32 getID() const noexcept { return m_id; }
 		  void setName(const char* name) { gtk_label_set_text(GTK_LABEL(m_nameLabel), name); }
 		  void setStatus(const char* status) { gtk_label_set_text(GTK_LABEL(m_statusLabel), status); }
 		  void setOutputAddress(const char* ipAddress, const char* portNumber);
