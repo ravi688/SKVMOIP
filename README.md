@@ -5,7 +5,7 @@ This repository contains source code for a SKVMOIP for Windows and Linux platfor
 There are many options available in the market for KVKM over IP, however most of them are either made for a corporate or very expensive for individuals - and still not scalable enough.
 Many people have built cheap solutions such as PiKVM and TinyPilot - but I still find them expensive given that they can only support one machine and one would need to spend more money to replicate over multiple machines.
 
-Therefore, I started this project to invent a Scalable KVM Over IP software suite we can be installed on cheap hardware modules and on a client computer. This KVMK Over IP is scalable to any size because it uses ethernet wiring to communicate with the computers/servers with only one Encoder Server.
+Therefore, I started this project to invent a Scalable KVM Over IP software suite we can be installed on cheap hardware modules and on a client computer. This KVMK Over IP is scalable to any size because it uses ethernet wiring to communicate with the computers/servers with only one Encoder Server; hence no need to replicate the "pricy" hardware for each machine to be managed.
 
 ### Features of SKVMOIP
 1. Keyboard Over IP, works even to boot systems into their BIOS and without any software installed on the target system.
