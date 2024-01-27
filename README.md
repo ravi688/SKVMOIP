@@ -1,11 +1,11 @@
 # Scalable KVM Over IP (SKVMOIP)
 This repository contains source code for a SKVMOIP for Windows and Linux platforms written in C++.<br>
-NOTE: Currently it is in development, and only Keyboard and Mouse works - no User Interface though.
 
 ### Introduction
-There are many options available in the market for KVKM over IP, however most of them either for a corporate or very expensive for individuals - and still not scalable enough.
+There are many options available in the market for KVKM over IP, however most of them are either made for a corporate or very expensive for individuals - and still not scalable enough.
+Many people have built cheap solutions such as PiKVM and TinyPilot - but I still find them expensive given that they can only support one machine and one would need to spend more money to replicate over multiple machines.
 
-Therefore, I started this project to invent a Scalable KVM Over IP software suite we can be installed on cheap hardware modules and on a client computer. This KVMK Over IP is scalable to any size because it uses ethernet wiring to communicate with the computers/servers.
+Therefore, I started this project to invent a Scalable KVM Over IP software suite we can be installed on cheap hardware modules and on a client computer. This KVMK Over IP is scalable to any size because it uses ethernet wiring to communicate with the computers/servers with only one Encoder Server.
 
 ### Features of SKVMOIP
 1. Keyboard Over IP, works even to boot systems into their BIOS and without any software installed on the target system.
@@ -24,7 +24,8 @@ Therefore, I started this project to invent a Scalable KVM Over IP software suit
 2. W5500 Wizchip Ethernet Module
 4. ST Link Programmer
 5. HDMI capture device
-6. A client computer either running Windows or Linux.
+6. A Video Encoder server computer (usually a mini PC with enough processing power, more quantitative data will be added here in future).
+7. A client computer either running Windows or Linux.
 
 ### How to setup the SKVMOIP?
 Installing and setting up the software suite is easy to follow and requires no special technical knowledge.
@@ -48,6 +49,13 @@ Now, plug the ST link programmer to one of the USB ports of the computer (on whi
 NOTE: Before plugging the ST link programmer, make appropriate connections to the microcontroller's pins from some online guides.
 
 Click on the `Run` tab on the menu bar on the top, and select `run` to build and upload the executable on the Microcontroller.
+
+#### Setting up server for Windows
+It requires building the server executable first and then deploying it to the encoder server computer.
+1. `cd SKVMOIP`
+2. `./build.sh BUILD=server PLATFORM=Windows INSTALLER=1`
+3. `cd build/Windows`
+4. Now double click on `SKVMOIP_Server_Installer.exe` to execute the installer as usually you do to install any other Windows software package.
 
 #### Setting up client For Windows
 It requires buildilng the installer first and then executing the installer to install the client in Windows.
