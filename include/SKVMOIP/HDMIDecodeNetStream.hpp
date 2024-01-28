@@ -27,6 +27,7 @@ namespace SKVMOIP
 		std::condition_variable m_dataAvailableCV;
 		std::mutex m_mutex;
 		std::mutex m_ClientMutex;
+		u32 m_inFlightRequestCount;
 		std::thread m_decodeThread;
 		buffer_t m_nv12Buffer;
 		buffer_t m_decodeBuffer;

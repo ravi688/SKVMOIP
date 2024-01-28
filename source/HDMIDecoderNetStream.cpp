@@ -11,6 +11,7 @@ namespace SKVMOIP
 	HDMIDecodeNetStream::HDMIDecodeNetStream(u32 width, u32 height, u32 frNum, u32 frDen, u32 bitsPerPixel) : 
 												AsyncQueueSocket(std::move(Network::Socket(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP))),
 												m_frameDataPool([] (DataBuffer& db) { db.destroy(); }),
+												m_inFlightRequestCount(0),
 												m_decodeThread(decodeThreadHandler, this),
 												m_converter(width, height, frNum, frDen, bitsPerPixel),
 												m_width(width), 
@@ -107,6 +108,8 @@ namespace SKVMOIP
 			decodeStream->m_dataAvailableCV.notify_one();
 		}
 	}
+
+	#define MAX_IN_FLIGHT_REQUEST_COUNT 5
 	
 	void HDMIDecodeNetStream::decodeThreadHandler()
 	{
@@ -115,14 +118,21 @@ namespace SKVMOIP
 			std::unique_lock<std::mutex> lock(m_mutex);
 			while(!m_isDataAvailable)
 			{
-				// debug_log_info("Data not available, making request");
-				receive(FrameReceiveCallbackHandler, reinterpret_cast<void*>(this), m_receiveFormatter);
+				if(m_inFlightRequestCount < MAX_IN_FLIGHT_REQUEST_COUNT)
+				{
+					receive(FrameReceiveCallbackHandler, reinterpret_cast<void*>(this), m_receiveFormatter);
+					++m_inFlightRequestCount;
+				}
+				else
+					DEBUG_LOG_INFO("MAX_IN_FLIGHT_REQUEST_COUNT(=%d) is reached", MAX_IN_FLIGHT_REQUEST_COUNT);
 				m_dataAvailableCV.wait(lock);
 			}
 
 			if(m_isDataAvailable)
 			{
-				// debug_log_info("Data available, Decoding...");
+				_assert(m_inFlightRequestCount > 0);
+				--m_inFlightRequestCount;
+				_assert(m_inFlightRequestCount < MAX_IN_FLIGHT_REQUEST_COUNT);
 				auto decodeBufferSize = buf_get_element_count(&m_decodeBuffer);
 				auto decodeBufferPtr = buf_get_ptr_typeof(&m_decodeBuffer, u8);
 				_assert(decodeBufferSize != 0);
@@ -148,7 +158,7 @@ namespace SKVMOIP
 						std::lock_guard<std::mutex> lock(m_ClientMutex);
 						if (!m_frameDataPool.hasInactive())
 						{
-							debug_log_info("Allocating new FrameData object");
+							DEBUG_LOG_INFO("Allocating new FrameData object");
 							m_frameDataPool.createInactive(getUncompressedConvertedFrameSize());
 						}
 
@@ -168,10 +178,15 @@ namespace SKVMOIP
 						debug_log_error("Failed to convert color space"); 
 					}
 				}
+
 				else 
 				{ 
 					decodeWatch.stop();
 					debug_log_error("Failed to decode, return value %d", nFrameReturned); 
+					/* needs more data for the next frame decode - so notify the network thread to start receiving */
+					m_isDataAvailable = false;
+					lock.unlock();
+					m_dataAvailableCV.notify_one();
 				}
 			}
 		}
