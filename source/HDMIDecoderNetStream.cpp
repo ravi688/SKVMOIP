@@ -9,16 +9,16 @@ namespace SKVMOIP
 {
 
 	HDMIDecodeNetStream::HDMIDecodeNetStream(u32 width, u32 height, u32 frNum, u32 frDen, u32 bitsPerPixel) : 
+												AsyncQueueSocket(std::move(Network::Socket(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP))),
+												m_frameDataPool([] (DataBuffer& db) { db.destroy(); }),
 												m_decodeThread(decodeThreadHandler, this),
-												m_decoder(),
 												m_converter(width, height, frNum, frDen, bitsPerPixel),
 												m_width(width), 
 												m_height(height),
 												m_frNum(frNum),
 												m_frDen(frDen),
 												m_bitsPerPixel(bitsPerPixel),
-												m_isDataAvailable(false),
-												AsyncQueueSocket(std::move(Network::Socket(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP)))
+												m_isDataAvailable(false)
 	{
 		/* This buffer stores the decoded data - which is in NV12 format */
 		m_nv12Buffer = buf_create_byte_buffer(getUncompressedFrameSize());
@@ -65,7 +65,7 @@ namespace SKVMOIP
 			debug_log_error("Failed to close network socket");
 		buf_free(&m_nv12Buffer);
 	}
-	
+
 	typename FIFOPool<HDMIDecodeNetStream::FrameData>::PoolItemType HDMIDecodeNetStream::borrowFrameData()
 	{
 		std::lock_guard<std::mutex> lock_guard(m_ClientMutex);

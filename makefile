@@ -46,7 +46,8 @@ CLIENT_SOURCES=source/third_party/NvDecoder.cpp \
 				source/HDMIDecoderNetStream.cpp \
 				source/HIDUsageID.cpp
 TEST_SOURCES=source/main.cpp
-GUITEST_SOURCES=source/main.guitest.cpp
+GUITEST_SOURCES=source/main.guitest.cpp\
+				$(wildcard source/GUI/*.cpp*)
 
 ifeq ($(BUILD),server)
 	BUILD_DEFINES+=-DBUILD_SERVER
@@ -227,8 +228,12 @@ ifeq ($(NOOPT),1)
 	LINKER_FLAGS += -O0
 endif
 
+ifeq ($(WARN),1)
+	COMPILER_FLAGS += -Wall -Wextra -pedantic
+endif
+
 DEBUG_COMPILER_FLAGS= -g #-fsanitize=integer-divide-by-zero // why it is not working on windows 64 bit?
-RELEASE_COMPILER_FLAGS= -O3 
+RELEASE_COMPILER_FLAGS= -O3
 DEBUG_LINKER_FLAGS= -g #-fsanitize=integer-divide-by-zero  // why it is not working on windows 64 bit?
 RELEASE_LINKER_FLAGS= -flto
 

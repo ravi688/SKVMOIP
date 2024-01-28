@@ -194,10 +194,18 @@ namespace SKVMOIP
 				{
 	        		UINT32 frNumerator, frDenominator;
 					if(MFGetAttributeRatio(pType, MF_MT_FRAME_RATE, &frNumerator, &frDenominator) != S_OK)
+					{
 						debug_log_error("\tUnable to get the frame rate");
+						pType->Release();
+						continue;
+					}
 					UINT32 width, height;
 					if(MFGetAttributeSize(pType, MF_MT_FRAME_SIZE, &width, &height) != S_OK)
+					{
 						debug_log_error("\tUnable to get the frame size");
+						pType->Release();
+						continue;
+					}
 					if(((frNumerator / frDenominator) == std::get<2>(res)) 
 						&& (width == std::get<0>(res)) 
 						&& (height == std::get<1>(res)) 
@@ -1000,6 +1008,11 @@ PROCESS_INPUT:
 					rgbBuffer[i + 2] = pMappedBuffer[i + 2];
 					rgbBuffer[i + 3] = pMappedBuffer[i + 3];
 				}
+				break;
+			}
+			default:
+			{
+				_ASSERT(false);
 				break;
 			}
 		}

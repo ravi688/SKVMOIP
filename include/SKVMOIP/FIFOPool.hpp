@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <deque>
+#include <algorithm>
 
 #include <bufferlib/buffer.h>
 
@@ -12,17 +13,15 @@ namespace SKVMOIP
 	class DataBuffer
 	{
 	private:
-		buffer_t m_buffer;
+		buffer_t* m_buffer;
 		bool m_isValid;
 	
 	public:
-		DataBuffer() : m_isValid(false) { }
+		DataBuffer() : m_buffer(NULL), m_isValid(false) { }
 		DataBuffer(u32 capacity);
-		DataBuffer(DataBuffer&& data);
-		DataBuffer& operator=(DataBuffer&& data);
-		DataBuffer(DataBuffer& data) = default;
-		DataBuffer& operator=(DataBuffer& data) = default;
-		~DataBuffer();
+		~DataBuffer() { m_isValid = false; m_buffer = NULL; }
+
+		void destroy();
 	
 		const u8* getPtr() const;
 		u8* getPtr();
@@ -41,16 +40,17 @@ namespace SKVMOIP
 	
 		std::deque<ItemIdType> m_activeQueue;
 		std::vector<ItemIdType> m_inactiveQueue;
+		void (*m_destroyCallback)(T&);
 	
 	public:
 
-		static OptionalReference<T> GetValue(PoolItemType itemType)
+		static OptionalReference<T> GetValue(PoolItemType& itemType)
 		{
 			if(!itemType) return { };
 			return { itemType->first };
 		}
 
-		FIFOPool();
+		FIFOPool(void (*destroyCallback)(T&));
 		FIFOPool(FIFOPool&& pool);
 		FIFOPool& operator=(FIFOPool&& pool);
 		FIFOPool(FIFOPool& pool) = delete;
@@ -65,15 +65,18 @@ namespace SKVMOIP
 		void returnInactive(PoolItemType item);
 		template<typename... Args>
 		void createInactive(Args... args);
+
+		void setDestroyCallback(void (*callback)(T&)) { m_destroyCallback = callback; }
 	};
 
 	template<typename T>
-	FIFOPool<T>::FIFOPool() { }
+	FIFOPool<T>::FIFOPool(void (*destroyCallback)(T&)) : m_destroyCallback(destroyCallback) { }
 	template<typename T>
 	FIFOPool<T>::FIFOPool(FIFOPool&& pool) : 
 											m_buffer(std::move(pool.m_buffer)),
 											m_activeQueue(std::move(pool.m_activeQueue)),
-											m_inactiveQueue(std::move(pool.m_inactiveQueue))
+											m_inactiveQueue(std::move(pool.m_inactiveQueue)),
+											m_destroyCallback(pool.m_destroyCallback)
 	{
 	
 	}
@@ -83,11 +86,16 @@ namespace SKVMOIP
 		m_buffer = std::move(pool.m_buffer);
 		m_activeQueue = std::move(pool.m_activeQueue);
 		m_inactiveQueue = std::move(pool.m_inactiveQueue);
+		m_destroyCallback = pool.m_destroyCallback;
 		return *this;
 	}
 
 	template<typename T>
-	FIFOPool<T>::~FIFOPool() { }
+	FIFOPool<T>::~FIFOPool()
+	{
+		if(m_destroyCallback != NULL)
+			std::for_each(m_buffer.begin(), m_buffer.end(), [this](T& v) { m_destroyCallback(v); });
+	}
 	
 	template<typename T>
 	typename FIFOPool<T>::PoolItemType FIFOPool<T>::getActive()

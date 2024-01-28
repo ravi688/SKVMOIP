@@ -13,10 +13,10 @@ typedef std::unordered_map<SKVMOIP::Window::EventType, SKVMOIP::Event> TypedEven
 typedef std::unordered_map<HWND, TypedEventMap> WindowsEventRegistry;
 static WindowsEventRegistry  gWindowsEventRegistry;
 
-static TypedEventMap*getEventMap(HWND windowHandle)
+static TypedEventMap* getEventMap(HWND windowHandle)
 {
 	WindowsEventRegistry::iterator eventMapKeyValuePairIt = gWindowsEventRegistry.find(windowHandle);
-	if(eventMapKeyValuePairIt != gWindowsEventRegistry.end());
+	if(eventMapKeyValuePairIt != gWindowsEventRegistry.end())
 		return &eventMapKeyValuePairIt->second;
 	return nullptr;
 }

@@ -94,31 +94,31 @@ namespace Win32
 		struct
 		{
 			bool isTransition;
-			KeyStatus status;;
+			KeyStatus status;
 		} leftButton;
 		
 		struct
 		{
 			bool isTransition;
-			KeyStatus status;;
+			KeyStatus status;
 		}  rightButton;
 
 		struct
 		{
 			bool isTransition;
-			KeyStatus status;;
+			KeyStatus status;
 		} middleButton;
 
 		struct
 		{
 			bool isTransition;
-			KeyStatus status;;
+			KeyStatus status;
 		} browseForwardButton;
 
 		struct
 		{
 			bool isTransition;
-			KeyStatus status;;
+			KeyStatus status;
 		} browseBackwardButton;
 
 		bool isMoveRelative;

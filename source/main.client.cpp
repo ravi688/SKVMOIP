@@ -13,8 +13,8 @@
 
 using namespace SKVMOIP;
 
-#define SERVER_IP_ADDRESS "192.168.1.20"
-#define SERVER_PORT_NUMBER "6020"
+#define SERVER_IP_ADDRESS "192.168.1.11"
+#define SERVER_PORT_NUMBER "2020"
 
 static std::unique_ptr<Win32::Win32DrawSurface> gWin32DrawSurfaceUPtr;
 /* NOTE: HDMIDecodeNetStream creates 2 threads - one for Receiving data from network and Another for Decoding/Converting 
@@ -77,10 +77,10 @@ int main(int argc, const char* argv[])
 	// Event::SubscriptionHandle keyboardInputHandle = window.getEvent(Window::EventType::KeyboardInput).subscribe(KeyboardInputHandler, NULL);
 	Event::SubscriptionHandle windowPaintHandle = window.getEvent(Window::EventType::Paint).subscribe(WindowPaintHandler, NULL);
 
-	debug_log_info("Trying to connect to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
+	DEBUG_LOG_INFO("Trying to connect to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
 	/* pauses (acquires mutex from) the network thread and waiting for connecting with the server */
 	if(gHDMIDecodeNetStream->connect(SERVER_IP_ADDRESS, SERVER_PORT_NUMBER) == Network::Result::Success)
-		debug_log_info("Connected to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
+		DEBUG_LOG_INFO("Connected to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
 
 	// Network::Socket networkStream(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP);
 	// debug_log_info("Trying to connect to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);

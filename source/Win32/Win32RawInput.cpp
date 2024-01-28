@@ -156,12 +156,12 @@ namespace Win32
 	SKVMOIP_API void DisplayRawInputDeviceList()
 	{
 		UINT numDevices;
-		if(GetRawInputDeviceList(NULL, &numDevices, sizeof(RAWINPUTDEVICELIST)) == -1)
+		if(GetRawInputDeviceList(NULL, &numDevices, sizeof(RAWINPUTDEVICELIST)) == static_cast<UINT>(-1))
 			Internal_ErrorExit("GetRawInputDeviceList");
 
 		RAWINPUTDEVICELIST* rawInputDeviceListBuffer = new RAWINPUTDEVICELIST[numDevices];
 
-		if(GetRawInputDeviceList(rawInputDeviceListBuffer, &numDevices, sizeof(RAWINPUTDEVICELIST)) == -1)
+		if(GetRawInputDeviceList(rawInputDeviceListBuffer, &numDevices, sizeof(RAWINPUTDEVICELIST)) == static_cast<UINT>(-1))
 			Internal_ErrorExit("GetRawInputDeviceList");
 
 		debug_log_info("Raw Input Device Count: %lu", numDevices);

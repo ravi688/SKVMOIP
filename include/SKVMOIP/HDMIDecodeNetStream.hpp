@@ -10,6 +10,9 @@
 #include <mutex>
 #include <atomic>
 
+#pragma GCC push_options
+#pragma GCC optimize("O0")
+
 namespace SKVMOIP
 {
 	static void FrameReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData);
@@ -22,9 +25,9 @@ namespace SKVMOIP
 	private:
 		FIFOPool<FrameData> m_frameDataPool;
 		std::condition_variable m_dataAvailableCV;
-		std::thread m_decodeThread;
 		std::mutex m_mutex;
 		std::mutex m_ClientMutex;
+		std::thread m_decodeThread;
 		buffer_t m_nv12Buffer;
 		buffer_t m_decodeBuffer;
 		Decoder m_decoder;
@@ -60,3 +63,5 @@ namespace SKVMOIP
 		void returnFrameData(typename FIFOPool<FrameData>::PoolItemType frameData);
 	};
 }
+
+#pragma GCC pop_options

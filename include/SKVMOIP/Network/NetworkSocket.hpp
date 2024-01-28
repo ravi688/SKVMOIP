@@ -64,6 +64,7 @@ namespace SKVMOIP
 				s.m_socket = socket;
 				s.m_ipaFamily = ipAddressFamily;
 				s.m_socketType = socketType;
+				s.m_ipProtocol = ipProtocol;
 				s.m_role = SocketRole::Client;
 				s.m_isConnected = true;
 				s.m_isValid = true;
@@ -78,6 +79,7 @@ namespace SKVMOIP
 				s.m_socket = INVALID_SOCKET;
 				s.m_ipaFamily = 0;
 				s.m_socketType = 0;
+				s.m_ipProtocol = 0;
 				s.m_isConnected = false;
 				s.m_isValid = false;
 				return s;

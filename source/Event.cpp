@@ -27,7 +27,7 @@ namespace SKVMOIP
 
 	void Event::publish(void* eventData)
 	{
-		for(std::pair<SubscriptionHandle, std::pair<EventHandler, EventHandlerData>>&& keyValuePair : m_handlers)
+		for(std::pair<SubscriptionHandle, std::pair<EventHandler, EventHandlerData>> keyValuePair : m_handlers)
 			keyValuePair.second.first(eventData, keyValuePair.second.second);
 	}
 }

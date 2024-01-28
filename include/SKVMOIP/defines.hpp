@@ -5,6 +5,10 @@
 #include <type_traits>
 #include <utility>
 
+#include <iostream>
+
+#define _DBG_LINE_ std::cout << __FILE__ << ":" << __LINE__ << std::endl
+
 template<typename T> T& null_reference() { return *reinterpret_cast<T*>(NULL); }
 
 #pragma GCC diagnostic push
@@ -51,6 +55,10 @@ public:
 	T& operator*() { return m_value; }
 	T* operator->() { return &m_value; }
 };
+
+
+
+// Using this class, at FIFOPool.hpp:GetValue in O3 optimization level creates bugs. Don't know why.
 
 template<typename T>
 class Optional
