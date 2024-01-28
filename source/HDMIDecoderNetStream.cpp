@@ -125,7 +125,7 @@ namespace SKVMOIP
 					++m_inFlightRequestCount;
 				}
 				else
-					DEBUG_LOG_INFO("MAX_IN_FLIGHT_REQUEST_COUNT(=%d) is reached", MAX_IN_FLIGHT_REQUEST_COUNT);
+					debug_log_info("MAX_IN_FLIGHT_REQUEST_COUNT(=%d) is reached", MAX_IN_FLIGHT_REQUEST_COUNT);
 				m_dataAvailableCV.wait(lock);
 			}
 
@@ -165,7 +165,7 @@ namespace SKVMOIP
 								m_frameDataPool.createInactive(getUncompressedConvertedFrameSize());
 							}
 							else
-								DEBUG_LOG_INFO("MAX_FRAME_DATA_OBJECT_COUNT(=%d) is reached", MAX_FRAME_DATA_OBJECT_COUNT);
+								debug_log_info("MAX_FRAME_DATA_OBJECT_COUNT(=%d) is reached", MAX_FRAME_DATA_OBJECT_COUNT);
 						}
 
 						if(auto result = m_frameDataPool.getInactive())
