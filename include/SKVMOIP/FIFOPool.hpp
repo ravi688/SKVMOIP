@@ -57,6 +57,8 @@ namespace SKVMOIP
 		FIFOPool& operator=(FIFOPool& pool) = delete;
 		~FIFOPool();
 	
+		ItemIdType getCount() const { return m_buffer.size(); }
+
 		PoolItemType getActive();
 		bool hasActive() const { return !m_activeQueue.empty(); }
 		void returnActive(PoolItemType item);

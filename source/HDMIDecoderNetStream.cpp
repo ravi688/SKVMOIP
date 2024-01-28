@@ -110,6 +110,7 @@ namespace SKVMOIP
 	}
 
 	#define MAX_IN_FLIGHT_REQUEST_COUNT 5
+	#define MAX_FRAME_DATA_OBJECT_COUNT 30
 	
 	void HDMIDecodeNetStream::decodeThreadHandler()
 	{
@@ -158,8 +159,13 @@ namespace SKVMOIP
 						std::lock_guard<std::mutex> lock(m_ClientMutex);
 						if (!m_frameDataPool.hasInactive())
 						{
-							DEBUG_LOG_INFO("Allocating new FrameData object");
-							m_frameDataPool.createInactive(getUncompressedConvertedFrameSize());
+							if(m_frameDataPool.getCount() < MAX_FRAME_DATA_OBJECT_COUNT)
+							{
+								DEBUG_LOG_INFO("Allocating new FrameData object");
+								m_frameDataPool.createInactive(getUncompressedConvertedFrameSize());
+							}
+							else
+								DEBUG_LOG_INFO("MAX_FRAME_DATA_OBJECT_COUNT(=%d) is reached", MAX_FRAME_DATA_OBJECT_COUNT);
 						}
 
 						if(auto result = m_frameDataPool.getInactive())
