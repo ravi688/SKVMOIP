@@ -49,18 +49,24 @@ namespace SKVMOIP
 		
 		}
 		
-		void MachineUI::setOutputAddress(const char* ipAddress, const char* portNumber)
+		void MachineUI::setOutputAddress(const char* ipAddress, const char* portNumber, const char* usbPortNumber)
 		{
 		  const char* desc = "Video Output: ";
 		  auto len0 = strlen(desc);
 		  auto len1 = strlen(ipAddress);
 		  auto len2 = strlen(portNumber);
-		  char buffer[len0 + len1 + len2 + 2];
+		  auto len3 = strlen(usbPortNumber);
+		  char buffer[len0 + len1 + len2 + 3];
 		  memcpy(buffer, desc, len0);
 		  memcpy(buffer + len0, ipAddress, len1);
 		  buffer[len0 + len1] = ':';
 		  memcpy(buffer + len0 + len1 + 1, portNumber, len2);
-		  buffer[len0 + len1 + len2 + 1] = 0;
+		  if(len3 > 0)
+		  {
+		  	buffer[len0 + len1 + len2] = ':';
+		  	memcpy(buffer + len0 + len1 + len2 + 1, usbPortNumber, len3);
+		  }
+		  buffer[len0 + len1 + len2 + len3 + 1] = 0;
 		
 		  gtk_label_set_text(GTK_LABEL(m_outputAddressLabel), buffer);
 		}
