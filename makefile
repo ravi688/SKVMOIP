@@ -46,12 +46,12 @@ CLIENT_SOURCES=source/third_party/NvDecoder.cpp \
 				source/HDMIDecoderNetStream.cpp \
 				source/HIDUsageID.cpp
 TEST_SOURCES=source/main.cpp
-GUITEST_SOURCES=source/main.guitest.cpp\
-				$(wildcard source/GUI/*.cpp*)
+GUI_SOURCES=$(wildcard source/GUI/*.cpp)
+GUITEST_SOURCES=source/main.guitest.cpp
 
 ifeq ($(BUILD),server)
 	BUILD_DEFINES+=-DBUILD_SERVER
-	EXCLUDE_SOURCES+=$(CLIENT_SOURCES) $(TEST_SOURCES) $(GUITEST_SOURCES)
+	EXCLUDE_SOURCES+=$(CLIENT_SOURCES) $(TEST_SOURCES) $(GUITEST_SOURCES) $(GUI_SOURCES)
 	EXTERNAL_INCLUDES+=$(EXTERNAL_SERVER_INCLUDES)
 	EXTERNAL_LIBS+=$(EXTERNAL_SERVER_LIBS)
 endif

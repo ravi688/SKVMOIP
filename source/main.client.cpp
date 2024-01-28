@@ -5,98 +5,127 @@
 #include <SKVMOIP/defines.hpp>
 #include <SKVMOIP/debug.h>
 #include <SKVMOIP/Win32/Win32.hpp>
-#include <SKVMOIP/Window.hpp>
 
-#include <SKVMOIP/HDMIDecodeNetStream.hpp>
-#include <SKVMOIP/KMNetStream.hpp>
-#include <SKVMOIP/Win32/Win32DrawSurface.hpp>
+#include <SKVMOIP/GUI/MachineUI.hpp>
+#include <SKVMOIP/GUI/MainUI.hpp>
+#include <SKVMOIP/MachineData.hpp>
+
+#include <SKVMOIP/RDPSession.hpp>
 
 using namespace SKVMOIP;
 
-#define SERVER_IP_ADDRESS "192.168.1.11"
-#define SERVER_PORT_NUMBER "2020"
-
-static std::unique_ptr<Win32::Win32DrawSurface> gWin32DrawSurfaceUPtr;
-/* NOTE: HDMIDecodeNetStream creates 2 threads - one for Receiving data from network and Another for Decoding/Converting 
- * Typically we would need 3 threads for HDMIDecodeNetStream 
- * 		1. One for receiving data from network 
- * 		2. Second for decoding the data
- * 		3. Third for converting the decoded data into RGB data */
-static std::unique_ptr<HDMIDecodeNetStream> gHDMIDecodeNetStream;
-
-static std::unique_ptr<KMNetStream> gKMNetStream;
-
-static void MouseInputHandler(void* mouseInputData, void* userData)
+static std::vector<MachineData> GetMachineDataListFromServer()
 {
-	_assert(mouseInputData != NULL);
-	gKMNetStream->sendMouseInput(*reinterpret_cast<Win32::MouseInput*>(mouseInputData));
+  std::vector<MachineData> machines = 
+  {
+    { IP_ADDRESS(192, 168, 1, 11), IP_ADDRESS(192, 168, 1, 18), 2020, 101, "Win11-AMD-Ryzen-5-5600G", 1  },
+    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 19), 100, 101, "Dummy Machine", 2  },
+    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 20), 100, 101, "Dummy Machine", 3  },
+    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 21), 100, 101, "Dummy Machine", 4  },
+    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 22), 100, 101, "Dummy Machine", 5  },
+    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 23), 100, 101, "Dummy Machine", 6  },
+    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 24), 100, 101, "Dummy Machine", 7  },
+    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 25), 100, 101, "Dummy Machine", 8  },
+    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 26), 100, 101, "Dummy Machine", 9  },
+    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 27), 100, 101, "Dummy Machine", 10 },
+    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 28), 100, 101, "Dummy Machine", 11 },
+    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 29), 100, 101, "Dummy Machine", 12 },
+    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 30), 100, 101, "Dummy Machine", 13 },
+    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 31), 100, 101, "Dummy Machine", 14 }
+  };
+  return machines;
 }
 
-static void KeyboardInputHandler(void* keyboardInputData, void* userData)
-{
-	_assert(keyboardInputData != NULL);
-	gKMNetStream->sendKeyboardInput(*reinterpret_cast<Win32::KeyboardInput*>(keyboardInputData));
-}
+static std::vector<MachineData> gMachineDataList;
+static std::unique_ptr<SKVMOIP::GUI::MainUI> gMainUI;
+static std::vector<u32> gSelectedMachines;
 
-static void WindowPaintHandler(void* paintInfo, void* userData)
+namespace SKVMOIP
 {
-	if(auto frame = gHDMIDecodeNetStream->borrowFrameData())
+	namespace GUI
 	{
-		// debug_log_info("FrameData borrowed");
-		auto frameData = FIFOPool<HDMIDecodeNetStream::FrameData>::GetValue(frame);
-		_assert(frameData.has_value());
-		_assert(frameData->getSize() == gWin32DrawSurfaceUPtr->getBufferSize());
-		memcpy(gWin32DrawSurfaceUPtr->getPixels(), frameData->getPtr(), frameData->getSize());
-		gHDMIDecodeNetStream->returnFrameData(frame);
-		// debug_log_info("FrameData returned");
-	}
+		void OnConnectClicked(GtkWidget* button, void* userData)
+		{
+			debug_log_info ("Connect button clicked");
+			std::for_each(gSelectedMachines.begin(), gSelectedMachines.end(),
+				[](u32& id)
+				{
+					std::string ipAddrString(gMachineDataList[id].getVideoIPAddressStr());
+					std::string prtNumString(gMachineDataList[id].getVideoPortNumberStr());
+					// std::string ipAddrString(gMainUI->getMachine(id).getOutputAddressStr());
+					auto sessionThread = std::thread([](std::string ipAddress, std::string portNumber)
+					{
+						RDPSession session;
+						session.start(ipAddress.c_str(), portNumber.c_str());
+					}, ipAddrString, prtNumString);
 
-	auto drawSurfaceSize = gWin32DrawSurfaceUPtr->getSize();
-	Win32::WindowPaintInfo* winPaintInfo = reinterpret_cast<Win32::WindowPaintInfo*>(paintInfo);
-	BitBlt(winPaintInfo->deviceContext, 0, 0, drawSurfaceSize.first, drawSurfaceSize.second, gWin32DrawSurfaceUPtr->getHDC(), 0, 0, SRCCOPY);
+					sessionThread.detach();
+				});
+		}
+	}
 }
 
-int main(int argc, const char* argv[])
+static void OnMachineSelect(u32 id, void* userData)
 {
+	gSelectedMachines.push_back(id);
+	debug_log_info("%u:%s", id, __FUNCTION__);
+}
+
+static void OnMachineDeselect(u32 id, void* userData)
+{
+	auto it = std::find(gSelectedMachines.begin(), gSelectedMachines.end(), id);
+	assert(it != gSelectedMachines.end());
+	gSelectedMachines.erase(it);
+	debug_log_info("%u:%s", id, __FUNCTION__);
+}
+
+static void OnVideoClicked(u32 id, void* userData)
+{
+	debug_log_info("%u:%s", id, __FUNCTION__);
+}
+
+static void OnPowerClicked(u32 id, void* userData)
+{
+	debug_log_info("%u:%s", id, __FUNCTION__);
+}
+
+static void OnResetClicked(u32 id, void* userData)
+{
+	debug_log_info("%u:%s", id, __FUNCTION__);
+}
+
+static void on_activate (GtkApplication *app) {
+
+	gMainUI = std::move(std::unique_ptr<SKVMOIP::GUI::MainUI>(new SKVMOIP::GUI::MainUI(app)));
+
+	gMachineDataList = GetMachineDataListFromServer();
+	for(std::size_t i = 0; i < gMachineDataList.size(); i++)
+	{
+		u32 id = gMainUI->createMachine(static_cast<u32>(i), "Dummy Machine");
+		auto& ui = gMainUI->getMachine(id);
+		auto& data = gMachineDataList[i];
+	    
+	    ui.setName(data.getName());
+	    ui.setOutputAddress(data.getVideoIPAddressStr(), data.getVideoPortNumberStr());
+	    ui.setInputAddress(data.getKeyMoIPAddressStr(), data.getKeyMoPortNumberStr());
+	    ui.setStatus("Status: Unknown");
+
+	    ui.setSelectDeselectCallback(OnMachineSelect, OnMachineDeselect, NULL);
+	    ui.setVideoButtonCallback(OnVideoClicked, NULL);
+	    ui.setPowerButtonCallback(OnPowerClicked, NULL);
+	    ui.setResetButtonCallback(OnResetClicked, NULL);
+	  }
+}
+
+int main (int argc, char *argv[])
+{
+	GtkApplication *app = gtk_application_new ("com.example.GtkApplication", G_APPLICATION_FLAGS_NONE);
+  	g_signal_connect (app, "activate", G_CALLBACK (on_activate), NULL);
 	Win32::InitializeMediaFundationAndCOM();
-
-	debug_log_info("Platform is Windows");
-
-	/* dispatches 2 threads, one (decode thread) waiting on another (network thread) to get data from network  */
-	gHDMIDecodeNetStream = std::move(std::unique_ptr<HDMIDecodeNetStream>(new HDMIDecodeNetStream(1920, 1080, 60, 1, 32)));
-	gKMNetStream = std::move(std::unique_ptr<KMNetStream>(new KMNetStream()));
-
 	Win32::DisplayRawInputDeviceList();
 	Win32::RegisterRawInputDevices({ Win32::RawInputDeviceType::Mouse, Win32::RawInputDeviceType::Keyboard });
-
-	Window window(1920, 1080, "Scalable KVM Over IP");
-
-	gWin32DrawSurfaceUPtr = std::move(std::unique_ptr<Win32::Win32DrawSurface>(new Win32::Win32DrawSurface(window.getNativeHandle(), window.getSize().first, window.getSize().second, 32)));
-
-	// Event::SubscriptionHandle mouseInputHandle = window.getEvent(Window::EventType::MouseInput).subscribe(MouseInputHandler, NULL);
-	// Event::SubscriptionHandle keyboardInputHandle = window.getEvent(Window::EventType::KeyboardInput).subscribe(KeyboardInputHandler, NULL);
-	Event::SubscriptionHandle windowPaintHandle = window.getEvent(Window::EventType::Paint).subscribe(WindowPaintHandler, NULL);
-
-	DEBUG_LOG_INFO("Trying to connect to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
-	/* pauses (acquires mutex from) the network thread and waiting for connecting with the server */
-	if(gHDMIDecodeNetStream->connect(SERVER_IP_ADDRESS, SERVER_PORT_NUMBER) == Network::Result::Success)
-		DEBUG_LOG_INFO("Connected to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
-
-	// Network::Socket networkStream(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP);
-	// debug_log_info("Trying to connect to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
-	// if(networkStream.connect(SERVER_IP_ADDRESS, SERVER_PORT_NUMBER) == Network::Result::Success)
-	// 	debug_log_info("Connected to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
-
-	// std::thread networkThread(NetworkHandler, std::ref(networkStream));
-
-	window.runGameLoop(static_cast<u32>(60));
-
-	// networkThread.join();
-
-	window.getEvent(Window::EventType::Paint).unsubscribe(windowPaintHandle);
-	// window.getEvent(Window::EventType::MouseInput).unsubscribe(mouseInputHandle);
-	// window.getEvent(Window::EventType::KeyboardInput).unsubscribe(keyboardInputHandle);
-
+	bool result = g_application_run (G_APPLICATION (app), argc, argv);
 	Win32::DeinitializeMediaFoundationAndCOM();
-	return 0;
+	return result;
 }
+

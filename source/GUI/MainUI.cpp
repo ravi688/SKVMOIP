@@ -17,10 +17,7 @@ namespace SKVMOIP
 		  debug_log_info("Login button clicked");
 		}
 		
-		static void OnConnectClicked(GtkWidget* button, void* userData)
-		{
-		  debug_log_info ("Connect button clicked");
-		}
+		void OnConnectClicked(GtkWidget* button, void* userData);
 		
 		static void OnAddClicked(GtkWidget* button, void* userData)
 		{

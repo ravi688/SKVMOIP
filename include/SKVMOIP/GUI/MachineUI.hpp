@@ -83,6 +83,9 @@ namespace SKVMOIP
 		  void setVideoButtonCallback(Callback callback, void* userData);
 		  void setPowerButtonCallback(Callback callback, void* userData);
 		  void setResetButtonCallback(Callback callback, void* userData);
+
+		  const char* getOutputAddressStr() { return gtk_label_get_text(GTK_LABEL(m_outputAddressLabel)); }
+		  const char* getInputAddressStr() { return gtk_label_get_text(GTK_LABEL(m_inputAddressLabel)); }
 		};
 	}
 }
