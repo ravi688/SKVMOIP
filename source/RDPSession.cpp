@@ -8,7 +8,7 @@ namespace SKVMOIP
 	static void KeyboardInputHandler(void* keyboardInputData, void* userData);
 	static void WindowPaintHandler(void* paintInfo, void* userData);
 
-	void RDPSession::start(const char* ipAddress, const char* portNumber)
+	void RDPSession::start(const char* ipAddress, const char* portNumber, const char* kmIPAddress, const char* kmPortNumber)
 	{
 		m_decodeNetStream = std::unique_ptr<HDMIDecodeNetStream>(new HDMIDecodeNetStream(1920, 1080, 60, 1, 32));
 		m_kmNetStream = std::unique_ptr<KMNetStream>(new KMNetStream());
@@ -16,7 +16,7 @@ namespace SKVMOIP
 		/* pauses (acquires mutex from) the network thread and waiting for connecting with the server */
 		if(m_decodeNetStream->connect(ipAddress, portNumber) == Network::Result::Success)
 		{
-			DEBUG_LOG_INFO("Connected to %s:%s", ipAddress, portNumber);
+			DEBUG_LOG_INFO("Video Connected to %s:%s", ipAddress, portNumber);
 			if(!m_window)
 			{
 				m_window = std::move(std::unique_ptr<Window>(new Window(1920, 1080, "Scalable KVM Over IP")));
@@ -29,7 +29,14 @@ namespace SKVMOIP
 				m_drawSurface = std::move(std::unique_ptr<Win32::Win32DrawSurface>(
 							new Win32::Win32DrawSurface(m_window->getNativeHandle(), m_window->getSize().first, m_window->getSize().second, 32)));
 			}
+			if(m_kmNetStream->connect(kmIPAddress, kmPortNumber) == Network::Result::Success)
+				DEBUG_LOG_INFO("KeyMo Connected to %s:%s", kmIPAddress, kmPortNumber);
+			else
+				DEBUG_LOG_INFO("Failed to connect to KeyMo Server at %s:%s", kmIPAddress, kmPortNumber);
 		}
+		else
+			DEBUG_LOG_INFO("Failed to connect to Video Server at %s:%s", ipAddress, portNumber);
+
 	
 		m_window->runGameLoop(static_cast<u32>(60));
 	

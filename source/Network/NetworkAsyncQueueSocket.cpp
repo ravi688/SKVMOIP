@@ -1,5 +1,6 @@
 #include <SKVMOIP/Network/NetworkAsyncQueueSocket.hpp>
 #include <SKVMOIP/debug.h>
+#include <SKVMOIP/Network/NetworkPacket.hpp>
 
 #include <functional>
 
@@ -11,7 +12,9 @@ namespace SKVMOIP
 		{
 			_assert(type == Type::Send);
 			m_buffer = buf_create(sizeof(u8), dataSize, 0);
-			buf_pushv(&m_buffer, reinterpret_cast<void*>(const_cast<u8*>(data)), dataSize);
+			buf_push_pseudo(&m_buffer, dataSize);
+			void* ptr = buf_get_ptr(&m_buffer);
+			memcpy(ptr, reinterpret_cast<void*>(const_cast<u8*>(data)), dataSize);
 			m_isValid = true;
 		}
 
@@ -53,6 +56,7 @@ namespace SKVMOIP
 		{
 			if(!m_isValid)
 				return;
+			_ASSERT(m_isValid);
 			buf_free(&m_buffer);
 			m_isValid = false;
 		}
@@ -66,8 +70,8 @@ namespace SKVMOIP
 			{
 				case Type::Send:
 				{
-					debug_log_info("Sending Data...");
-					return socket.send(buf_get_ptr_typeof(&m_buffer, u8), static_cast<u32>(buf_get_element_size(&m_buffer))) == Result::Success;
+					// debug_log_info("Sending Data...");
+					return socket.send(buf_get_ptr_typeof(&m_buffer, u8), static_cast<u32>(buf_get_element_count(&m_buffer))) == Result::Success;
 				}
 				case Type::Receive:
 				{

@@ -28,7 +28,7 @@ namespace SKVMOIP
 			RDPSession(RDPSession&) = delete;
 			~RDPSession() = default;
 	
-			void start(const char* ipAddress, const char* portNumber);
+			void start(const char* ipAddress, const char* portNumber, const char* kmipAddress, const char* kmPortNumber);
 	
 			std::unique_ptr<HDMIDecodeNetStream>& getDecodeNetStream() noexcept { return m_decodeNetStream; }
 			std::unique_ptr<KMNetStream>& getKMNetStream() noexcept { return m_kmNetStream; }

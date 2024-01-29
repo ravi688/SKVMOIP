@@ -69,6 +69,7 @@ ifeq ($(BUILD),guitest)
 endif
 ifeq ($(BUILD),)
 	BUILD_DEFINES+=-DBUILD_TEST
+	EXCLUDE_SOURCES+=source/main.server.cpp source/main.client.cpp source/main.guitest.cpp
 	EXTERNAL_INCLUDES+=$(EXTERNAL_SERVER_INCLUDES) $(EXTERNAL_CLIENT_INCLUDES)
 	EXTERNAL_LIBS+=$(EXTERNAL_SERVER_LIBS) $(EXTERNAL_CLIENT_LIBS)
 endif

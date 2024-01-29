@@ -172,272 +172,272 @@ static void KeyboardInputHandler(void* keyboardInputData, void* userData)
 	gCv.notify_one();
 }
 
-static std::unique_ptr<Win32::Win32DrawSurface> gWin32DrawSurfaceUPtr;
-static std::unique_ptr<VideoSourceStream> gHDMIStream;
-static buffer_t gNV12Buffer;
+// static std::unique_ptr<Win32::Win32DrawSurface> gWin32DrawSurfaceUPtr;
+// static std::unique_ptr<VideoSourceStream> gHDMIStream;
+// static buffer_t gNV12Buffer;
 
-static std::unique_ptr<Encoder> gEncoder;
-static std::unique_ptr<Decoder> gDecoder; 
-static std::unique_ptr<NV12ToRGBConverter> gCSConverter;
+// static std::unique_ptr<Encoder> gEncoder;
+// static std::unique_ptr<Decoder> gDecoder; 
+// static std::unique_ptr<NV12ToRGBConverter> gCSConverter;
 
-static void WindowPaintHandler(void* paintInfo, void* userData)
-{
-	u8* pixels = gWin32DrawSurfaceUPtr->getPixels();
+// static void WindowPaintHandler(void* paintInfo, void* userData)
+// {
+// 	u8* pixels = gWin32DrawSurfaceUPtr->getPixels();
 
-	auto drawSurfaceSize = gWin32DrawSurfaceUPtr->getSize();
+// 	auto drawSurfaceSize = gWin32DrawSurfaceUPtr->getSize();
 
-	// if(!gHDMIStream->readRGBFrameToBuffer(, gWin32DrawSurfaceUPtr->getBufferSize()))
-	// {
-	// 	return;
-	// }
+// 	// if(!gHDMIStream->readRGBFrameToBuffer(, gWin32DrawSurfaceUPtr->getBufferSize()))
+// 	// {
+// 	// 	return;
+// 	// }
 
-	buf_clear_buffer(&gNV12Buffer, NULL);
-	u8* buffer = reinterpret_cast<u8*>(buf_get_ptr(&gNV12Buffer));
-	u32 bufferSize = static_cast<u32>(buf_get_capacity(&gNV12Buffer));
-	if(!gHDMIStream->readNV12FrameToBuffer(buffer, bufferSize))
-		return;
+// 	buf_clear_buffer(&gNV12Buffer, NULL);
+// 	u8* buffer = reinterpret_cast<u8*>(buf_get_ptr(&gNV12Buffer));
+// 	u32 bufferSize = static_cast<u32>(buf_get_capacity(&gNV12Buffer));
+// 	if(!gHDMIStream->readNV12FrameToBuffer(buffer, bufferSize))
+// 		return;
 
-	u8* outputBuffer;
-	u32 outputBufferSize;
-	SKVMOIP::StopWatch encodeWatch;
-	if(!gEncoder->encodeNV12(buffer, bufferSize, outputBuffer, outputBufferSize))
-	{
-		encodeWatch.stop();
-		debug_log_error("Failed to encode");
-		return;
-	}
-	else if(outputBuffer == NULL)
-	{
-		encodeWatch.stop();
-		return;
-	}
-	auto encodeTime = encodeWatch.stop();
+// 	u8* outputBuffer;
+// 	u32 outputBufferSize;
+// 	SKVMOIP::StopWatch encodeWatch;
+// 	if(!gEncoder->encodeNV12(buffer, bufferSize, outputBuffer, outputBufferSize))
+// 	{
+// 		encodeWatch.stop();
+// 		debug_log_error("Failed to encode");
+// 		return;
+// 	}
+// 	else if(outputBuffer == NULL)
+// 	{
+// 		encodeWatch.stop();
+// 		return;
+// 	}
+// 	auto encodeTime = encodeWatch.stop();
 
-	u32 nFrameReturned = 0;
-	static int nFrame = 0;
+// 	u32 nFrameReturned = 0;
+// 	static int nFrame = 0;
 
-	SKVMOIP::StopWatch decodeWatch;
-	if(gDecoder->decode(outputBuffer, outputBufferSize, nFrameReturned))
-	{
-		auto decodeTime = decodeWatch.stop();
-		u8* frame = gDecoder->getFrame();
-		_assert(gDecoder->getFrameSize() == bufferSize);
-		u8* rgbData;
-		SKVMOIP::StopWatch convertWatch;
-		if((rgbData = gCSConverter->convert(frame, bufferSize)) != NULL)
-		{
-			auto convertTime = convertWatch.stop();
-			auto rgbDataSize = gCSConverter->getRGBDataSize();
-			_assert(rgbDataSize == gWin32DrawSurfaceUPtr->getBufferSize());
-			memcpy(pixels, rgbData, gCSConverter->getRGBDataSize());
-			debug_log_info("Time info: encode: %lu, decode: %lu, convert: %lu, encodedSize: %.2f kb", encodeTime, decodeTime, convertTime, outputBufferSize / 1024.0);
-		}
-		else { convertWatch.stop(); debug_log_error("Failed to convert color space"); }
-		nFrame += nFrameReturned;
-	}
-	else { decodeWatch.stop(); debug_log_error("Failed to decode, return value %d", nFrameReturned); }
+// 	SKVMOIP::StopWatch decodeWatch;
+// 	if(gDecoder->decode(outputBuffer, outputBufferSize, nFrameReturned))
+// 	{
+// 		auto decodeTime = decodeWatch.stop();
+// 		u8* frame = gDecoder->getFrame();
+// 		_assert(gDecoder->getFrameSize() == bufferSize);
+// 		u8* rgbData;
+// 		SKVMOIP::StopWatch convertWatch;
+// 		if((rgbData = gCSConverter->convert(frame, bufferSize)) != NULL)
+// 		{
+// 			auto convertTime = convertWatch.stop();
+// 			auto rgbDataSize = gCSConverter->getRGBDataSize();
+// 			_assert(rgbDataSize == gWin32DrawSurfaceUPtr->getBufferSize());
+// 			memcpy(pixels, rgbData, gCSConverter->getRGBDataSize());
+// 			debug_log_info("Time info: encode: %lu, decode: %lu, convert: %lu, encodedSize: %.2f kb", encodeTime, decodeTime, convertTime, outputBufferSize / 1024.0);
+// 		}
+// 		else { convertWatch.stop(); debug_log_error("Failed to convert color space"); }
+// 		nFrame += nFrameReturned;
+// 	}
+// 	else { decodeWatch.stop(); debug_log_error("Failed to decode, return value %d", nFrameReturned); }
 
-	Win32::WindowPaintInfo* winPaintInfo = reinterpret_cast<Win32::WindowPaintInfo*>(paintInfo);
-	BitBlt(winPaintInfo->deviceContext, 0, 0, drawSurfaceSize.first, drawSurfaceSize.second, gWin32DrawSurfaceUPtr->getHDC(), 0, 0, SRCCOPY);
-}
+// 	Win32::WindowPaintInfo* winPaintInfo = reinterpret_cast<Win32::WindowPaintInfo*>(paintInfo);
+// 	BitBlt(winPaintInfo->deviceContext, 0, 0, drawSurfaceSize.first, drawSurfaceSize.second, gWin32DrawSurfaceUPtr->getHDC(), 0, 0, SRCCOPY);
+// }
 
-#ifdef BUILD_SERVER
+// #ifdef BUILD_SERVER
 
-static void HandleHDMIStream(Network::Protocols::USBToHDMIStreamControlProtocol& controlProtocol, u32 clientID, u32 usbPortNumber, std::condition_variable& sync)
-{
-	USBToHDMIStream hdmiStream(usbPortNumber);
+// static void HandleHDMIStream(Network::Protocols::USBToHDMIStreamControlProtocol& controlProtocol, u32 clientID, u32 usbPortNumber, std::condition_variable& sync)
+// {
+// 	USBToHDMIStream hdmiStream(usbPortNumber);
 
-	if(!hdmiStream.isValid())
-		controlProtocol.sendMessage(STATUS_FAILED);
-	else
-		controlProtocol.sendMessage(STATUS_OK, clientID);
+// 	if(!hdmiStream.isValid())
+// 		controlProtocol.sendMessage(STATUS_FAILED);
+// 	else
+// 		controlProtocol.sendMessage(STATUS_OK, clientID);
 
-	Network::Socket listenSocket;
-	while(listenSocket.listen())
-	{
-		Network::Socket streamSocket = listenSocket.accpet();
-		Network::Protocols::USBToHDMIStreamProtocol streamProtocol(streamSocket);
+// 	Network::Socket listenSocket;
+// 	while(listenSocket.listen())
+// 	{
+// 		Network::Socket streamSocket = listenSocket.accpet();
+// 		Network::Protocols::USBToHDMIStreamProtocol streamProtocol(streamSocket);
 		
-		std::vector<u8> buffer;
-		buffer.reserve(hdmiStream.getFrameSizeInBytes());
+// 		std::vector<u8> buffer;
+// 		buffer.reserve(hdmiStream.getFrameSizeInBytes());
 
-		while(!controlProtocol.shouldClose())
-		{
-			Encoding::ImageEncode(hdmiStream.getLatestFrame(), buffer);
-			streamProtocol.sendFrame(STATUS_OK, buffer);
-		}
-	}
-}
+// 		while(!controlProtocol.shouldClose())
+// 		{
+// 			Encoding::ImageEncode(hdmiStream.getLatestFrame(), buffer);
+// 			streamProtocol.sendFrame(STATUS_OK, buffer);
+// 		}
+// 	}
+// }
 
-static void HandleNetworkConnection(Network::Socket& connectionSocket)
-{
-	// UHSCP Protocol
-	Network::Protocols::USBToHDMIStreamControlProtocol controlSocket(connectionSocket);
-	while(!controlSocket.shouldClose())
-	{
-		Network::Protocols::USBToHDMIStreamControlProtocol::MessagePacket messagePacket;
-		if(controlSocket.peekMessage(messagePacket))
-		{
-			switch(messagePacket.message)
-			{
-				case Network::Protocols::USBToHDMIStreamControlProtocol::MessagePacket::MessageType::AvailableHDMIConnection:
-				{
-					std::optional<std::vector<u32>> usbPortNumbers = GetAvailableUSBToHDMIConnections();
-					if(!usbPortNumbers)
-						controlSocket.sendMessage(STATUS_FAILED);
-					else
-						controlSocket.sendMessage(STATUS_OK, usbPortNumbers);
-					break;
-				}
-				case Network::Protocols::USBToHDMIStreamControlProtocol::MessagePacket::MessageType::StartHDMIStream:
-				{
-					u32 usbPortNumber = message.getUSBPortNumber();
-					if(!isValid(usbPortNumber))
-						controlSocket.sendMessage(STATUS_INVALID_USB_PORT_NUMBER);
+// static void HandleNetworkConnection(Network::Socket& connectionSocket)
+// {
+// 	// UHSCP Protocol
+// 	Network::Protocols::USBToHDMIStreamControlProtocol controlSocket(connectionSocket);
+// 	while(!controlSocket.shouldClose())
+// 	{
+// 		Network::Protocols::USBToHDMIStreamControlProtocol::MessagePacket messagePacket;
+// 		if(controlSocket.peekMessage(messagePacket))
+// 		{
+// 			switch(messagePacket.message)
+// 			{
+// 				case Network::Protocols::USBToHDMIStreamControlProtocol::MessagePacket::MessageType::AvailableHDMIConnection:
+// 				{
+// 					std::optional<std::vector<u32>> usbPortNumbers = GetAvailableUSBToHDMIConnections();
+// 					if(!usbPortNumbers)
+// 						controlSocket.sendMessage(STATUS_FAILED);
+// 					else
+// 						controlSocket.sendMessage(STATUS_OK, usbPortNumbers);
+// 					break;
+// 				}
+// 				case Network::Protocols::USBToHDMIStreamControlProtocol::MessagePacket::MessageType::StartHDMIStream:
+// 				{
+// 					u32 usbPortNumber = message.getUSBPortNumber();
+// 					if(!isValid(usbPortNumber))
+// 						controlSocket.sendMessage(STATUS_INVALID_USB_PORT_NUMBER);
 
-					std::condition_variable hdmiStreamStartedSignal;
-					u32 clientID = GenerateID();
-					std::thread hdmiStreamThread(HandleHDMIStream, 
-						std::tuple<Network::Protocols::USBToHDMIStreamControlProtocol, u32, usbPortNumber, std::condition_variable>(controlSocket, clientID, usbPortNumber, std::ref(hdmiStreamStartedSignal)));
-					hdmiStreamThread.detach();
+// 					std::condition_variable hdmiStreamStartedSignal;
+// 					u32 clientID = GenerateID();
+// 					std::thread hdmiStreamThread(HandleHDMIStream, 
+// 						std::tuple<Network::Protocols::USBToHDMIStreamControlProtocol, u32, usbPortNumber, std::condition_variable>(controlSocket, clientID, usbPortNumber, std::ref(hdmiStreamStartedSignal)));
+// 					hdmiStreamThread.detach();
 
-					hdmiStreamStartedSignal.wait(lock);
-				}
-			}
-		}
-	}
-}
+// 					hdmiStreamStartedSignal.wait(lock);
+// 				}
+// 			}
+// 		}
+// 	}
+// }
 
-#endif /* Server */
+// #endif /* Server */
 
-// #define GTK_TEST
+// // #define GTK_TEST
 
-#ifdef GTK_TEST
+// #ifdef GTK_TEST
 
-// Include gtk
-#include <gtk/gtk.h>
+// // Include gtk
+// #include <gtk/gtk.h>
 
-static void on_activate (GtkApplication *app) {
-  // Create a new window
-  GtkWidget *window = gtk_application_window_new (app);
-  // Create a new button
-  GtkWidget *button = gtk_button_new_with_label ("Hello, World!");
-  // When the button is clicked, close the window passed as an argument
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (gtk_window_close), window);
-  gtk_window_set_child (GTK_WINDOW (window), button);
-  gtk_window_present (GTK_WINDOW (window));
-}
+// static void on_activate (GtkApplication *app) {
+//   // Create a new window
+//   GtkWidget *window = gtk_application_window_new (app);
+//   // Create a new button
+//   GtkWidget *button = gtk_button_new_with_label ("Hello, World!");
+//   // When the button is clicked, close the window passed as an argument
+//   g_signal_connect_swapped (button, "clicked", G_CALLBACK (gtk_window_close), window);
+//   gtk_window_set_child (GTK_WINDOW (window), button);
+//   gtk_window_present (GTK_WINDOW (window));
+// }
 
-int main (int argc, char *argv[]) {
-  // Create a new application
-  GtkApplication *app = gtk_application_new ("com.example.GtkApplication",
-                                             G_APPLICATION_FLAGS_NONE);
-  g_signal_connect (app, "activate", G_CALLBACK (on_activate), NULL);
-  return g_application_run (G_APPLICATION (app), argc, argv);
-}
+// int main (int argc, char *argv[]) {
+//   // Create a new application
+//   GtkApplication *app = gtk_application_new ("com.example.GtkApplication",
+//                                              G_APPLICATION_FLAGS_NONE);
+//   g_signal_connect (app, "activate", G_CALLBACK (on_activate), NULL);
+//   return g_application_run (G_APPLICATION (app), argc, argv);
+// }
 
-#endif
+// #endif
 
-#ifndef GTK_TEST
+// #ifndef GTK_TEST
 
 int main(int argc, const char* argv[])
 {
-	Win32::InitializeMediaFundationAndCOM();
-	debug_log_info("Platform is Windows");
+// 	Win32::InitializeMediaFundationAndCOM();
+// 	debug_log_info("Platform is Windows");
 
-	std::optional<Win32::Win32SourceDeviceListGuard> deviceList = Win32::Win32GetSourceDeviceList(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
-	if(!deviceList)
-	{
-		debug_log_error("Unable to get Video source device list");
-		return 0;
-	}
+// 	std::optional<Win32::Win32SourceDeviceListGuard> deviceList = Win32::Win32GetSourceDeviceList(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
+// 	if(!deviceList)
+// 	{
+// 		debug_log_error("Unable to get Video source device list");
+// 		return 0;
+// 	}
 			
-	std::optional<Win32::Win32SourceDevice> device = deviceList->activateDevice((argc > 1) ? (atoi(argv[1])) : 0);
-	if(!device)
-	{
-		debug_log_error("Unable to create video source device with index: %lu ", 0);
-		return 0;
-	}
+// 	std::optional<Win32::Win32SourceDevice> device = deviceList->activateDevice((argc > 1) ? (atoi(argv[1])) : 0);
+// 	if(!device)
+// 	{
+// 		debug_log_error("Unable to create video source device with index: %lu ", 0);
+// 		return 0;
+// 	}
 
-	std::vector<std::tuple<u32, u32, u32>> preferenceList = 
-	{
-		{ 1920, 1080, 60 },
-		{ 1920, 1080, 30 },
-		{ 1366, 768, 60 },
-		{ 1366, 768, 30 },
-		{ 1280, 720, 60 },
-		{ 1280, 720, 30 },
-		{ 1024, 768, 60 },
-		{ 1024, 768, 30 }, 
-		{ 960, 720, 60 },
-		{ 960, 720, 30 }
-	};
+// 	std::vector<std::tuple<u32, u32, u32>> preferenceList = 
+// 	{
+// 		{ 1920, 1080, 60 },
+// 		{ 1920, 1080, 30 },
+// 		{ 1366, 768, 60 },
+// 		{ 1366, 768, 30 },
+// 		{ 1280, 720, 60 },
+// 		{ 1280, 720, 30 },
+// 		{ 1024, 768, 60 },
+// 		{ 1024, 768, 30 }, 
+// 		{ 960, 720, 60 },
+// 		{ 960, 720, 30 }
+// 	};
 
-	// gHDMIStream = std::move(std::unique_ptr<VideoSourceStream>(new VideoSourceStream(device.value(), VideoSourceStream::Usage::RGB32Read, preferenceList)));
-	gHDMIStream = std::move(std::unique_ptr<VideoSourceStream>(new VideoSourceStream(device.value(), VideoSourceStream::Usage::NV12Read, preferenceList)));
+// 	// gHDMIStream = std::move(std::unique_ptr<VideoSourceStream>(new VideoSourceStream(device.value(), VideoSourceStream::Usage::RGB32Read, preferenceList)));
+// 	gHDMIStream = std::move(std::unique_ptr<VideoSourceStream>(new VideoSourceStream(device.value(), VideoSourceStream::Usage::NV12Read, preferenceList)));
 
-	if (!(*gHDMIStream))
-		return 0;
+// 	if (!(*gHDMIStream))
+// 		return 0;
 
-	gHDMIStream->dump();
-	// gHDMIStream->doReadyRGBReader();
+// 	gHDMIStream->dump();
+// 	// gHDMIStream->doReadyRGBReader();
 
-	std::pair<u32, u32> frameSize = gHDMIStream->getOutputFrameSize();
-	std::pair<u32, u32> frameRatePair = gHDMIStream->getInputFrameRate();
-	u32 frameRate = gHDMIStream->getInputFrameRateF32();
+// 	std::pair<u32, u32> frameSize = gHDMIStream->getOutputFrameSize();
+// 	std::pair<u32, u32> frameRatePair = gHDMIStream->getInputFrameRate();
+// 	u32 frameRate = gHDMIStream->getInputFrameRateF32();
 
-	gNV12Buffer = buf_create(sizeof(u8), (frameSize.first * frameSize.second * 3) >> 1, 0);
+// 	gNV12Buffer = buf_create(sizeof(u8), (frameSize.first * frameSize.second * 3) >> 1, 0);
 
-	gEncoder = std::move(std::unique_ptr<Encoder>(new Encoder(frameSize.first, frameSize.second)));
-	gDecoder = std::move(std::unique_ptr<Decoder>(new Decoder()));
+// 	gEncoder = std::move(std::unique_ptr<Encoder>(new Encoder(frameSize.first, frameSize.second)));
+// 	gDecoder = std::move(std::unique_ptr<Decoder>(new Decoder()));
 
-	gCSConverter = std::move(std::unique_ptr<NV12ToRGBConverter>(new NV12ToRGBConverter(frameSize.first, frameSize.second, frameRatePair.first, frameRatePair.second, 32)));
+// 	gCSConverter = std::move(std::unique_ptr<NV12ToRGBConverter>(new NV12ToRGBConverter(frameSize.first, frameSize.second, frameRatePair.first, frameRatePair.second, 32)));
 
 	Win32::DisplayRawInputDeviceList();
 	Win32::RegisterRawInputDevices({ Win32::RawInputDeviceType::Mouse, Win32::RawInputDeviceType::Keyboard });
 
 
-	Window window(frameSize.first, frameSize.second, "Scalable KVM Over IP");
+	Window window(1920, 1080, "Scalable KVM Over IP");
 
-	gWin32DrawSurfaceUPtr = std::move(std::unique_ptr<Win32::Win32DrawSurface>(new Win32::Win32DrawSurface(window.getNativeHandle(), window.getSize().first, window.getSize().second, 32)));
+// 	gWin32DrawSurfaceUPtr = std::move(std::unique_ptr<Win32::Win32DrawSurface>(new Win32::Win32DrawSurface(window.getNativeHandle(), window.getSize().first, window.getSize().second, 32)));
 
 	Event::SubscriptionHandle mouseInputHandle = window.getEvent(Window::EventType::MouseInput).subscribe(MouseInputHandler, NULL);
 	Event::SubscriptionHandle keyboardInputHandle = window.getEvent(Window::EventType::KeyboardInput).subscribe(KeyboardInputHandler, NULL);
-	Event::SubscriptionHandle windowPaintHandle = window.getEvent(Window::EventType::Paint).subscribe(WindowPaintHandler, NULL);
+// 	Event::SubscriptionHandle windowPaintHandle = window.getEvent(Window::EventType::Paint).subscribe(WindowPaintHandler, NULL);
 
-#ifdef BUILD_SERVER
+// #ifdef BUILD_SERVER
 
-	std::vector<std::thread> concurrentConnections;
+// 	std::vector<std::thread> concurrentConnections;
 
-	Network::Socket listenSocket;
-	while(listenSocket.listen())
-	{
-		Network::Socket connectionSocket = listenSocket.accept();
-		concurrentConnections.push_back(std::thread(HandleNetworkConnection, std::ref(connectionSocket)));
-	}
+// 	Network::Socket listenSocket;
+// 	while(listenSocket.listen())
+// 	{
+// 		Network::Socket connectionSocket = listenSocket.accept();
+// 		concurrentConnections.push_back(std::thread(HandleNetworkConnection, std::ref(connectionSocket)));
+// 	}
 
-#endif /* Server */
+// #endif /* Server */
 
-	// Network::Socket networkStream(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP);
-	// debug_log_info("Trying to connect to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
-	// if(networkStream.connect(SERVER_IP_ADDRESS, SERVER_PORT_NUMBER) == Network::Result::Success)
-	// 	debug_log_info("Connected to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
+	Network::Socket networkStream(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP);
+	debug_log_info("Trying to connect to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
+	if(networkStream.connect(SERVER_IP_ADDRESS, SERVER_PORT_NUMBER) == Network::Result::Success)
+		debug_log_info("Connected to %s:%s", SERVER_IP_ADDRESS, SERVER_PORT_NUMBER);
 
-	// std::thread networkThread(NetworkHandler, std::ref(networkStream));
+	std::thread networkThread(NetworkHandler, std::ref(networkStream));
 
-	window.runGameLoop(static_cast<u32>(frameRate));
+	window.runGameLoop(static_cast<u32>(60));
 
-	// networkThread.join();
+	networkThread.join();
 
 
-	buf_free(&gNV12Buffer);
+	// buf_free(&gNV12Buffer);
 
-	window.getEvent(Window::EventType::Paint).unsubscribe(windowPaintHandle);
+	// window.getEvent(Window::EventType::Paint).unsubscribe(windowPaintHandle);
 	window.getEvent(Window::EventType::MouseInput).unsubscribe(mouseInputHandle);
 	window.getEvent(Window::EventType::KeyboardInput).unsubscribe(keyboardInputHandle);
 
-	Win32::DeinitializeMediaFoundationAndCOM();
+	// Win32::DeinitializeMediaFoundationAndCOM();
 	return 0;
 }
 
-#endif
+// #endif
