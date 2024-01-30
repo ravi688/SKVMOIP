@@ -11,6 +11,7 @@
 #include <thread>
 #include <deque>
 #include <mutex>
+#include <atomic>
 #include <condition_variable>
 
 namespace SKVMOIP
@@ -162,6 +163,7 @@ namespace SKVMOIP
 			std::thread m_thread;
 			std::mutex m_mutex;
 			bool m_isValid;
+			std::atomic<bool> m_isCanSendOrReceive;
 			
 			void threadHandler();
 		
@@ -177,6 +179,9 @@ namespace SKVMOIP
 			Result close();
 			void send(const u8* bytes, u32 size);
 			void receive(Transxn::ReceiveCallbackHandler receiveHandler, void* userData, BinaryFormatter& receiveFormatter);
+
+			Socket& getSocket() { return m_socket; }
+			bool isCanSendOrReceive() const { return m_isCanSendOrReceive; }
 		};
 	}
 }
