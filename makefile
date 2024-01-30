@@ -44,6 +44,7 @@ CLIENT_SOURCES=source/third_party/NvDecoder.cpp \
 				source/Win32/Win32RawInput.cpp \
 				source/Win32/Win32Window.cpp \
 				source/HDMIDecoderNetStream.cpp \
+				source/KMNetStream.cpp \
 				source/HIDUsageID.cpp \
 				source/RDPSession.cpp
 TEST_SOURCES=source/main.cpp
