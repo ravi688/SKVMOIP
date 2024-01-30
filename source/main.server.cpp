@@ -154,18 +154,18 @@ int main(int argc, const char* argv[])
 
 	u32 numMaxConnections = 1;
 	u32 numConnections = 0;
-	debug_log_info("Listening on %s:%s", LISTEN_IP_ADDRESS, LISTEN_PORT_NUMBER);
+	DEBUG_LOG_INFO("Listening on %s:%s", LISTEN_IP_ADDRESS, LISTEN_PORT_NUMBER);
 	while((numConnections < numMaxConnections) && (listenSocket.listen() == Network::Result::Success))
 	{
 		if(std::optional<Network::Socket> acceptedSocket = listenSocket.accept())
 		{
-			debug_log_info("Connection accepted");
+			DEBUG_LOG_INFO("Connection accepted");
 			_assert(acceptedSocket->isConnected());
 			streamSocket = std::move(*acceptedSocket);
 		}
 		else
 		{
-			debug_log_error("Unable to accept incoming connection");
+			DEBUG_LOG_ERROR("Unable to accept incoming connection");
 			continue;
 		}
 		++numConnections;
@@ -187,7 +187,7 @@ int main(int argc, const char* argv[])
 		if(!encoder->encodeNV12(buffer, bufferSize, outputBuffer, outputBufferSize))
 		{
 			encodeWatch.stop();
-			debug_log_error("Failed to encode");
+			DEBUG_LOG_INFO("Failed to encode");
 			continue;
 		}
 		else if(outputBuffer == NULL)
@@ -202,11 +202,11 @@ int main(int argc, const char* argv[])
 		{
 			bool isLengthSuccess = false;
 			if(streamSocket.send(reinterpret_cast<u8*>(&outputBufferSize), sizeof(outputBufferSize)) != Network::Result::Success)
-				debug_log_error("Failed to send encoded data length");
+				DEBUG_LOG_ERROR("Failed to send encoded data length");
 			else
 				isLengthSuccess = true;
 			if(isLengthSuccess && (streamSocket.send(outputBuffer, outputBufferSize) != Network::Result::Success))
-				debug_log_error("Failed to send encoded data");
+				DEBUG_LOG_ERROR("Failed to send encoded data");
 		}
 		auto netTime = netWatch.stop();
 		debug_log_info("Encode time: %lu ms, SendTime: %lu, Encode size: %.2f", encodeTime, netTime, outputBufferSize / 1024.0);
