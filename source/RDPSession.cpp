@@ -32,17 +32,22 @@ namespace SKVMOIP
 			if(m_kmNetStream->connect(kmIPAddress, kmPortNumber) == Network::Result::Success)
 				DEBUG_LOG_INFO("KeyMo Connected to %s:%s", kmIPAddress, kmPortNumber);
 			else
-				DEBUG_LOG_INFO("Failed to connect to KeyMo Server at %s:%s", kmIPAddress, kmPortNumber);
+				DEBUG_LOG_ERROR("Failed to connect to KeyMo Server at %s:%s", kmIPAddress, kmPortNumber);
+			
+			m_window->runGameLoop(static_cast<u32>(60));
 		}
 		else
-			DEBUG_LOG_INFO("Failed to connect to Video Server at %s:%s", ipAddress, portNumber);
+			DEBUG_LOG_ERROR("Failed to connect to Video Server at %s:%s", ipAddress, portNumber);
+	}
 
-	
-		m_window->runGameLoop(static_cast<u32>(60));
-	
-		m_window->getEvent(Window::EventType::Paint).unsubscribe(m_windowPaintHandle);
-		m_window->getEvent(Window::EventType::MouseInput).unsubscribe(m_mouseInputHandle);
-		m_window->getEvent(Window::EventType::KeyboardInput).unsubscribe(m_keyboardInputHandle);
+	RDPSession::~RDPSession()
+	{
+		if(m_window)
+		{
+			m_window->getEvent(Window::EventType::Paint).unsubscribe(m_windowPaintHandle);
+			m_window->getEvent(Window::EventType::MouseInput).unsubscribe(m_mouseInputHandle);
+			m_window->getEvent(Window::EventType::KeyboardInput).unsubscribe(m_keyboardInputHandle);
+		}
 	}
 
 	static void MouseInputHandler(void* mouseInputData, void* userData)

@@ -56,7 +56,7 @@ namespace SKVMOIP
 		  auto len1 = strlen(ipAddress);
 		  auto len2 = strlen(portNumber);
 		  auto len3 = strlen(usbPortNumber);
-		  char buffer[len0 + len1 + len2 + 3];
+		  char buffer[len0 + len1 + len2 + len3 + 3];
 		  memcpy(buffer, desc, len0);
 		  memcpy(buffer + len0, ipAddress, len1);
 		  buffer[len0 + len1] = ':';

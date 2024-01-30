@@ -26,7 +26,7 @@ namespace SKVMOIP
 			RDPSession() = default;
 			RDPSession(RDPSession&&) = delete;
 			RDPSession(RDPSession&) = delete;
-			~RDPSession() = default;
+			~RDPSession();
 	
 			void start(const char* ipAddress, const char* portNumber, const char* kmipAddress, const char* kmPortNumber);
 	

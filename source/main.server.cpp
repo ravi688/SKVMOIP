@@ -13,10 +13,28 @@
 #include <thread>
 #include <memory>
 
-#define LISTEN_IP_ADDRESS "localhost"
+#define LISTEN_IP_ADDRESS "192.168.1.12"
 #define LISTEN_PORT_NUMBER "2020"
 
 using namespace SKVMOIP;
+
+const char* GetLocalIPAddress()
+{
+   char host[256];
+   char *IP;
+   struct hostent *host_entry;
+   int hostname;
+   hostname = gethostname(host, sizeof(host)); //find the host name
+   if(hostname == -1)
+   		return NULL;
+   host_entry = gethostbyname(host); //find host information
+   if(host_entry == NULL)
+   		return NULL;
+   IP = inet_ntoa(*((struct in_addr*) host_entry->h_addr_list[0])); //Convert into IP string
+   if(IP == NULL)
+   		return NULL;
+   return IP;
+}
 
 int main(int argc, const char* argv[])
 {
@@ -30,10 +48,17 @@ int main(int argc, const char* argv[])
 		return 0;
 	}
 
-	Network::Socket listenSocket(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP);
-	if(listenSocket.bind(LISTEN_IP_ADDRESS, LISTEN_PORT_NUMBER) != Network::Result::Success)
+	const char* listenIPAddress = GetLocalIPAddress();
+	if(listenIPAddress == NULL)
 	{
-		debug_log_error("Failed to bind list socket to %s:%s", LISTEN_IP_ADDRESS, LISTEN_PORT_NUMBER);
+		DEBUG_LOG_ERROR("Failed to determine local IP address for listening");
+		return -1;
+	}
+
+	Network::Socket listenSocket(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP);
+	if(listenSocket.bind(listenIPAddress, LISTEN_PORT_NUMBER) != Network::Result::Success)
+	{
+		debug_log_error("Failed to bind list socket to %s:%s", listenIPAddress, LISTEN_PORT_NUMBER);
 		return 1;
 	}
 
@@ -42,7 +67,7 @@ int main(int argc, const char* argv[])
 	u32 numConnections = 0;
 	do
 	{
-		DEBUG_LOG_INFO("Listening on %s:%s", LISTEN_IP_ADDRESS, LISTEN_PORT_NUMBER);
+		DEBUG_LOG_INFO("Listening on %s:%s", listenIPAddress, LISTEN_PORT_NUMBER);
 		auto result = listenSocket.listen();
 		if(result != Network::Result::Success)
 		{

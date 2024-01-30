@@ -18,7 +18,7 @@ static std::vector<MachineData> GetMachineDataListFromServer()
 {
   std::vector<MachineData> machines = 
   {
-    { IP_ADDRESS(192, 168, 1, 11), IP_ADDRESS(192, 168, 1, 113), 2020, 2000, "Win11-AMD-Ryzen-5-5600G", 1  },
+    { IP_ADDRESS(192, 168, 1, 12), IP_ADDRESS(192, 168, 1, 113), 2020, 2000, "Win11-AMD-Ryzen-5-5600G", 1  },
     { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 19), 100, 101, "Dummy Machine", 2  },
     { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 20), 100, 101, "Dummy Machine", 3  },
     { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 21), 100, 101, "Dummy Machine", 4  },
