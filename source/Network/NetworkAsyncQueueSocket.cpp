@@ -116,7 +116,10 @@ namespace SKVMOIP
 		{
 			m_isValid = true; 
 			if(m_socket.isConnected())
+			{
 				m_isCanSendOrReceive = true;
+				m_thread = std::move(std::thread(threadHandler, this));
+			}
 		}
 /*		AsyncQueueSocket::AsyncQueueSocket(AsyncQueueSocket&& asyncSocket) : m_socket(std::move(asyncSocket.m_socket)), m_thread(std::move(asyncSocket.m_thread)), m_isValid(asyncSocket.m_isValid)
 		{
