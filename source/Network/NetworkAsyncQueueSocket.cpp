@@ -112,7 +112,7 @@ namespace SKVMOIP
 			return false;
 		}
 	
-		AsyncQueueSocket::AsyncQueueSocket(Socket&& socket) : m_socket(std::move(socket)), m_isValid(false)
+		AsyncQueueSocket::AsyncQueueSocket(Socket&& socket) : m_socket(std::move(socket)), m_isValid(false), m_isCanSendOrReceive(false)
 		{
 			m_isValid = true; 
 		}
@@ -144,7 +144,10 @@ namespace SKVMOIP
 			std::lock_guard<std::mutex> lock(m_mutex);
 			auto result = m_socket.connect(ipAddress, port);
 			if(result == Result::Success)
+			{
+				m_isCanSendOrReceive = true;
 				m_thread = std::move(std::thread(threadHandler, this));
+			}
 			return result;
 		}
 	
@@ -196,6 +199,7 @@ namespace SKVMOIP
 				bool result = transxn.doit(m_socket);
 				if(!result)
 				{
+					m_isCanSendOrReceive = false;
 					debug_log_error("Failed to do transaction");
 					
 					lock.lock();
