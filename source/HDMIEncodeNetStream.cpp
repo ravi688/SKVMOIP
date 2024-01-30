@@ -47,7 +47,7 @@ namespace SKVMOIP
 		auto& socket = getSocket();
 		if(!socket.isConnected())
 		{
-			debug_log_info("Socket is not connected");
+			DEBUG_LOG_INFO("Socket is not connected");
 			return;
 		}
 	
@@ -70,10 +70,16 @@ namespace SKVMOIP
 				continue;
 	
 			if(!isCanSendOrReceive())
+			{
+				DEBUG_LOG_INFO("Can't Send or Receive, Client socket is not responding, closing HDMI stream");
 				break;
+			}
 			send(reinterpret_cast<u8*>(&outputBufferSize), sizeof(outputBufferSize));
 			if(!isCanSendOrReceive())
+			{
+				DEBUG_LOG_INFO("Can't Send or Receive, Client socket is not responding, closing HDMI stream");
 				break;
+			}
 			send(outputBuffer, outputBufferSize);
 		}
 	}
