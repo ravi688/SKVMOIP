@@ -75,3 +75,9 @@ It is rather identical to Windows case above.
 1. Add HDMI Routing over IP support to scale Video Over IP across local networks (as LANs are very fast, can handle the RAW HDMI data).'
 2. Add support for USB Mass Storage over IP to enable the host computer boot from a remote USB flash drive or Computer acting as a USB flash drive. However, PXE boot already exists.
 3. Add support for Audio Over IP
+
+### License
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+                        (See: LICENSE file, for more info)
