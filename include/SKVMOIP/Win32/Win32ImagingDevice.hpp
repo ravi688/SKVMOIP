@@ -13,10 +13,20 @@ namespace Win32
 	{
 	private:
 		IMFMediaSource* m_source;
-	
+		u32 m_id;
+
 	public:
-		Win32SourceDevice(IMFMediaSource* source);
-		IMFMediaSource* getInternalHandle() const { return m_source; }
+		Win32SourceDevice(IMFMediaSource* source, u32 id);
+		Win32SourceDevice(Win32SourceDevice&&);
+		Win32SourceDevice& operator=(Win32SourceDevice&&);
+		Win32SourceDevice(Win32SourceDevice&) = delete;
+		Win32SourceDevice& operator=(Win32SourceDevice&) = delete;
+		~Win32SourceDevice();
+
+
+		void shutdown();
+		u32 getID() const noexcept { return m_id; }
+		IMFMediaSource* getInternalHandle() const noexcept { return m_source; }
 	};
 
 	typedef IMFActivate** IMFActivateList;
@@ -37,6 +47,7 @@ namespace Win32
 		Win32SourceDeviceList& operator=(Win32SourceDeviceList&) = delete;
 		void destroy();
 		std::optional<Win32SourceDevice> activateDevice(u32 index);
+		u32 getDeviceCount() const noexcept { return m_count; }
 	};
 
 	class Win32SourceDeviceListGuard : public Win32SourceDeviceList

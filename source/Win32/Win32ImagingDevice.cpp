@@ -3,9 +3,37 @@
 
 namespace Win32
 {
-	Win32SourceDevice::Win32SourceDevice(IMFMediaSource* source) : m_source(source)
+	Win32SourceDevice::Win32SourceDevice(IMFMediaSource* source, u32 id) : m_source(source), m_id(id)
 	{
 
+	}
+
+	Win32SourceDevice::~Win32SourceDevice()
+	{
+	}
+
+	Win32SourceDevice::Win32SourceDevice(Win32SourceDevice&& device) : m_source(device.m_source), m_id(device.m_id)
+	{
+		device.m_source = NULL;
+		device.m_id = U32_MAX;
+	}
+
+	Win32SourceDevice& Win32SourceDevice::operator=(Win32SourceDevice&& device)
+	{
+		m_source = device.m_source;
+		m_id = device.m_id;
+		device.m_source = NULL;
+		device.m_id = U32_MAX;
+		return *this;
+	}
+
+	void Win32SourceDevice::shutdown()
+	{		
+		if(m_source == NULL) return;
+
+		if(m_source->Shutdown() != S_OK)
+			DEBUG_LOG_ERROR("Failed to shutdown device, ID = %lu", m_id);
+		m_source = NULL;
 	}
 
 	Win32SourceDeviceList::Win32SourceDeviceList(IMFActivateList& activateList, UINT32 count) : m_activateList(activateList), m_count(count) { }
@@ -32,7 +60,7 @@ namespace Win32
        	if(result != S_OK)
        		return { };
 
-    	return { Win32SourceDevice(pSource) };
+    	return { Win32SourceDevice(pSource, index) };
     }
 
 	

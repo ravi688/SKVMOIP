@@ -12,9 +12,19 @@
 
 #include <thread>
 #include <memory>
+#include <atomic>
+#include <chrono>
 
-#define LISTEN_IP_ADDRESS "192.168.1.12"
+#include <conio.h>
+
 #define LISTEN_PORT_NUMBER "2020"
+#define MAX_CONNECTIONS 4
+#define DEVICE_RELEASE_COOL_DOWN_TIME 4000 /* 4 seconds */
+
+static std::atomic<u32> gNumConnections = 0;
+
+static std::mutex gMutex;
+static std::vector<u32> gAvailableDevices;
 
 using namespace SKVMOIP;
 
@@ -47,6 +57,13 @@ int main(int argc, const char* argv[])
 		debug_log_error("Unable to get Video source device list");
 		return 0;
 	}
+ 
+ 	DEBUG_LOG_INFO("Devices Found: %u", deviceList->getDeviceCount());
+
+ 	/* Populate the std::vector with the available device ids - in this (initially) case, all devices would be available */
+	gAvailableDevices.reserve(deviceList->getDeviceCount());
+	for(u32 i = 0; i < deviceList->getDeviceCount(); i++)
+		gAvailableDevices.push_back(i);
 
 	const char* listenIPAddress = GetLocalIPAddress();
 	if(listenIPAddress == NULL)
@@ -62,21 +79,18 @@ int main(int argc, const char* argv[])
 		return 1;
 	}
 
-	u32 deviceIndex = 0;
-	u32 numMaxConnections = 4;
-	u32 numConnections = 0;
 	do
 	{
 		DEBUG_LOG_INFO("Listening on %s:%s", listenIPAddress, LISTEN_PORT_NUMBER);
 		auto result = listenSocket.listen();
 		if(result != Network::Result::Success)
 		{
-			DEBUG_LOG_ERROR("Unable to listen");
+			DEBUG_LOG_ERROR("Unable to listen, Retrying...");
 			continue;
 		}
-		if(numConnections >= numMaxConnections)
+		if(gNumConnections >= MAX_CONNECTIONS)
 		{
-			DEBUG_LOG_INFO("Max number of connections (=%u) is reached", numMaxConnections);
+			DEBUG_LOG_INFO("Max number of connections (=%u) is reached, Refused to connect!", MAX_CONNECTIONS);
 			continue;
 		}
 		if(std::optional<Network::Socket> acceptedSocket = listenSocket.accept())
@@ -86,20 +100,43 @@ int main(int argc, const char* argv[])
 			Network::Socket streamSocket = Network::Socket::CreateInvalid();
 			streamSocket = std::move(*acceptedSocket);
 
-			std::optional<Win32::Win32SourceDevice> device = deviceList->activateDevice(deviceIndex++);
+			/* Get ID of the one of the available devices */
+			u32 deviceIndex;
+			{
+				std::unique_lock<std::mutex> lock(gMutex);
+				deviceIndex = gAvailableDevices.back();
+			}
+
+			std::optional<Win32::Win32SourceDevice> device = deviceList->activateDevice(deviceIndex);
 			if(!device)
 			{
-				debug_log_error("Unable to create video source device with index: %lu ", deviceIndex);
+				DEBUG_LOG_ERROR("Unable to create video source device with index: %lu, Closing connection...", deviceIndex);
 				streamSocket.close();
 				continue;
 			}
-			auto thread = std::thread([](Win32::Win32SourceDevice&& device, Network::Socket&& socket)
+
+			/* Now we are confirmed to have access to the device, therefore remove it from the list of Available Devices */
 			{
-				HDMIEncodeNetStream netStream(device, std::move(socket));
+				std::unique_lock<std::mutex> lock(gMutex);
+				gAvailableDevices.pop_back();
+			}
+			++gNumConnections;
+
+			auto thread = std::thread([](Win32::Win32SourceDevice&& device, Network::Socket&& socket, std::mutex& mtx)
+			{
+				u32 id = device.getID();
+				HDMIEncodeNetStream netStream(std::move(device), std::move(socket));
 				netStream.start();
-			}, std::move(device.value()), std::move(streamSocket));
+				std::this_thread::sleep_for(std::chrono::milliseconds(DEVICE_RELEASE_COOL_DOWN_TIME));
+
+				/* Put this device ID back into the Available Devices list */
+				{
+						std::unique_lock<std::mutex> lock(mtx);
+						gAvailableDevices.push_back(id);
+						--gNumConnections;
+				}
+			}, std::move(device.value()), std::move(streamSocket), std::ref(gMutex));
 			thread.detach();
-			++numConnections;
 		}
 		else
 		{
@@ -109,5 +146,8 @@ int main(int argc, const char* argv[])
 	} while(true);
 
 	Win32::DeinitializeMediaFoundationAndCOM();
+
+	DEBUG_LOG_INFO("Press any key to exit...");
+	getch();
 	return 0;
 }
