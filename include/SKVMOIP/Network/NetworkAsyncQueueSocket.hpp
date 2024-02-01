@@ -13,6 +13,7 @@
 #include <mutex>
 #include <atomic>
 #include <condition_variable>
+#include <memory>
 
 namespace SKVMOIP
 {
@@ -160,7 +161,7 @@ namespace SKVMOIP
 			Socket m_socket;
 			std::deque<Transxn> m_transxnQueue;
 			std::condition_variable m_dataAvailableCV;
-			std::thread m_thread;
+			std::unique_ptr<std::thread> m_thread;
 			std::mutex m_mutex;
 			bool m_isValid;
 			std::atomic<bool> m_isCanSendOrReceive;

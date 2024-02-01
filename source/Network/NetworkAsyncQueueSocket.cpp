@@ -118,7 +118,7 @@ namespace SKVMOIP
 			if(m_socket.isConnected())
 			{
 				m_isCanSendOrReceive = true;
-				m_thread = std::move(std::thread(threadHandler, this));
+				m_thread = std::move(std::unique_ptr<std::thread>(new std::thread(threadHandler, this)));
 			}
 		}
 /*		AsyncQueueSocket::AsyncQueueSocket(AsyncQueueSocket&& asyncSocket) : m_socket(std::move(asyncSocket.m_socket)), m_thread(std::move(asyncSocket.m_thread)), m_isValid(asyncSocket.m_isValid)
@@ -151,7 +151,7 @@ namespace SKVMOIP
 			if(result == Result::Success)
 			{
 				m_isCanSendOrReceive = true;
-				m_thread = std::move(std::thread(threadHandler, this));
+				m_thread = std::move(std::unique_ptr<std::thread>(new std::thread(threadHandler, this)));
 			}
 			return result;
 		}
@@ -165,7 +165,8 @@ namespace SKVMOIP
 				if(result != Result::Success)
 					return result;
 			}
-			m_thread.join();
+			if(m_thread && m_thread->joinable())
+				m_thread->join();
 			return result;
 		}
 	
