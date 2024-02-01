@@ -8,10 +8,10 @@
 
 #include <chrono>
 
-static buffer_t gRawInputBuffer;
 typedef std::unordered_map<SKVMOIP::Window::EventType, SKVMOIP::Event> TypedEventMap;
 typedef std::unordered_map<HWND, TypedEventMap> WindowsEventRegistry;
 static WindowsEventRegistry  gWindowsEventRegistry;
+static std::unordered_map<HWND, SKVMOIP::Window*> gWindowsSelfReferenceRegistry;
 
 static TypedEventMap* getEventMap(HWND windowHandle)
 {
@@ -34,6 +34,10 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 	if(eventMap == nullptr)
 		return DefWindowProc(hwnd, uMsg, wParam, lParam);
 
+	auto it = gWindowsSelfReferenceRegistry.find(hwnd);
+	_assert(it != gWindowsSelfReferenceRegistry.end());
+	SKVMOIP::Window* window = it->second;
+
 	switch (uMsg)
     {
 		case WM_SIZE:
@@ -49,13 +53,13 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 			if(GetRawInputData((HRAWINPUT)lParam, RID_INPUT, NULL, &bufferSize, sizeof(RAWINPUTHEADER)) == ((UINT)-1))
 				Internal_ErrorExit("GetRawinputData");
 
-			if(buf_get_capacity(&gRawInputBuffer) < bufferSize)
-				buf_resize(&gRawInputBuffer, bufferSize);
+			if(buf_get_capacity(&window->m_rawInputBuffer) < bufferSize)
+				buf_resize(&window->m_rawInputBuffer, bufferSize);
 
-			if(GetRawInputData((HRAWINPUT)lParam, RID_INPUT, buf_get_ptr(&gRawInputBuffer), &bufferSize, sizeof(RAWINPUTHEADER)) != bufferSize)
+			if(GetRawInputData((HRAWINPUT)lParam, RID_INPUT, buf_get_ptr(&window->m_rawInputBuffer), &bufferSize, sizeof(RAWINPUTHEADER)) != bufferSize)
 				Internal_ErrorExit("GetRawInputData");
 
-			RAWINPUT* rawInput = reinterpret_cast<RAWINPUT*>(buf_get_ptr(&gRawInputBuffer));
+			RAWINPUT* rawInput = reinterpret_cast<RAWINPUT*>(buf_get_ptr(&window->m_rawInputBuffer));
 
 			switch(rawInput->header.dwType)
 			{
@@ -131,7 +135,7 @@ namespace SKVMOIP
 		setPosition(0, 0);
 		setZOrder(HWND_TOP);
 
-		gRawInputBuffer = buf_create(sizeof(u8), sizeof(RAWINPUT), 0);
+		m_rawInputBuffer = buf_create(sizeof(u8), sizeof(RAWINPUT), 0);
 
 		std::unordered_map<EventType, Event> eventMap;
 		eventMap.reserve(EnumClassToInt(Window::EventType::MAX));
@@ -140,13 +144,15 @@ namespace SKVMOIP
 			eventMap.insert({ IntToEnumClass<Window::EventType>(i), Event() });
 
 		gWindowsEventRegistry.insert(std::pair<HWND, std::unordered_map<EventType, Event>> { m_handle, std::move(eventMap) });
+		gWindowsSelfReferenceRegistry.insert(std::pair<HWND, Window*> { m_handle, this });
 	}
 
 	Window::~Window()
 	{
 		Win32::Win32DestroyWindow(m_handle);
 		gWindowsEventRegistry.erase(m_handle);
-		buf_free(&gRawInputBuffer);
+		gWindowsSelfReferenceRegistry.erase(m_handle);
+		buf_free(&m_rawInputBuffer);
 	}
 
 	void Window::runGameLoop(u32 frameRate)

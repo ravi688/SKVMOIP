@@ -9,6 +9,8 @@
 #	define WIN32_LEAN_AND_MEAN
 #	include <Windows.h>
 
+#include <bufferlib/buffer.h>
+
 typedef HWND Internal_WindowHandle;
 typedef MSG Internal_MSG;
 typedef HHOOK Internal_HookHandle;
@@ -16,17 +18,22 @@ typedef LRESULT (*Internal_HookCallback)(int code, WPARAM wParam, LPARAM lParam)
 
 #endif /* Windows */
 
+static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
 namespace SKVMOIP
 {
 	class Window
 	{
+		friend LRESULT CALLBACK ::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	private:
 		Internal_WindowHandle m_handle;
 		Internal_MSG m_msg;
 		bool m_isMessageAvailable;
 		u32 m_width;
 		u32 m_height;
+		buffer_t m_rawInputBuffer;
 	public:
+
 
 		enum class EventType
 		{
