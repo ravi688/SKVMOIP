@@ -35,6 +35,7 @@ EXTERNAL_CLIENT_LIBS=$(EXTERNAL_GTK_LIBS) \
 					-L./external-dependencies/NvidiaCodec/ -l:nvcuvid.lib -l:nvencodeapi.lib
 
 SERVER_SOURCES=source/Encoder.cpp \
+				source/HDMIEncodeNetStream.cpp \
 				source/main.server.cpp
 CLIENT_SOURCES=source/third_party/NvDecoder.cpp \
 				source/Decoder.cpp \

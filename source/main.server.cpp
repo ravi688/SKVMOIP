@@ -52,12 +52,19 @@ ReadSample: 5 ms to 11 ms
 Encode: 2 ms to 5 ms
 Network: 0 ms
 Decode: 5 ms to 10 ms
+
 Convert: 5 ms to 10 ms
+Frame Copy: 1 ms to 3 ms
+Draw Surface Copy: 1 ms to 4 ms
 Blit: 1 ms to 5 ms
 
-Total: { 18 ms, 41 ms }
 
-Convert and Blit - can be merged into one using a GPU program and latency can be reduced to 2 ms to 3 ms (expected)
+Total: { 20 ms, 48 ms }
+
+Convert to Blit takes: 22 ms in worst case and 8 ms in best case.
+
+Convert, Frame Copy, Draw Surface Copy, and Blit - can be merged into one using a GPU program 
+																	and latency can be reduced to 2 ms to 3 ms (expected)
 
 Expected Total (after GPU program): { 14 ms, 29 ms }
 

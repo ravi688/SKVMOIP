@@ -103,8 +103,8 @@ namespace SKVMOIP
 		}
 	}
 
-	#define MAX_IN_FLIGHT_REQUEST_COUNT 5
-	#define MAX_FRAME_DATA_OBJECT_COUNT 30
+	#define MAX_IN_FLIGHT_REQUEST_COUNT 2
+	#define MAX_FRAME_DATA_OBJECT_COUNT 1
 	
 	void HDMIDecodeNetStream::decodeThreadHandler()
 	{
@@ -169,6 +169,7 @@ namespace SKVMOIP
 							auto rgbDataSize = m_converter.getRGBDataSize();
 							_assert(rgbDataSize == FIFOPool<FrameData>::GetValue(result)->getSize());
 							_assert(rgbDataSize == getUncompressedConvertedFrameSize());
+							/* Takes: 1 ms to 2 ms*/
 							memcpy(FIFOPool<FrameData>::GetValue(result)->getPtr(), rgbData, rgbDataSize);
 							m_frameDataPool.returnInactive(result);
 						}

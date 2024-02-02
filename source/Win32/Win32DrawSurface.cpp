@@ -10,7 +10,7 @@ namespace Win32
 		m_memoryView = (u8*)MapViewOfFile(m_memoryFile, FILE_MAP_ALL_ACCESS, 0, 0, fileSize);
 		memset(m_memoryView, 0xFF, fileSize);
 
-		BITMAPINFOHEADER biheader = { sizeof(biheader), static_cast<LONG>(width), static_cast<LONG>(height), 1, static_cast<WORD>(bitsPerPixel), BI_RGB };
+		BITMAPINFOHEADER biheader = { sizeof(biheader), static_cast<LONG>(width), -static_cast<LONG>(height), 1, static_cast<WORD>(bitsPerPixel), BI_RGB };
 
 		m_windowHandle = windowHandle;
 		m_windowHDC = GetDC(windowHandle);

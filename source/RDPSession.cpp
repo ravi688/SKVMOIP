@@ -103,6 +103,7 @@ namespace SKVMOIP
 			auto frameData = FIFOPool<HDMIDecodeNetStream::FrameData>::GetValue(frame);
 			_assert(frameData.has_value());
 			_assert(frameData->getSize() == drawSurface->getBufferSize());
+			/* Takes: 1 ms to 4 ms */
 			memcpy(drawSurface->getPixels(), frameData->getPtr(), frameData->getSize());
 			decodeNetStream->returnFrameData(frame);
 			// debug_log_info("FrameData returned");
