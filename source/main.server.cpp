@@ -104,6 +104,11 @@ int main(int argc, const char* argv[])
 			u32 deviceIndex;
 			{
 				std::unique_lock<std::mutex> lock(gMutex);
+				if(gAvailableDevices.size() <= 0)
+				{
+					DEBUG_LOG_ERROR("No more devices to allocate, all are still being used by other connections");
+					continue;
+				}
 				deviceIndex = gAvailableDevices.back();
 				DEBUG_LOG_INFO("Device ID allocated: %lu", deviceIndex);
 			}
