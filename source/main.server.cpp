@@ -24,7 +24,7 @@
 static std::atomic<u32> gNumConnections = 0;
 
 static std::mutex gMutex;
-static std::vector<u32> gAvailableDevices = { 1 };
+static std::vector<u32> gAvailableDevices;
 
 using namespace SKVMOIP;
 
@@ -85,9 +85,9 @@ int main(int argc, const char* argv[])
  	DEBUG_LOG_INFO("Devices Found: %u", deviceList->getDeviceCount());
 
  	/* Populate the std::vector with the available device ids - in this (initially) case, all devices would be available */
-	// gAvailableDevices.reserve(deviceList->getDeviceCount());
-	// for(s32 i = deviceList->getDeviceCount() - 1; i >= 0; --i)
-	// 	gAvailableDevices.push_back(static_cast<u32>(i));
+	gAvailableDevices.reserve(deviceList->getDeviceCount());
+	for(s32 i = deviceList->getDeviceCount() - 1; i >= 0; --i)
+		gAvailableDevices.push_back(static_cast<u32>(i));
 
 	const char* listenIPAddress = GetLocalIPAddress();
 	if(listenIPAddress == NULL)
