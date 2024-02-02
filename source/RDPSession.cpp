@@ -1,6 +1,7 @@
 #include <SKVMOIP/RDPSession.hpp>
 #include <SKVMOIP/debug.h>
 #include <SKVMOIP/assert.h>
+#include <SKVMOIP/StopWatch.hpp>
 
 namespace SKVMOIP
 {
@@ -109,6 +110,9 @@ namespace SKVMOIP
 	
 		auto drawSurfaceSize = drawSurface->getSize();
 		Win32::WindowPaintInfo* winPaintInfo = reinterpret_cast<Win32::WindowPaintInfo*>(paintInfo);
+		SKVMOIP::StopWatch stopwatch;
+		/* Takes: 1 ms to 5 ms*/
 		BitBlt(winPaintInfo->deviceContext, 0, 0, drawSurfaceSize.first, drawSurfaceSize.second, drawSurface->getHDC(), 0, 0, SRCCOPY);
+		auto t = stopwatch.stop();
 	}
 }

@@ -46,6 +46,23 @@ const char* GetLocalIPAddress()
    return IP;
 }
 
+/* 
+
+ReadSample: 5 ms to 11 ms
+Encode: 2 ms to 5 ms
+Network: 0 ms
+Decode: 5 ms to 10 ms
+Convert: 5 ms to 10 ms
+Blit: 1 ms to 5 ms
+
+Total: { 18 ms, 41 ms }
+
+Convert and Blit - can be merged into one using a GPU program and latency can be reduced to 2 ms to 3 ms (expected)
+
+Expected Total (after GPU program): { 14 ms, 29 ms }
+
+*/
+
 int main(int argc, const char* argv[])
 {
 	Win32::InitializeMediaFundationAndCOM();

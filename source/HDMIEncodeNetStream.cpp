@@ -1,6 +1,7 @@
 #include <SKVMOIP/HDMIEncodeNetStream.hpp>
 #include <SKVMOIP/debug.h>
 #include <SKVMOIP/assert.h>
+#include <SKVMOIP/StopWatch.hpp>
 
 namespace SKVMOIP
 {
@@ -66,6 +67,8 @@ namespace SKVMOIP
 			buf_clear_buffer(&m_nv12Buffer, NULL);
 			u8* buffer = reinterpret_cast<u8*>(buf_get_ptr(&m_nv12Buffer));
 			u32 bufferSize = static_cast<u32>(buf_get_capacity(&m_nv12Buffer));
+			/* Takes: 5 ms to 50 ms on Logitech Brio 4k webcam 
+			 * 	 and: 5 ms to 11 ms on Kreo 1080p60fps HDMI capture card */
 			if(!m_hdmiStream->readNV12FrameToBuffer(buffer, bufferSize))
 				continue;
 	

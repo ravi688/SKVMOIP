@@ -1,6 +1,7 @@
 #include <SKVMOIP/Encoder.hpp>
 #include <SKVMOIP/assert.h>
 #include <SKVMOIP/debug.h>
+#include <SKVMOIP/StopWatch.hpp>
 #include <cstring>
 
 namespace SKVMOIP
@@ -86,8 +87,10 @@ namespace SKVMOIP
 	
 		memcpy(pic.img.plane[0], nv12Data,  luma_size);
 		memcpy(pic.img.plane[1], nv12Data + luma_size, chroma_size + chroma_size);
-	
+
 		pic.i_pts = m_frameCount;
+		/* Takes: 4 ms to 8 ms on Logitech Brio
+		 *  and : 2 ms to 5 ms on Kreo 1080p60fps HDMI capture card */
 		auto i_frame_size = x264_encoder_encode(h, &nal, &i_nal, &pic, &pic_out);
 		if(i_frame_size < 0)
 		{

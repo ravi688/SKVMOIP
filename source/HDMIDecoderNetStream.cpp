@@ -133,6 +133,7 @@ namespace SKVMOIP
 				_assert(decodeBufferSize != 0);
 				u32 nFrameReturned = 0;
 				SKVMOIP::StopWatch decodeWatch;
+				/* Takes: 5 ms to 10 ms for Kreo 1080p60fps HDMI capture card */
 				if(m_decoder.decode(decodeBufferPtr, decodeBufferSize, nFrameReturned))
 				{
 					/* needs more data for the next frame decode - so notify the network thread to start receiving */
@@ -146,6 +147,7 @@ namespace SKVMOIP
 					_assert(m_decoder.getFrameSize() == getUncompressedFrameSize());
 					u8* rgbData;
 					SKVMOIP::StopWatch convertWatch;
+					/* Takes: 5 ms to 10 ms */
 					if((rgbData = m_converter.convert(frame, m_decoder.getFrameSize())) != NULL)
 					{
 						auto convertTime = convertWatch.stop();
