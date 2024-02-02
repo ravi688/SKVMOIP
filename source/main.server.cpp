@@ -62,8 +62,8 @@ int main(int argc, const char* argv[])
 
  	/* Populate the std::vector with the available device ids - in this (initially) case, all devices would be available */
 	gAvailableDevices.reserve(deviceList->getDeviceCount());
-	for(u32 i = 0; i < deviceList->getDeviceCount(); i++)
-		gAvailableDevices.push_back(i);
+	for(s32 i = deviceList->getDeviceCount() - 1; i >= 0; --i)
+		gAvailableDevices.push_back(static_cast<u32>(i));
 
 	const char* listenIPAddress = GetLocalIPAddress();
 	if(listenIPAddress == NULL)
