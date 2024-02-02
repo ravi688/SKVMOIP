@@ -18,7 +18,7 @@ namespace SKVMOIP
       u16 m_keyMoPortNumber;
       u16 m_videoPortNumber;
       u8 m_videoUSBPortNumber;
-      u8 m_nameLength;;
+      u8 m_nameLength;
       u8 m_name[255];
     
       char m_videoIPAddressStr[IPV4_STR_LEN];

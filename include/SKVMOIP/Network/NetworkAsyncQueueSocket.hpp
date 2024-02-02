@@ -165,6 +165,7 @@ namespace SKVMOIP
 			std::mutex m_mutex;
 			bool m_isValid;
 			std::atomic<bool> m_isCanSendOrReceive;
+			std::atomic<bool> m_isStopThread;
 			
 			void threadHandler();
 		

@@ -33,7 +33,8 @@ namespace Win32
 
 		if(m_source->Shutdown() != S_OK)
 			DEBUG_LOG_ERROR("Failed to shutdown device, ID = %lu", m_id);
-		DEBUG_LOG_INFO("Win32SourceDevice shutdown success");
+		else
+			DEBUG_LOG_INFO("Win32SourceDevice shutdown success");
 		m_source = NULL;
 	}
 

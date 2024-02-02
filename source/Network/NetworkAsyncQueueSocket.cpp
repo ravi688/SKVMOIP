@@ -118,8 +118,11 @@ namespace SKVMOIP
 			if(m_socket.isConnected())
 			{
 				m_isCanSendOrReceive = true;
+				m_isStopThread = false;
 				m_thread = std::move(std::unique_ptr<std::thread>(new std::thread(threadHandler, this)));
 			}
+			else 
+				m_isStopThread = true;
 		}
 /*		AsyncQueueSocket::AsyncQueueSocket(AsyncQueueSocket&& asyncSocket) : m_socket(std::move(asyncSocket.m_socket)), m_thread(std::move(asyncSocket.m_thread)), m_isValid(asyncSocket.m_isValid)
 		{
@@ -151,6 +154,7 @@ namespace SKVMOIP
 			if(result == Result::Success)
 			{
 				m_isCanSendOrReceive = true;
+				m_isStopThread = false;
 				m_thread = std::move(std::unique_ptr<std::thread>(new std::thread(threadHandler, this)));
 			}
 			return result;
@@ -165,8 +169,13 @@ namespace SKVMOIP
 				if(result != Result::Success)
 					return result;
 			}
-			if(m_thread && m_thread->joinable())
-				m_thread->join();
+			if(m_thread)
+			{
+				m_isStopThread = true;
+				m_dataAvailableCV.notify_one();
+				if(m_thread->joinable())
+					m_thread->join();
+			}
 			return result;
 		}
 	
@@ -194,8 +203,10 @@ namespace SKVMOIP
 			{
 				/* lock and copy/move the Transxn object into the local storage of this thread */
 				std::unique_lock<std::mutex> lock(m_mutex);
-				while(m_transxnQueue.empty())
+				while(m_transxnQueue.empty() && (!m_isStopThread))
 					m_dataAvailableCV.wait(lock);
+				if(m_isStopThread)
+					break;
 				// debug_log_info("Request received for Data Receive");
 				Transxn transxn(std::move(m_transxnQueue.back()));
 				/* now we are done moving/copying, and let the client thread add more send and receive transactions into the queue */

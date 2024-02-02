@@ -40,13 +40,20 @@ namespace SKVMOIP
 	
 	HDMIEncodeNetStream::~HDMIEncodeNetStream()
 	{
-		buf_free(&m_nv12Buffer);
-		m_isValid = false;
+		if(m_isValid)
+		{
+			m_isValid = false;
+			buf_free(&m_nv12Buffer);
+		}
 	}
 	
 	void HDMIEncodeNetStream::start()
 	{
-		if(!m_isValid) return;
+		if(!m_isValid)
+		{
+			m_device.shutdown();
+			return;
+		}
 		auto& socket = getSocket();
 		if(!socket.isConnected())
 		{

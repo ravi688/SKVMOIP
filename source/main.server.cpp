@@ -24,7 +24,7 @@
 static std::atomic<u32> gNumConnections = 0;
 
 static std::mutex gMutex;
-static std::vector<u32> gAvailableDevices;
+static std::vector<u32> gAvailableDevices = { 1 };
 
 using namespace SKVMOIP;
 
@@ -61,9 +61,9 @@ int main(int argc, const char* argv[])
  	DEBUG_LOG_INFO("Devices Found: %u", deviceList->getDeviceCount());
 
  	/* Populate the std::vector with the available device ids - in this (initially) case, all devices would be available */
-	gAvailableDevices.reserve(deviceList->getDeviceCount());
-	for(s32 i = deviceList->getDeviceCount() - 1; i >= 0; --i)
-		gAvailableDevices.push_back(static_cast<u32>(i));
+	// gAvailableDevices.reserve(deviceList->getDeviceCount());
+	// for(s32 i = deviceList->getDeviceCount() - 1; i >= 0; --i)
+	// 	gAvailableDevices.push_back(static_cast<u32>(i));
 
 	const char* listenIPAddress = GetLocalIPAddress();
 	if(listenIPAddress == NULL)
@@ -103,13 +103,15 @@ int main(int argc, const char* argv[])
 			/* Get ID of the one of the available devices */
 			u32 deviceIndex;
 			{
-				std::unique_lock<std::mutex> lock(gMutex);
-				if(gAvailableDevices.size() <= 0)
 				{
-					DEBUG_LOG_ERROR("No more devices to allocate, all are still being used by other connections");
-					continue;
+					std::unique_lock<std::mutex> lock(gMutex);
+					if(gAvailableDevices.size() <= 0)
+					{
+						DEBUG_LOG_ERROR("No more devices to allocate, all are still being used by other connections");
+						continue;
+					}
+					deviceIndex = gAvailableDevices.back();
 				}
-				deviceIndex = gAvailableDevices.back();
 				DEBUG_LOG_INFO("Device ID allocated: %lu", deviceIndex);
 			}
 
