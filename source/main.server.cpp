@@ -105,6 +105,7 @@ int main(int argc, const char* argv[])
 			{
 				std::unique_lock<std::mutex> lock(gMutex);
 				deviceIndex = gAvailableDevices.back();
+				DEBUG_LOG_INFO("Device ID allocated: %lu", deviceIndex);
 			}
 
 			std::optional<Win32::Win32SourceDevice> device = deviceList->activateDevice(deviceIndex);
