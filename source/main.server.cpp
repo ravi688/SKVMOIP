@@ -126,8 +126,10 @@ int main(int argc, const char* argv[])
 			auto thread = std::thread([](Win32::Win32SourceDevice&& device, Network::Socket&& socket, std::mutex& mtx)
 			{
 				u32 id = device.getID();
-				HDMIEncodeNetStream netStream(std::move(device), std::move(socket));
-				netStream.start();
+				{
+					HDMIEncodeNetStream netStream(std::move(device), std::move(socket));
+					netStream.start();
+				}
 				std::this_thread::sleep_for(std::chrono::milliseconds(DEVICE_RELEASE_COOL_DOWN_TIME));
 
 				/* Put this device ID back into the Available Devices list */
