@@ -61,6 +61,8 @@ namespace Win32
        	HRESULT result = m_activateList[index]->ActivateObject(IID_PPV_ARGS(&pSource));
        	if(result != S_OK)
        		return { };
+       	if(m_activateList[index]->DetachObject() != S_OK)
+       		DEBUG_LOG_ERROR("Failed to detach IMFMediaSource from IMFActivate");
 
     	return { Win32SourceDevice(pSource, index) };
     }
