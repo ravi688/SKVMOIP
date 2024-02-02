@@ -10,8 +10,13 @@
 
 namespace SKVMOIP
 {
+	static void MouseInputHandler(void* mouseInputData, void* userData);
+	static void KeyboardInputHandler(void* keyboardInputData, void* userData);
 	class RDPSession
 	{
+		friend void MouseInputHandler(void* mouseInputData, void* userData);
+		friend void KeyboardInputHandler(void* keyboardInputData, void* userData);
+
 		private:
 			std::unique_ptr<HDMIDecodeNetStream> m_decodeNetStream;
 			std::unique_ptr<KMNetStream> m_kmNetStream;
@@ -20,10 +25,11 @@ namespace SKVMOIP
 			Event::SubscriptionHandle m_keyboardInputHandle;
 			Event::SubscriptionHandle m_mouseInputHandle;
 			Event::SubscriptionHandle m_windowPaintHandle;
-	
+			std::atomic<bool> m_isKMNetStreamConnected;
+			std::unique_ptr<std::thread> m_kmConnectThread;
 	
 		public:
-			RDPSession() = default;
+			RDPSession();
 			RDPSession(RDPSession&&) = delete;
 			RDPSession(RDPSession&) = delete;
 			~RDPSession();

@@ -8,6 +8,14 @@ namespace SKVMOIP
 	static void KeyboardInputHandler(void* keyboardInputData, void* userData);
 	static void WindowPaintHandler(void* paintInfo, void* userData);
 
+	RDPSession::RDPSession() : m_keyboardInputHandle(Event::GetInvalidSubscriptionHandle()), 
+							   m_mouseInputHandle(Event::GetInvalidSubscriptionHandle()),
+							   m_windowPaintHandle(Event::GetInvalidSubscriptionHandle()),
+							   m_isKMNetStreamConnected(false)
+	{
+
+	}
+
 	void RDPSession::start(const char* ipAddress, const char* portNumber, const char* kmIPAddress, const char* kmPortNumber)
 	{
 		m_decodeNetStream = std::unique_ptr<HDMIDecodeNetStream>(new HDMIDecodeNetStream(1920, 1080, 60, 1, 32));
@@ -29,10 +37,18 @@ namespace SKVMOIP
 				m_drawSurface = std::move(std::unique_ptr<Win32::Win32DrawSurface>(
 							new Win32::Win32DrawSurface(m_window->getNativeHandle(), m_window->getSize().first, m_window->getSize().second, 32)));
 			}
-			if(m_kmNetStream->connect(kmIPAddress, kmPortNumber) == Network::Result::Success)
-				DEBUG_LOG_INFO("KeyMo Connected to %s:%s", kmIPAddress, kmPortNumber);
-			else
-				DEBUG_LOG_ERROR("Failed to connect to KeyMo Server at %s:%s", kmIPAddress, kmPortNumber);
+
+			m_kmConnectThread = std::unique_ptr<std::thread>(new std::thread([this](std::string kmIPAddress, std::string kmPortNumber)
+			{
+				DEBUG_LOG_INFO("KeyMo: Trying to connect to %s:%s", kmIPAddress.c_str(), kmPortNumber.c_str());
+				if(m_kmNetStream->connect(kmIPAddress.c_str(), kmPortNumber.c_str()) == Network::Result::Success)
+				{
+					m_isKMNetStreamConnected = true;
+					DEBUG_LOG_INFO("KeyMo Connected to %s:%s", kmIPAddress.c_str(), kmPortNumber.c_str());
+				}
+				else
+					DEBUG_LOG_ERROR("Failed to connect to KeyMo Server at %s:%s", kmIPAddress.c_str(), kmPortNumber.c_str());
+			}, std::string(kmIPAddress), std::string(kmPortNumber)));
 			
 			m_window->runGameLoop(static_cast<u32>(60));
 		}
@@ -45,8 +61,13 @@ namespace SKVMOIP
 		if(m_window)
 		{
 			m_window->getEvent(Window::EventType::Paint).unsubscribe(m_windowPaintHandle);
-			m_window->getEvent(Window::EventType::MouseInput).unsubscribe(m_mouseInputHandle);
-			m_window->getEvent(Window::EventType::KeyboardInput).unsubscribe(m_keyboardInputHandle);
+			if(m_kmConnectThread && m_kmConnectThread->joinable())
+				m_kmConnectThread->join();
+			if(m_kmNetStream)
+			{
+				m_window->getEvent(Window::EventType::MouseInput).unsubscribe(m_mouseInputHandle);
+				m_window->getEvent(Window::EventType::KeyboardInput).unsubscribe(m_keyboardInputHandle);
+			}
 		}
 	}
 
@@ -54,14 +75,18 @@ namespace SKVMOIP
 	{
 		_assert(mouseInputData != NULL);
 		RDPSession& rdp = *reinterpret_cast<RDPSession*>(userData);
-		rdp.getKMNetStream()->sendMouseInput(*reinterpret_cast<Win32::MouseInput*>(mouseInputData));
+		auto& kmNetStream = rdp.getKMNetStream();
+		if(rdp.m_isKMNetStreamConnected	&& kmNetStream->isCanSendOrReceive())
+			rdp.getKMNetStream()->sendMouseInput(*reinterpret_cast<Win32::MouseInput*>(mouseInputData));
 	}
 
 	static void KeyboardInputHandler(void* keyboardInputData, void* userData)
 	{
 		_assert(keyboardInputData != NULL);
 		RDPSession& rdp = *reinterpret_cast<RDPSession*>(userData);
-		rdp.getKMNetStream()->sendKeyboardInput(*reinterpret_cast<Win32::KeyboardInput*>(keyboardInputData));
+		auto& kmNetStream = rdp.getKMNetStream();
+		if(rdp.m_isKMNetStreamConnected && kmNetStream->isCanSendOrReceive())
+			rdp.getKMNetStream()->sendKeyboardInput(*reinterpret_cast<Win32::KeyboardInput*>(keyboardInputData));
 	}
 	
 	static void WindowPaintHandler(void* paintInfo, void* userData)

@@ -11,6 +11,7 @@ namespace SKVMOIP
 	{
 	public:
 		typedef u32 SubscriptionHandle;
+		static constexpr SubscriptionHandle GetInvalidSubscriptionHandle() { return U32_MAX; }
 		typedef void* EventHandlerData;
 		typedef void (*EventHandler)(void* eventData, EventHandlerData handlerData);
 
