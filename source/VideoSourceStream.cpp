@@ -428,7 +428,7 @@ namespace SKVMOIP
 			return;
 		}
 
-		if(MFCreateSourceReaderFromMediaSource(device.getInternalHandle(), NULL, &m_sourceReader) != S_OK)
+		if(MFCreateSourceReaderFromMediaSource(device.getInternalHandle(), attributes, &m_sourceReader) != S_OK)
 		{
 			debug_log_error("Unable to create SourceReader from MediaSource");
 			m_isValid = false;

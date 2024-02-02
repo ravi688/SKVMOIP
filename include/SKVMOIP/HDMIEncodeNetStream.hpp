@@ -16,6 +16,7 @@ namespace SKVMOIP
 		std::unique_ptr<Encoder> m_encoder;
 		buffer_t m_nv12Buffer;
 		Win32::Win32SourceDevice m_device;
+		bool m_isValid;
 
 	public:
 		HDMIEncodeNetStream(Win32::Win32SourceDevice&& device, Network::Socket&& socket);
