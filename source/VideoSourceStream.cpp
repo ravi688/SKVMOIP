@@ -413,12 +413,28 @@ namespace SKVMOIP
 																				m_isInputCompressedFormat(false),
 																				m_isOutputCompressedFormat(false)
 	{
+		IMFAttributes* attributes;
+		if(MFCreateAttributes(&attributes, 1) != S_OK)
+		{
+			debug_log_error("Failed to create SourceReader attributes");
+			m_isValid = false;
+			return;
+		}
+		if(attributes->SetUINT32(MF_SOURCE_READER_DISCONNECT_MEDIASOURCE_ON_SHUTDOWN, TRUE) != S_OK)
+		{
+			debug_log_error("Failed to set MF_SOURCE_READER_DISCONNECT_MEDIASOURCE_ON_SHUTDOWN to TRUE");
+			m_isValid = false;
+			attributes->Release();
+			return;
+		}
+
 		if(MFCreateSourceReaderFromMediaSource(device.getInternalHandle(), NULL, &m_sourceReader) != S_OK)
 		{
 			debug_log_error("Unable to create SourceReader from MediaSource");
 			m_isValid = false;
 			return;
 		}
+
 
 		switch(m_usage)
 		{
