@@ -213,7 +213,7 @@ namespace SKVMOIP
 					lock.unlock();
 
 					/* socket might have been closed, so terminate this thread */
-					std::terminate();
+					break;
 				}
 
 				lock.lock();
