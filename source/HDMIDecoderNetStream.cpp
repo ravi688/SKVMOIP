@@ -160,8 +160,8 @@ namespace SKVMOIP
 								DEBUG_LOG_INFO("Allocating new FrameData object");
 								m_frameDataPool.createInactive(getUncompressedConvertedFrameSize());
 							}
-							else
-								debug_log_info("MAX_FRAME_DATA_OBJECT_COUNT(=%d) is reached", MAX_FRAME_DATA_OBJECT_COUNT);
+							// else
+								// debug_log_info("MAX_FRAME_DATA_OBJECT_COUNT(=%d) is reached", MAX_FRAME_DATA_OBJECT_COUNT);
 						}
 
 						if(auto result = m_frameDataPool.getInactive())

@@ -89,7 +89,8 @@ namespace SKVMOIP
 					break;
 				}
 			}
-			_assert(m_pressedKeys.erase(keyboardInput.makeCode) == 1);
+			auto result = m_pressedKeys.erase(keyboardInput.makeCode);
+			_assert(result == 1);
 		}
 	
 		Win32::KMInputData kmInputData = { Win32::RawInputDeviceType::Keyboard };
