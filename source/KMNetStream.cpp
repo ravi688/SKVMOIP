@@ -7,7 +7,13 @@
 namespace SKVMOIP
 {
 	KMNetStream::KMNetStream() : AsyncQueueSocket(std::move(Network::Socket(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP))),
-								m_modifierKeys(0)
+								m_modifierKeys(0),
+								m_startTime(std::chrono::steady_clock::now()),
+								m_mouseMaxReponseTime(5),
+								m_mouseMaxDispPerDeltaX(5),
+								m_mouseMaxDispPerDeltaY(5),
+								m_mouseCurDispX(0),
+								m_mouseCurDispY(0)
 	{
 	
 	}
@@ -20,9 +26,21 @@ namespace SKVMOIP
 	
 	void KMNetStream::sendMouseInput(const Win32::MouseInput& mouseInput)
 	{
-		Win32::KMInputData kmInputData = { Win32::RawInputDeviceType::Mouse };
-		memcpy(&kmInputData.mouseInput, reinterpret_cast<const void*>(&mouseInput), sizeof(Win32::MouseInput));
-		sendInput(kmInputData);
+		m_mouseCurDispX += mouseInput.movement.x;
+		m_mouseCurDispY += mouseInput.movement.y;
+		if((((std::abs(m_mouseCurDispX) >= m_mouseMaxDispPerDeltaX) || (std::abs(m_mouseCurDispY) >= m_mouseMaxDispPerDeltaY))
+					&& (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_startTime).count() >= m_mouseMaxReponseTime))
+				|| mouseInput.isAnyButton)
+		{
+			Win32::KMInputData kmInputData = { Win32::RawInputDeviceType::Mouse };
+			memcpy(&kmInputData.mouseInput, reinterpret_cast<const void*>(&mouseInput), sizeof(Win32::MouseInput));
+			kmInputData.mouseInput.movement.x = m_mouseCurDispX;
+			kmInputData.mouseInput.movement.y = m_mouseCurDispY;
+			sendInput(kmInputData);
+			m_mouseCurDispX = 0;
+			m_mouseCurDispY = 0;
+			m_startTime = std::chrono::steady_clock::now();
+		}
 	}
 	
 	static HIDUsageIDModifierBits GetModifierBitFromMakeCode(PS2Set1MakeCode makeCode)
