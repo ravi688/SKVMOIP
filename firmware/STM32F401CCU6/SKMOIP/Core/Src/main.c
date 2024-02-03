@@ -68,8 +68,8 @@ typedef struct NetworkPacket
 	};
 } NetworkPacket;
 
-#define RECEIVE_BUFFER_SIZE (128 * sizeof(NetworkPacket)) // must be greater than or equal to 3
-#define SEND_KEYBOARD_REPORT_INTERVAL 10
+#define RECEIVE_BUFFER_SIZE (1 * sizeof(NetworkPacket)) // must be greater than or equal to 3
+#define SEND_KEYBOARD_REPORT_INTERVAL 5
 #define SEND_MOUSE_REPORT_INTERVAL 4
 
 typedef enum input_type_t
@@ -447,25 +447,20 @@ int main(void)
 			  continue;
 		  }
 
-		  NetworkPacket* packets = (NetworkPacket*)(recieveBuffer);
-		  NetworkPacket* end = (NetworkPacket*)(recieveBuffer + size);
-		  for(; packets < end; ++packets)
+		  NetworkPacket* packet = (NetworkPacket*)(recieveBuffer);
+		  switch(packet->deviceType)
 		  {
-			  NetworkPacket packet = *packets;
-			  switch(packet.deviceType)
+		  	  case 1 /* Mouse */:
+		  	  {
+			  	SendMouseReport(packet->mouseButtons, (int8_t)(packet->mousePointX), (int8_t)(packet->mousePointY), (int8_t)packet->mouseWheelX);
+		  		HAL_Delay(SEND_MOUSE_REPORT_INTERVAL);
+		  		break;
+		  	  }
+		  	  case 0 /* Keyboard */:
 			  {
-			  	  case 0 /* Keyboard */:
-			  	  {
-			  		  SendKeyboardReport(packet.usbHIDUsageID, packet.modifierKeys, (key_status_t)packet.keyStatus);
-			  		  HAL_Delay(SEND_KEYBOARD_REPORT_INTERVAL);
-			  		  break;
-			  	  }
-			  	  case 1 /* Mouse */:
-			  	  {
-			  		  SendMouseReport(packet.mouseButtons, (int8_t)(packet.mousePointX), (int8_t)(packet.mousePointY), (int8_t)packet.mouseWheelX);
-			  		  HAL_Delay(SEND_MOUSE_REPORT_INTERVAL);
-			  		  break;
-			  	  }
+				SendKeyboardReport(packet->usbHIDUsageID, packet->modifierKeys, (key_status_t)packet->keyStatus);
+				HAL_Delay(SEND_KEYBOARD_REPORT_INTERVAL);
+				break;
 			  }
 		  }
 	  }
