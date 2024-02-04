@@ -20,8 +20,10 @@ namespace SKVMOIP
 		                                                        m_topLevelButton(gtk_toggle_button_new()),
 		                                                        m_toggleCallbackHandlerInfo { id },
 																m_videoCallbackHandlerInfo { id },
-																m_powerCallbackHandlerInfo { id },
-																m_resetCallbackHandlerInfo { id }
+																m_powerPressCallbackHandlerInfo { id },
+																m_powerReleaseCallbackHandlerInfo { id },
+																m_resetPressCallbackHandlerInfo { id },
+																m_resetReleaseCallbackHandlerInfo { id }
 		
 		{
 		
@@ -109,18 +111,32 @@ namespace SKVMOIP
 			machine->m_videoCallbackHandlerInfo.handler.first(machine->m_videoCallbackHandlerInfo.id, machine->m_videoCallbackHandlerInfo.handler.second);
 		}
 
-		static void PowerButtonClickHandler(GtkWidget* widget, void* userData)
+		static void PowerButtonPressHandler(GtkWidget* widget, GdkEventButton event, void* userData)
 		{
 			MachineUI* machine = reinterpret_cast<MachineUI*>(userData);
-			_assert(machine->m_powerCallbackHandlerInfo.handler.first != NULL);
-			machine->m_powerCallbackHandlerInfo.handler.first(machine->m_powerCallbackHandlerInfo.id, machine->m_powerCallbackHandlerInfo.handler.second);
+			_assert(machine->m_powerPressCallbackHandlerInfo.handler.first != NULL);
+			machine->m_powerPressCallbackHandlerInfo.handler.first(machine->m_powerPressCallbackHandlerInfo.id, machine->m_powerPressCallbackHandlerInfo.handler.second);
 		}
 
-		static void ResetButtonClickHandler(GtkWidget* widget, void* userData)
+		static void PowerButtonReleaseHandler(GtkWidget* widget, GdkEventButton event, void* userData)
 		{
 			MachineUI* machine = reinterpret_cast<MachineUI*>(userData);
-			_assert(machine->m_resetCallbackHandlerInfo.handler.first != NULL);
-			machine->m_resetCallbackHandlerInfo.handler.first(machine->m_resetCallbackHandlerInfo.id, machine->m_resetCallbackHandlerInfo.handler.second);
+			_assert(machine->m_powerReleaseCallbackHandlerInfo.handler.first != NULL);
+			machine->m_powerReleaseCallbackHandlerInfo.handler.first(machine->m_powerReleaseCallbackHandlerInfo.id, machine->m_powerReleaseCallbackHandlerInfo.handler.second);
+		}
+
+		static void ResetButtonPressHandler(GtkWidget* widget, GdkEventButton event, void* userData)
+		{
+			MachineUI* machine = reinterpret_cast<MachineUI*>(userData);
+			_assert(machine->m_resetPressCallbackHandlerInfo.handler.first != NULL);
+			machine->m_resetPressCallbackHandlerInfo.handler.first(machine->m_resetPressCallbackHandlerInfo.id, machine->m_resetPressCallbackHandlerInfo.handler.second);
+		}
+
+		static void ResetButtonReleaseHandler(GtkWidget* widget, GdkEventButton event, void* userData)
+		{
+			MachineUI* machine = reinterpret_cast<MachineUI*>(userData);
+			_assert(machine->m_resetReleaseCallbackHandlerInfo.handler.first != NULL);
+			machine->m_resetReleaseCallbackHandlerInfo.handler.first(machine->m_resetReleaseCallbackHandlerInfo.id, machine->m_resetReleaseCallbackHandlerInfo.handler.second);
 		}
 
 		void MachineUI::setSelectDeselectCallback(Callback selectCallback, Callback deslectCallback, void* userData)
@@ -136,15 +152,25 @@ namespace SKVMOIP
 			m_videoCallbackHandlerInfo.handler.first = callback; m_videoCallbackHandlerInfo.handler.second = userData; 
 			g_signal_connect(G_OBJECT(m_videoButton), "clicked", G_CALLBACK(VideoButtonClickHandler), reinterpret_cast<void*>(this));
 		}
-		void MachineUI::setPowerButtonCallback(Callback callback, void* userData)
+		void MachineUI::setPowerButtonPressCallback(Callback callback, void* userData)
 		{ 
-			m_powerCallbackHandlerInfo.handler.first = callback; m_powerCallbackHandlerInfo.handler.second = userData;
-			g_signal_connect(G_OBJECT(m_powerButton), "clicked", G_CALLBACK(PowerButtonClickHandler), reinterpret_cast<void*>(this));
+			m_powerPressCallbackHandlerInfo.handler.first = callback; m_powerPressCallbackHandlerInfo.handler.second = userData;
+			g_signal_connect(G_OBJECT(m_powerButton), "button-press-event", G_CALLBACK(PowerButtonPressHandler), reinterpret_cast<void*>(this));
 		}
-		void MachineUI::setResetButtonCallback(Callback callback, void* userData)
+		void MachineUI::setPowerButtonReleaseCallback(Callback callback, void* userData)
 		{ 
-			m_resetCallbackHandlerInfo.handler.first = callback; m_resetCallbackHandlerInfo.handler.second = userData;
-			g_signal_connect(G_OBJECT(m_resetButton), "clicked", G_CALLBACK(ResetButtonClickHandler), reinterpret_cast<void*>(this));
+			m_powerReleaseCallbackHandlerInfo.handler.first = callback; m_powerReleaseCallbackHandlerInfo.handler.second = userData;
+			g_signal_connect(G_OBJECT(m_powerButton), "button-release-event", G_CALLBACK(PowerButtonReleaseHandler), reinterpret_cast<void*>(this));
+		}
+		void MachineUI::setResetButtonPressCallback(Callback callback, void* userData)
+		{ 
+			m_resetPressCallbackHandlerInfo.handler.first = callback; m_resetPressCallbackHandlerInfo.handler.second = userData;
+			g_signal_connect(G_OBJECT(m_resetButton), "button-press-event", G_CALLBACK(ResetButtonPressHandler), reinterpret_cast<void*>(this));
+		}
+		void MachineUI::setResetButtonReleaseCallback(Callback callback, void* userData)
+		{ 
+			m_resetReleaseCallbackHandlerInfo.handler.first = callback; m_resetReleaseCallbackHandlerInfo.handler.second = userData;
+			g_signal_connect(G_OBJECT(m_resetButton), "button-release-event", G_CALLBACK(ResetButtonReleaseHandler), reinterpret_cast<void*>(this));
 		}
 	}
 }

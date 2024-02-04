@@ -11,8 +11,10 @@ namespace SKVMOIP
 
 			static void ButtonToggledHandler(GtkToggleButton* toggleButton, void* userData);
 			static void VideoButtonClickHandler(GtkWidget* widget, void* userData);
-			static void PowerButtonClickHandler(GtkWidget* widget, void* userData);
-			static void ResetButtonClickHandler(GtkWidget* widget, void* userData);
+			static void PowerButtonPressHandler(GtkWidget* widget, GdkEventButton event, void* userData);
+			static void PowerButtonReleaseHandler(GtkWidget* widget, GdkEventButton event, void* userData);
+			static void ResetButtonPressHandler(GtkWidget* widget, GdkEventButton event, void* userData);
+			static void ResetButtonReleaseHandler(GtkWidget* widget, GdkEventButton event, void* userData);
 		
 		/*
 		  _______________________________________
@@ -27,8 +29,10 @@ namespace SKVMOIP
 
 			friend void ButtonToggledHandler(GtkToggleButton* toggleButton, void* userData);
 			friend void VideoButtonClickHandler(GtkWidget* widget, void* userData);
-			friend void PowerButtonClickHandler(GtkWidget* widget, void* userData);
-			friend void ResetButtonClickHandler(GtkWidget* widget, void* userData);
+			friend void PowerButtonPressHandler(GtkWidget* widget, GdkEventButton event, void* userData);
+			friend void PowerButtonReleaseHandler(GtkWidget* widget, GdkEventButton event, void* userData);
+			friend void ResetButtonPressHandler(GtkWidget* widget, GdkEventButton event, void* userData);
+			friend void ResetButtonReleaseHandler(GtkWidget* widget, GdkEventButton event, void* userData);
 
 		public:
 		  // typedef std::function<void(u32, void*)> Callback;
@@ -57,10 +61,12 @@ namespace SKVMOIP
 		  GtkWidget* m_topLevelBox;
 		  GtkWidget* m_topLevelButton;
 		
-		  ToggleHandlerInfo m_toggleCallbackHandlerInfo;;
+		  ToggleHandlerInfo m_toggleCallbackHandlerInfo;
 		  HandlerInfo m_videoCallbackHandlerInfo;
-		  HandlerInfo m_powerCallbackHandlerInfo;
-		  HandlerInfo m_resetCallbackHandlerInfo;
+		  HandlerInfo m_powerPressCallbackHandlerInfo;
+		  HandlerInfo m_powerReleaseCallbackHandlerInfo;
+		  HandlerInfo m_resetPressCallbackHandlerInfo;
+		  HandlerInfo m_resetReleaseCallbackHandlerInfo;
 		
 		public:
 		
@@ -81,8 +87,10 @@ namespace SKVMOIP
 		  void setInputAddress(const char* ipAddress, const char* portNumber);
 		  void setSelectDeselectCallback(Callback selectCallback, Callback deslectCallback, void* userData);
 		  void setVideoButtonCallback(Callback callback, void* userData);
-		  void setPowerButtonCallback(Callback callback, void* userData);
-		  void setResetButtonCallback(Callback callback, void* userData);
+		  void setPowerButtonPressCallback(Callback callback, void* userData);
+		  void setPowerButtonReleaseCallback(Callback callback, void* userData);
+		  void setResetButtonPressCallback(Callback callback, void* userData);
+		  void setResetButtonReleaseCallback(Callback callback, void* userData);
 
 		  const char* getOutputAddressStr() { return gtk_label_get_text(GTK_LABEL(m_outputAddressLabel)); }
 		  const char* getInputAddressStr() { return gtk_label_get_text(GTK_LABEL(m_inputAddressLabel)); }

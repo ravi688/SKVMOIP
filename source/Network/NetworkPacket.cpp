@@ -7,9 +7,11 @@ namespace SKVMOIP
 {
 	namespace Network
 	{
-		SKVMOIP_API NetworkPacket GetNetworkPacketFromKMInputData(const Win32::KMInputData& inputData, u8 modifierKeys)
+		SKVMOIP_API NetworkPacket GetNetworkPacket(const Win32::KMInputData& inputData, u8 modifierKeys, 
+												std::optional<NetworkPacketValues::KeyStatus> powerButton,
+												std::optional<NetworkPacketValues::KeyStatus> resetButton)
 		{
-			// static_assert(sizeof(NetworkPacket) == 10);
+			static_assert(sizeof(NetworkPacket) == 12);
 		
 			NetworkPacket packet = { };
 			switch(inputData.deviceType)

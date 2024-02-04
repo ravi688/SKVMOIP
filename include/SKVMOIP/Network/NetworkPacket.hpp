@@ -3,6 +3,8 @@
 #include <SKVMOIP/defines.hpp>
 #include <SKVMOIP/Win32/Win32RawInput.hpp>
 
+#include <optional>
+
 namespace SKVMOIP
 {
 	namespace Network
@@ -12,7 +14,8 @@ namespace SKVMOIP
 			enum class DeviceType : u8
 			{
 				Keyboard = 0,
-				Mouse = 1
+				Mouse = 1,
+				FrontPanel = 2,
 			};
 
 			enum class Bool : u8
@@ -69,10 +72,20 @@ namespace SKVMOIP
 				  s16 mouseWheelX;
 				  s16 mouseWheelY;
 				};
+
+				/* Front Panel: 1 Byte */
+				struct
+				{
+					u8 buttonStatus : 1;
+					u8 isPowerButton : 1;
+					u8 isResetButton : 1;
+				};
 			};
 		};
 
-		SKVMOIP_API NetworkPacket GetNetworkPacketFromKMInputData(const Win32::KMInputData& inputData, u8 modifierKeys = 0);
+		SKVMOIP_API NetworkPacket GetNetworkPacket(const Win32::KMInputData& inputData, u8 modifierKeys = 0, 
+			std::optional<NetworkPacketValues::KeyStatus> powerButton = { },
+			std::optional<NetworkPacketValues::KeyStatus> resetButton = { });
 		SKVMOIP_API void DumpNetworkPacket(const NetworkPacket& packet);
 	}
 }

@@ -20,7 +20,7 @@ namespace SKVMOIP
 	
 	void KMNetStream::sendInput(const Win32::KMInputData& inputData)
 	{
-		const Network::NetworkPacket netPacket = Network::GetNetworkPacketFromKMInputData(inputData, m_modifierKeys);
+		const Network::NetworkPacket netPacket = Network::GetNetworkPacket(inputData, m_modifierKeys);
 		AsyncQueueSocket::send(reinterpret_cast<const u8*>(&netPacket), sizeof(netPacket));
 	}
 	

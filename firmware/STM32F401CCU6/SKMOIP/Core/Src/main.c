@@ -65,6 +65,15 @@ typedef struct NetworkPacket
 			s16 mouseWheelX;
 			s16 mouseWheelY;
 		};
+
+
+		/* Front Panel: 1 Byte */
+		struct
+		{
+			u8 buttonStatus : 1;
+			u8 isPowerButton : 1;
+			u8 isResetButton : 1;
+		};
 	};
 } NetworkPacket;
 

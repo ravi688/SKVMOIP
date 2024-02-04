@@ -71,7 +71,7 @@ static void NetworkHandler(Network::Socket& networkStream)
 		while(index < count)
 		{
 			const Win32::KMInputData& kmInputData = gNetworkThreadBuffer[index];
-			const Network::NetworkPacket netPacket = Network::GetNetworkPacketFromKMInputData(kmInputData, gModifierKeys);
+			const Network::NetworkPacket netPacket = Network::GetNetworkPacket(kmInputData, gModifierKeys);
 			// Network::DumpNetworkPacket(netPacket);
 			Network::Result result = networkStream.send(reinterpret_cast<const u8*>(&netPacket), sizeof(netPacket));
 			if(result == Network::Result::SocketError)

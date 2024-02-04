@@ -18,20 +18,10 @@ static std::vector<MachineData> GetMachineDataListFromServer()
 {
   std::vector<MachineData> machines = 
   {
-    { IP_ADDRESS(192, 168, 1, 12), IP_ADDRESS(192, 168, 1, 113), 2020, 2000, "Win11-AMD-Ryzen-5-5600G", 1  },
-    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 19), 100, 101, "Dummy Machine", 2  },
-    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 20), 100, 101, "Dummy Machine", 3  },
-    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 21), 100, 101, "Dummy Machine", 4  },
-    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 22), 100, 101, "Dummy Machine", 5  },
-    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 23), 100, 101, "Dummy Machine", 6  },
-    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 24), 100, 101, "Dummy Machine", 7  },
-    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 25), 100, 101, "Dummy Machine", 8  },
-    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 26), 100, 101, "Dummy Machine", 9  },
-    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 27), 100, 101, "Dummy Machine", 10 },
-    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 28), 100, 101, "Dummy Machine", 11 },
-    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 29), 100, 101, "Dummy Machine", 12 },
-    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 30), 100, 101, "Dummy Machine", 13 },
-    { IP_ADDRESS(192, 168, 1, 17), IP_ADDRESS(192, 168, 1, 31), 100, 101, "Dummy Machine", 14 }
+    { IP_ADDRESS(192, 168, 1, 8), IP_ADDRESS(192, 168, 1, 113), 2020, 2000, "Win11-AMD-Ryzen-5-5600G", 1  },
+    { IP_ADDRESS(192, 168, 1, 8), IP_ADDRESS(192, 168, 1, 114), 2020, 2000, "Ubuntu20-Intel-Core-i3-10100F", 2  },
+    { IP_ADDRESS(192, 168, 1, 8), IP_ADDRESS(192, 168, 1, 115), 2020, 2000, "MacOS-M1", 3  },
+    { IP_ADDRESS(192, 168, 1, 8), IP_ADDRESS(192, 168, 1, 116), 2020, 2000, "Encoder-Win10-Intel-Core-i5-6400T", 4  },
   };
   return machines;
 }
@@ -85,14 +75,24 @@ static void OnVideoClicked(u32 id, void* userData)
 	debug_log_info("%u:%s", id, __FUNCTION__);
 }
 
-static void OnPowerClicked(u32 id, void* userData)
+static void OnPowerPress(u32 id, void* userData)
 {
-	debug_log_info("%u:%s", id, __FUNCTION__);
+	DEBUG_LOG_INFO("%u:%s", id, __FUNCTION__);
 }
 
-static void OnResetClicked(u32 id, void* userData)
+static void OnPowerRelease(u32 id, void* userData)
 {
-	debug_log_info("%u:%s", id, __FUNCTION__);
+	DEBUG_LOG_INFO("%u:%s", id, __FUNCTION__);
+}
+
+static void OnResetPress(u32 id, void* userData)
+{
+	DEBUG_LOG_INFO("%u:%s", id, __FUNCTION__);
+}
+
+static void OnResetRelease(u32 id, void* userData)
+{
+	DEBUG_LOG_INFO("%u:%s", id, __FUNCTION__);
 }
 
 static void on_activate (GtkApplication *app) {
@@ -113,8 +113,10 @@ static void on_activate (GtkApplication *app) {
 
 	    ui.setSelectDeselectCallback(OnMachineSelect, OnMachineDeselect, NULL);
 	    ui.setVideoButtonCallback(OnVideoClicked, NULL);
-	    ui.setPowerButtonCallback(OnPowerClicked, NULL);
-	    ui.setResetButtonCallback(OnResetClicked, NULL);
+	    ui.setPowerButtonPressCallback(OnPowerPress, NULL);
+	    ui.setPowerButtonReleaseCallback(OnPowerRelease, NULL);
+	    ui.setResetButtonPressCallback(OnResetPress, NULL);
+	    ui.setResetButtonReleaseCallback(OnResetRelease, NULL);
 	  }
 }
 

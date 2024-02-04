@@ -16,7 +16,7 @@ namespace SKVMOIP
 		  GtkApplication* m_app;
 		  GtkWidget* m_window;
 		  GtkWidget* m_bottomCont;
-		  std::unordered_map<u32, MachineUI> m_machineUIs;
+		  std::unordered_map<u32, MachineUI*> m_machineUIs;
 		  std::vector<u32> m_invalidIDs;
 		  u32 m_idGenerator;
 		
@@ -39,7 +39,7 @@ namespace SKVMOIP
 		    }
 		    else
 		      id = m_idGenerator++;
-		    m_machineUIs.insert({ id, MachineUI(std::forward<Args>(args)...) });
+		    m_machineUIs.insert({ id, new MachineUI(std::forward<Args>(args)...) });
 		    auto& machine = getMachine(id);
 		    gtk_box_pack_start(GTK_BOX(m_bottomCont), static_cast<GtkWidget*>(machine), FALSE, FALSE, 5);
 		

@@ -112,7 +112,7 @@ namespace SKVMOIP
 		  auto it = m_machineUIs.find(id);
 		  if(it == m_machineUIs.end())
 		    _assert(false);
-		  gtk_container_remove(GTK_CONTAINER(m_bottomCont), static_cast<GtkWidget*>(it->second));
+		  gtk_container_remove(GTK_CONTAINER(m_bottomCont), static_cast<GtkWidget*>(*(it->second)));
 		  m_machineUIs.erase(it);
 		  m_invalidIDs.push_back(id);
 		}
@@ -122,7 +122,7 @@ namespace SKVMOIP
 		  auto it = m_machineUIs.find(id);
 		  if(it == m_machineUIs.end())
 		    _assert(false);
-		  return m_machineUIs[id];
+		  return *m_machineUIs[id];
 		}
 
 	}
