@@ -462,13 +462,13 @@ int main(void)
 		  	  case 1 /* Mouse */:
 		  	  {
 			  	SendMouseReport(packet->mouseButtons, (int8_t)(packet->mousePointX), (int8_t)(packet->mousePointY), (int8_t)packet->mouseWheelX);
-		  		HAL_Delay(SEND_MOUSE_REPORT_INTERVAL);
+		  		//HAL_Delay(SEND_MOUSE_REPORT_INTERVAL);
 		  		break;
 		  	  }
 		  	  case 0 /* Keyboard */:
 			  {
 				SendKeyboardReport(packet->usbHIDUsageID, packet->modifierKeys, (key_status_t)packet->keyStatus);
-				HAL_Delay(SEND_KEYBOARD_REPORT_INTERVAL);
+				//HAL_Delay(SEND_KEYBOARD_REPORT_INTERVAL);
 				break;
 			  }
 		  }

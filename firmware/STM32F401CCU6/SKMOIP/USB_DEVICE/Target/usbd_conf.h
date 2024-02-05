@@ -75,7 +75,7 @@
 /*---------- -----------*/
 #define USBD_SELF_POWERED     1U
 /*---------- -----------*/
-#define HID_FS_BINTERVAL     0x1U
+#define HID_FS_BINTERVAL     0xAU
 
 /****************************************/
 /* #define for FS and HS identification */

@@ -517,7 +517,7 @@ uint8_t USBD_HID_SendReport(USBD_HandleTypeDef *pdev, uint8_t *report, uint16_t 
 
   if (pdev->dev_state == USBD_STATE_CONFIGURED)
   {
-    if (hhid->state == USBD_HID_IDLE)
+    while (hhid->state != USBD_HID_IDLE);
     {
       hhid->state = USBD_HID_BUSY;
       (void)USBD_LL_Transmit(pdev, HIDInEpAdd, report, len);

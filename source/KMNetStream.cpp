@@ -9,15 +9,13 @@ namespace SKVMOIP
 	KMNetStream::KMNetStream() : AsyncQueueSocket(std::move(Network::Socket(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP))),
 								m_modifierKeys(0),
 								m_startTime(std::chrono::steady_clock::now()),
-								m_mouseMaxReponseTime(5),
-								m_mouseMaxDispPerDeltaX(5),
-								m_mouseMaxDispPerDeltaY(5),
+								m_mouseMinDelay(10),
 								m_mouseCurDispX(0),
 								m_mouseCurDispY(0)
 	{
 	
 	}
-	
+
 	void KMNetStream::sendInput(const Win32::KMInputData& inputData)
 	{
 		const Network::NetworkPacket netPacket = Network::GetNetworkPacket(inputData, m_modifierKeys);
@@ -26,11 +24,10 @@ namespace SKVMOIP
 	
 	void KMNetStream::sendMouseInput(const Win32::MouseInput& mouseInput)
 	{
+		u32 t = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_startTime).count();
 		m_mouseCurDispX += mouseInput.movement.x;
 		m_mouseCurDispY += mouseInput.movement.y;
-		if((((std::abs(m_mouseCurDispX) >= m_mouseMaxDispPerDeltaX) || (std::abs(m_mouseCurDispY) >= m_mouseMaxDispPerDeltaY))
-					&& (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_startTime).count() >= m_mouseMaxReponseTime))
-				|| mouseInput.isAnyButton)
+		if((t >= m_mouseMinDelay) || mouseInput.isAnyButton)
 		{
 			Win32::KMInputData kmInputData = { Win32::RawInputDeviceType::Mouse };
 			memcpy(&kmInputData.mouseInput, reinterpret_cast<const void*>(&mouseInput), sizeof(Win32::MouseInput));

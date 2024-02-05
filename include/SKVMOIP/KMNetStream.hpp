@@ -15,12 +15,10 @@ namespace SKVMOIP
 		std::unordered_map<u32, Win32::KeyStatus> m_pressedKeys;
 		u8 m_modifierKeys;
 		std::chrono::time_point<std::chrono::steady_clock> m_startTime;
-		u16 m_mouseMaxReponseTime;
-		u16 m_mouseMaxDispPerDeltaX;
-		u16 m_mouseMaxDispPerDeltaY;
+		u32 m_mouseMinDelay;
 		s32 m_mouseCurDispX;
 		s32 m_mouseCurDispY;
-	
+
 	public:
 	
 		KMNetStream();
