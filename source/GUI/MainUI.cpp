@@ -34,7 +34,7 @@ namespace SKVMOIP
 		  debug_log_info ("Remove button clicked");
 		}
 
-		MainUI::MainUI(GtkApplication* app) : m_app(app)
+		MainUI::MainUI(GtkApplication* app) : m_app(app), m_idGenerator(0)
 		{
 		  // Create a new window
 		  GtkWidget *window = gtk_application_window_new (app);

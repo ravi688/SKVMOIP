@@ -27,6 +27,9 @@ namespace SKVMOIP
 			Event::SubscriptionHandle m_windowPaintHandle;
 			std::atomic<bool> m_isKMNetStreamConnected;
 			std::unique_ptr<std::thread> m_kmConnectThread;
+
+			void (*m_connectionStatusCallback)(bool isUp, void* userData);
+			void* m_callbackUserData;
 	
 		public:
 			RDPSession();
@@ -34,7 +37,10 @@ namespace SKVMOIP
 			RDPSession(RDPSession&) = delete;
 			~RDPSession();
 	
-			void start(const char* ipAddress, const char* portNumber, const char* kmipAddress, const char* kmPortNumber);
+			bool isConnected();
+			void setConnectionStatusCallback(void (*callback)(bool isUp, void* userData), void* userData);
+			void connect(const char* kmipAddress, const char* kmPortNumber);
+			void start(const char* ipAddress, const char* portNumber);
 	
 			std::unique_ptr<HDMIDecodeNetStream>& getDecodeNetStream() noexcept { return m_decodeNetStream; }
 			std::unique_ptr<KMNetStream>& getKMNetStream() noexcept { return m_kmNetStream; }

@@ -29,6 +29,7 @@ static std::vector<MachineData> GetMachineDataListFromServer()
 static std::vector<MachineData> gMachineDataList;
 static std::unique_ptr<SKVMOIP::GUI::MainUI> gMainUI;
 static std::vector<u32> gSelectedMachines;
+static std::unique_ptr<std::unordered_map<u32, std::unique_ptr<RDPSession>>> gActiveSessions;
 
 namespace SKVMOIP
 {
@@ -40,17 +41,22 @@ namespace SKVMOIP
 			std::for_each(gSelectedMachines.begin(), gSelectedMachines.end(),
 				[](u32& id)
 				{
-					std::string ipAddrString(gMachineDataList[id].getVideoIPAddressStr());
-					std::string prtNumString(gMachineDataList[id].getVideoPortNumberStr());
-					std::string kmipAddrString(gMachineDataList[id].getKeyMoIPAddressStr());
-					std::string kmprtNumString(gMachineDataList[id].getKeyMoPortNumberStr());
-					auto sessionThread = std::thread([](std::string ipAddress, std::string portNumber, std::string kmIPAddress, std::string kmPortNumber)
-					{
-						RDPSession session;
-						session.start(ipAddress.c_str(), portNumber.c_str(), kmIPAddress.c_str(), kmPortNumber.c_str());
-					}, ipAddrString, prtNumString, kmipAddrString, kmprtNumString);
+					auto it = gActiveSessions->find(id);
+					if(it == gActiveSessions->end())
+						gActiveSessions->insert({ id, std::unique_ptr<RDPSession>(new RDPSession()) });
 
-					sessionThread.detach();
+					std::unique_ptr<RDPSession>& rdp = (*gActiveSessions)[id];
+					if(!rdp->isConnected())
+					{
+						SKVMOIP::GUI::MachineUI& mui = gMainUI->getMachine(id);
+						mui.setStatus("Status: Connecting...");
+						rdp->setConnectionStatusCallback([](bool isUp, void* userData)
+						{
+							SKVMOIP::GUI::MachineUI* muiptr = reinterpret_cast<SKVMOIP::GUI::MachineUI*>(userData);
+							muiptr->setStatus(isUp ? "Status: Connected" : "Status: No Response");
+						}, reinterpret_cast<void*>(&mui));
+						rdp->connect(gMachineDataList[id].getKeyMoIPAddressStr(), gMachineDataList[id].getKeyMoPortNumberStr());
+					}
 				});
 		}
 	}
@@ -73,6 +79,19 @@ static void OnMachineDeselect(u32 id, void* userData)
 static void OnVideoClicked(u32 id, void* userData)
 {
 	debug_log_info("%u:%s", id, __FUNCTION__);
+
+	auto it = gActiveSessions->find(id);
+	_ASSERT(it != gActiveSessions->end());
+	std::unique_ptr<RDPSession>& rdp = it->second;
+
+	std::string ipAddrString(gMachineDataList[id].getVideoIPAddressStr());
+	std::string prtNumString(gMachineDataList[id].getVideoPortNumberStr());
+	auto sessionThread = std::thread([](RDPSession* rdp, std::string ipAddress, std::string portNumber)
+	{
+		rdp->start(ipAddress.c_str(), portNumber.c_str());
+	}, rdp.get(), ipAddrString, prtNumString);
+
+	sessionThread.detach();
 }
 
 static void OnPowerPress(u32 id, void* userData)
@@ -98,11 +117,12 @@ static void OnResetRelease(u32 id, void* userData)
 static void on_activate (GtkApplication *app) {
 
 	gMainUI = std::move(std::unique_ptr<SKVMOIP::GUI::MainUI>(new SKVMOIP::GUI::MainUI(app)));
+	gActiveSessions = std::move(std::unique_ptr<std::unordered_map<u32, std::unique_ptr<RDPSession>>>(new std::unordered_map<u32, std::unique_ptr<RDPSession>>()));
 
 	gMachineDataList = GetMachineDataListFromServer();
 	for(std::size_t i = 0; i < gMachineDataList.size(); i++)
 	{
-		u32 id = gMainUI->createMachine(static_cast<u32>(i), "Dummy Machine");
+		u32 id = gMainUI->createMachine("Dummy Machine");
 		auto& ui = gMainUI->getMachine(id);
 		auto& data = gMachineDataList[i];
 	    
@@ -128,6 +148,7 @@ int main (int argc, char *argv[])
 	Win32::DisplayRawInputDeviceList();
 	Win32::RegisterRawInputDevices({ Win32::RawInputDeviceType::Mouse, Win32::RawInputDeviceType::Keyboard });
 	bool result = g_application_run (G_APPLICATION (app), argc, argv);
+	gActiveSessions.reset();
 	Win32::DeinitializeMediaFoundationAndCOM();
 	return result;
 }
