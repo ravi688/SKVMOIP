@@ -97,21 +97,45 @@ static void OnVideoClicked(u32 id, void* userData)
 static void OnPowerPress(u32 id, void* userData)
 {
 	DEBUG_LOG_INFO("%u:%s", id, __FUNCTION__);
+
+	auto it = gActiveSessions->find(id);
+	_ASSERT(it != gActiveSessions->end());
+	std::unique_ptr<RDPSession>& rdp = it->second;
+
+	rdp->getKMNetStream()->sendFrontPanelInput({ true });
 }
 
 static void OnPowerRelease(u32 id, void* userData)
 {
 	DEBUG_LOG_INFO("%u:%s", id, __FUNCTION__);
+
+	auto it = gActiveSessions->find(id);
+	_ASSERT(it != gActiveSessions->end());
+	std::unique_ptr<RDPSession>& rdp = it->second;
+
+	rdp->getKMNetStream()->sendFrontPanelInput({ false });
 }
 
 static void OnResetPress(u32 id, void* userData)
 {
 	DEBUG_LOG_INFO("%u:%s", id, __FUNCTION__);
+
+	auto it = gActiveSessions->find(id);
+	_ASSERT(it != gActiveSessions->end());
+	std::unique_ptr<RDPSession>& rdp = it->second;
+
+	rdp->getKMNetStream()->sendFrontPanelInput({ }, { true });
 }
 
 static void OnResetRelease(u32 id, void* userData)
 {
 	DEBUG_LOG_INFO("%u:%s", id, __FUNCTION__);
+	
+	auto it = gActiveSessions->find(id);
+	_ASSERT(it != gActiveSessions->end());
+	std::unique_ptr<RDPSession>& rdp = it->second;
+
+	rdp->getKMNetStream()->sendFrontPanelInput({ }, { false });
 }
 
 static void on_activate (GtkApplication *app) {

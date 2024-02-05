@@ -80,6 +80,9 @@ typedef struct NetworkPacket
 #define RECEIVE_BUFFER_SIZE (1 * sizeof(NetworkPacket)) // must be greater than or equal to 3
 #define SEND_KEYBOARD_REPORT_INTERVAL 5
 #define SEND_MOUSE_REPORT_INTERVAL 4
+#define FRONT_PANEL_POWER_PIN GPIO_PIN_0
+#define FRONT_PANEL_RESET_PIN GPIO_PIN_1
+#define FRONT_PANEL_POWER_LED_PIN GPIO_PIN_2
 
 typedef enum input_type_t
 {
@@ -470,6 +473,45 @@ int main(void)
 				SendKeyboardReport(packet->usbHIDUsageID, packet->modifierKeys, (key_status_t)packet->keyStatus);
 				break;
 			  }
+		  	  case 2: /* Front Pane */
+		  	  {
+		  		if(packet->isPowerButton || packet->isResetButton)
+		  		{
+		  			if(packet->isPowerButton)
+		  			{
+		  				switch(packet->buttonStatus)
+		  				{
+		  					case 0:
+		  					{
+		  						HAL_GPIO_WritePin(GPIOA, FRONT_PANEL_POWER_PIN, GPIO_PIN_RESET);
+		  						break;
+		  					}
+		  					case 1:
+		  					{
+		  						HAL_GPIO_WritePin(GPIOA, FRONT_PANEL_POWER_PIN, GPIO_PIN_SET);
+		  						break;
+		  					}
+		  				}
+		  			}
+		  			else /* if(packet->isResetButton) */
+		  			{
+		  				switch(packet->buttonStatus)
+		  				{
+		  					case 0:
+		  					{
+		  						HAL_GPIO_WritePin(GPIOA, FRONT_PANEL_RESET_PIN, GPIO_PIN_RESET);
+		  						break;
+		  					}
+		  					case 1:
+		  					{
+		  						HAL_GPIO_WritePin(GPIOA, FRONT_PANEL_RESET_PIN, GPIO_PIN_SET);
+		  						break;
+		  					}
+		  				}
+		  			}
+		  		}
+		  		break;
+		  	  }
 		  }
 	  }
   }
@@ -579,16 +621,22 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0|GPIO_PIN_1, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3|GPIO_PIN_4, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PA0 PA1 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
+  GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
+  HAL_GPIO_WritePin(GPIOA, FRONT_PANEL_POWER_PIN | FRONT_PANEL_RESET_PIN, GPIO_PIN_RESET);
+  GPIO_InitStruct.Pin = FRONT_PANEL_POWER_PIN | FRONT_PANEL_RESET_PIN;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 /* USER CODE END MX_GPIO_Init_2 */
 }
 

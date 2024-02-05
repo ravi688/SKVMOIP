@@ -83,7 +83,7 @@ namespace SKVMOIP
 			};
 		};
 
-		SKVMOIP_API NetworkPacket GetNetworkPacket(const Win32::KMInputData& inputData, u8 modifierKeys = 0, 
+		SKVMOIP_API NetworkPacket GetNetworkPacket(OptionalReference<const Win32::KMInputData> inputData, u8 modifierKeys = 0, 
 			std::optional<NetworkPacketValues::KeyStatus> powerButton = { },
 			std::optional<NetworkPacketValues::KeyStatus> resetButton = { });
 		SKVMOIP_API void DumpNetworkPacket(const NetworkPacket& packet);

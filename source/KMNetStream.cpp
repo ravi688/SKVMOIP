@@ -112,4 +112,16 @@ namespace SKVMOIP
 		memcpy(&kmInputData.keyboardInput, reinterpret_cast<const void*>(&keyboardInput), sizeof(Win32::KeyboardInput));
 		sendInput(kmInputData);
 	}
+
+	void KMNetStream::sendFrontPanelInput(std::optional<bool> powerButton, std::optional<bool> resetButton)
+	{
+		std::optional<Network::NetworkPacketValues::KeyStatus> nullRef { };
+		std::optional<Network::NetworkPacketValues::KeyStatus> pressed { Network::NetworkPacketValues::KeyStatus::Pressed };
+		std::optional<Network::NetworkPacketValues::KeyStatus> released { Network::NetworkPacketValues::KeyStatus::Released };
+
+		const Network::NetworkPacket netPacket = Network::GetNetworkPacket({ }, 0, 
+												powerButton.has_value() ? (powerButton.value() ? pressed : released) : nullRef,
+												resetButton.has_value() ? (resetButton.value() ? pressed : released) : nullRef);
+		AsyncQueueSocket::send(reinterpret_cast<const u8*>(&netPacket), sizeof(netPacket));
+	}
 }

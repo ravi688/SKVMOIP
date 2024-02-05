@@ -6,6 +6,7 @@
 
 #include <unordered_map>
 #include <chrono>
+#include <optional>
 
 namespace SKVMOIP
 {
@@ -30,5 +31,6 @@ namespace SKVMOIP
 		void sendInput(const Win32::KMInputData& inputData);
 		void sendMouseInput(const Win32::MouseInput& mouseInput);
 		void sendKeyboardInput(const Win32::KeyboardInput& keyboardInput);
+		void sendFrontPanelInput(std::optional<bool> powerButton, std::optional<bool> resetButton = { });
 	};
 }

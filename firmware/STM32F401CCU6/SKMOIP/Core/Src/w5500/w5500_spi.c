@@ -13,8 +13,8 @@
 
 extern SPI_HandleTypeDef hspi1;
 
-#define RESET_GPIO_PIN 			GPIO_PIN_0
-#define CHIP_SELECT_GPIO_PIN 	GPIO_PIN_1
+#define RESET_GPIO_PIN 			GPIO_PIN_3
+#define CHIP_SELECT_GPIO_PIN 	GPIO_PIN_4
 
 static void wizchip_select(void)
 {
