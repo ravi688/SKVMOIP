@@ -107,6 +107,13 @@ namespace SKVMOIP
 			return packet;
 		}
 
+		SKVMOIP_API NetworkPacket GetPowerStatusRequestNetworkPacket() 
+		{ 
+			NetworkPacket packet { }; 
+			packet.deviceType = EnumClassToInt(NetworkPacketValues::DeviceType::PowerStatusRequest);
+			return packet;
+		}
+
 		SKVMOIP_API void DumpNetworkPacket(const NetworkPacket& packet)
 		{
 			switch(IntToEnumClass<NetworkPacketValues::DeviceType>(packet.deviceType))

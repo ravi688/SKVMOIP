@@ -27,6 +27,8 @@ namespace SKVMOIP
 			public:
 				enum class Type
 				{
+					U8,
+					U16,
 					U32,
 					U64,
 					LengthU32,
@@ -45,6 +47,8 @@ namespace SKVMOIP
 				{
 					switch(type)
 					{
+						case Type::U8: return 1;
+						case Type::U16: return 2;
 						case Type::U32: return 4;
 						case Type::U64: return 8;
 						case Type::LengthU32: return 4; 
@@ -112,7 +116,6 @@ namespace SKVMOIP
 							{
 								case Type::LengthU32: { m_lengthFeedback = (*reinterpret_cast<u32*>(ptr)); break; } 
 								case Type::LengthU64: { m_lengthFeedback = (*reinterpret_cast<u64*>(ptr)); break; }
-								default: _assert(false); return false;
 							}
 						}
 						next = getNext();

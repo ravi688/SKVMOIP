@@ -16,6 +16,7 @@ namespace SKVMOIP
 				Keyboard = 0,
 				Mouse = 1,
 				FrontPanel = 2,
+				PowerStatusRequest = 3
 			};
 
 			enum class Bool : u8
@@ -86,6 +87,7 @@ namespace SKVMOIP
 		SKVMOIP_API NetworkPacket GetNetworkPacket(OptionalReference<const Win32::KMInputData> inputData, u8 modifierKeys = 0, 
 			std::optional<NetworkPacketValues::KeyStatus> powerButton = { },
 			std::optional<NetworkPacketValues::KeyStatus> resetButton = { });
+		SKVMOIP_API NetworkPacket GetPowerStatusRequestNetworkPacket();
 		SKVMOIP_API void DumpNetworkPacket(const NetworkPacket& packet);
 	}
 }

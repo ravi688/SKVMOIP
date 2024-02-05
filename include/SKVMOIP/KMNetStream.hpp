@@ -10,8 +10,11 @@
 
 namespace SKVMOIP
 {
+	static void PowerStatusReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData);
+
 	class KMNetStream : public Network::AsyncQueueSocket
 	{
+		friend void PowerStatusReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData);
 	private:
 		std::unordered_map<u32, Win32::KeyStatus> m_pressedKeys;
 		u8 m_modifierKeys;
@@ -19,6 +22,9 @@ namespace SKVMOIP
 		u32 m_mouseMinDelay;
 		s32 m_mouseCurDispX;
 		s32 m_mouseCurDispY;
+		void (*m_powerStatusReceiveCallback)(bool, void*);
+		void* m_callbackUserData;
+		BinaryFormatter m_powerStatusFormatter;
 
 	public:
 	
@@ -32,5 +38,6 @@ namespace SKVMOIP
 		void sendMouseInput(const Win32::MouseInput& mouseInput);
 		void sendKeyboardInput(const Win32::KeyboardInput& keyboardInput);
 		void sendFrontPanelInput(std::optional<bool> powerButton, std::optional<bool> resetButton = { });
+		void receivePowerStatus(void (*callback)(bool isOn, void* userData), void* userData);
 	};
 }

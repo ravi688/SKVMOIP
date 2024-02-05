@@ -80,6 +80,7 @@ typedef struct NetworkPacket
 #define RECEIVE_BUFFER_SIZE (1 * sizeof(NetworkPacket)) // must be greater than or equal to 3
 #define SEND_KEYBOARD_REPORT_INTERVAL 5
 #define SEND_MOUSE_REPORT_INTERVAL 4
+#define POWER_STATUS_READ_DELAY 500
 #define FRONT_PANEL_POWER_PIN GPIO_PIN_0
 #define FRONT_PANEL_RESET_PIN GPIO_PIN_1
 #define FRONT_PANEL_POWER_LED_PIN GPIO_PIN_2
@@ -437,6 +438,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+LISTEN_AGAIN:
 	  if(listen(mySocket) != SOCK_OK);
 
 	  while(getSn_SR(mySocket) != SOCK_ESTABLISHED);
@@ -511,6 +513,27 @@ int main(void)
 		  			}
 		  		}
 		  		break;
+		  	  }
+		  	  case 3:
+		  	  {
+		  		  HAL_Delay(POWER_STATUS_READ_DELAY);
+		  		  GPIO_PinState state = HAL_GPIO_ReadPin(GPIOA, FRONT_PANEL_POWER_LED_PIN);
+		  		  int32_t result = send(mySocket, &state, sizeof(state));
+				  if(result <= 0)
+				  {
+					  if(result == SOCKERR_SOCKSTATUS)
+					  {
+						  if(close(mySocket) != SOCK_OK)
+							  Error("failed to close socket\n");
+						  HAL_Delay(100);
+						  if(socket(mySocket, Sn_MR_TCP, 2000, 0) != mySocket)
+						  {
+						  	  Error("failed to create socket again\n");
+						  }
+					  }
+					  goto LISTEN_AGAIN;
+				  }
+		  		  break;
 		  	  }
 		  }
 	  }
@@ -637,6 +660,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = FRONT_PANEL_POWER_LED_PIN;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
 /* USER CODE END MX_GPIO_Init_2 */
 }
 

@@ -105,6 +105,11 @@ static void OnPowerPress(u32 id, void* userData)
 	rdp->getKMNetStream()->sendFrontPanelInput({ true });
 }
 
+static void OnPowerStatusReceive(bool isUp, void* userData)
+{
+	DEBUG_LOG_INFO("Power Status: %s", (isUp) ? "On" : "Off");
+}
+
 static void OnPowerRelease(u32 id, void* userData)
 {
 	DEBUG_LOG_INFO("%u:%s", id, __FUNCTION__);
@@ -114,6 +119,7 @@ static void OnPowerRelease(u32 id, void* userData)
 	std::unique_ptr<RDPSession>& rdp = it->second;
 
 	rdp->getKMNetStream()->sendFrontPanelInput({ false });
+	rdp->getKMNetStream()->receivePowerStatus(OnPowerStatusReceive, NULL);
 }
 
 static void OnResetPress(u32 id, void* userData)

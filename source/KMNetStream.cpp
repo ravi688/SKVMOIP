@@ -11,9 +11,11 @@ namespace SKVMOIP
 								m_startTime(std::chrono::steady_clock::now()),
 								m_mouseMinDelay(8),
 								m_mouseCurDispX(0),
-								m_mouseCurDispY(0)
+								m_mouseCurDispY(0),
+								m_powerStatusReceiveCallback(NULL),
+								m_callbackUserData(NULL)
 	{
-	
+		m_powerStatusFormatter.add(BinaryFormatter::Type::U8);
 	}
 
 	void KMNetStream::sendInput(const Win32::KMInputData& inputData)
@@ -123,5 +125,22 @@ namespace SKVMOIP
 												powerButton.has_value() ? (powerButton.value() ? pressed : released) : nullRef,
 												resetButton.has_value() ? (resetButton.value() ? pressed : released) : nullRef);
 		AsyncQueueSocket::send(reinterpret_cast<const u8*>(&netPacket), sizeof(netPacket));
+	}
+
+	static void PowerStatusReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData)
+	{
+		KMNetStream* kmNetStream = reinterpret_cast<KMNetStream*>(userData);
+		_assert(kmNetStream->m_powerStatusReceiveCallback != NULL);
+		_assert(dataSize == sizeof(u8));
+		kmNetStream->m_powerStatusReceiveCallback(*data, kmNetStream->m_callbackUserData);
+	}
+
+	void KMNetStream::receivePowerStatus(void (*callback)(bool isOn, void* userData), void* userData)
+	{
+		m_powerStatusReceiveCallback = callback;
+		m_callbackUserData = userData;
+		const Network::NetworkPacket netPacket = Network::GetPowerStatusRequestNetworkPacket();
+		AsyncQueueSocket::send(reinterpret_cast<const u8*>(&netPacket), sizeof(netPacket));
+		AsyncQueueSocket::receive(PowerStatusReceiveCallbackHandler, reinterpret_cast<void*>(this), m_powerStatusFormatter);
 	}
 }
