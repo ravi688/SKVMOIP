@@ -29,7 +29,7 @@ static std::vector<MachineData> GetMachineDataListFromServer()
 static std::vector<MachineData> gMachineDataList;
 static std::unique_ptr<SKVMOIP::GUI::MainUI> gMainUI;
 static std::vector<u32> gSelectedMachines;
-static std::unique_ptr<std::unordered_map<u32, std::unique_ptr<RDPSession>>> gActiveSessions;
+static std::unordered_map<u32, std::unique_ptr<RDPSession>>* gActiveSessions;
 
 namespace SKVMOIP
 {
@@ -117,7 +117,7 @@ static void OnResetRelease(u32 id, void* userData)
 static void on_activate (GtkApplication *app) {
 
 	gMainUI = std::move(std::unique_ptr<SKVMOIP::GUI::MainUI>(new SKVMOIP::GUI::MainUI(app)));
-	gActiveSessions = std::move(std::unique_ptr<std::unordered_map<u32, std::unique_ptr<RDPSession>>>(new std::unordered_map<u32, std::unique_ptr<RDPSession>>()));
+	gActiveSessions = new std::unordered_map<u32, std::unique_ptr<RDPSession>>();
 
 	gMachineDataList = GetMachineDataListFromServer();
 	for(std::size_t i = 0; i < gMachineDataList.size(); i++)
@@ -148,7 +148,7 @@ int main (int argc, char *argv[])
 	Win32::DisplayRawInputDeviceList();
 	Win32::RegisterRawInputDevices({ Win32::RawInputDeviceType::Mouse, Win32::RawInputDeviceType::Keyboard });
 	bool result = g_application_run (G_APPLICATION (app), argc, argv);
-	gActiveSessions.reset();
+	delete gActiveSessions;
 	Win32::DeinitializeMediaFoundationAndCOM();
 	return result;
 }
