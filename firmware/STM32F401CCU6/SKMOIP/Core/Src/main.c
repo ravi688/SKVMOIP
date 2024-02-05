@@ -336,7 +336,7 @@ static inline void SendKeyboardReportASCII(uint8_t keycode)
 	HAL_Delay(20);
 }
 
-static inline void SendKeyboardReport(uint8_t hidUsageID, uint8_t modifierKeys, key_status_t status)
+static __attribute__((always_inline)) inline void SendKeyboardReport(uint8_t hidUsageID, uint8_t modifierKeys, key_status_t status)
 {
 	keyboardReport.modifier = modifierKeys;
 	switch(status)
@@ -351,11 +351,12 @@ static inline void SendKeyboardReport(uint8_t hidUsageID, uint8_t modifierKeys, 
 				keyboardReport.keycode0 = hidUsageID;
 				break;
 			}
+		default: { return; }
 	}
 	USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&keyboardReport, sizeof(keyboardReport));
 }
 
-static inline void SendMouseReport(uint8_t button, int8_t dx, int8_t dy, int8_t wheel)
+static __attribute__((always_inline)) inline void SendMouseReport(uint8_t button, int8_t dx, int8_t dy, int8_t wheel)
 {
 	mouseReport.button = button;
 	mouseReport.mouse_x = dx;
@@ -462,13 +463,11 @@ int main(void)
 		  	  case 1 /* Mouse */:
 		  	  {
 			  	SendMouseReport(packet->mouseButtons, (int8_t)(packet->mousePointX), (int8_t)(packet->mousePointY), (int8_t)packet->mouseWheelX);
-		  		//HAL_Delay(SEND_MOUSE_REPORT_INTERVAL);
 		  		break;
 		  	  }
 		  	  case 0 /* Keyboard */:
 			  {
 				SendKeyboardReport(packet->usbHIDUsageID, packet->modifierKeys, (key_status_t)packet->keyStatus);
-				//HAL_Delay(SEND_KEYBOARD_REPORT_INTERVAL);
 				break;
 			  }
 		  }

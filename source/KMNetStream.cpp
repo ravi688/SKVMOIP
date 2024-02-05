@@ -9,7 +9,7 @@ namespace SKVMOIP
 	KMNetStream::KMNetStream() : AsyncQueueSocket(std::move(Network::Socket(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP))),
 								m_modifierKeys(0),
 								m_startTime(std::chrono::steady_clock::now()),
-								m_mouseMinDelay(10),
+								m_mouseMinDelay(8),
 								m_mouseCurDispX(0),
 								m_mouseCurDispY(0)
 	{
