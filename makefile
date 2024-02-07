@@ -29,9 +29,9 @@ EXTERNAL_GTK_INCLUDES=$(shell pkg-config gtk+-3.0 --cflags)
 EXTERNAL_GTK_LIBS=$(shell pkg-config gtk+-3.0 --libs)
 EXTERNAL_CLIENT_INCLUDES=$(EXTERNAL_GTK_INCLUDES) \
 						-I./external-dependencies/NvidiaCodec/include/ \
-						-I"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.3/include/"
+						-I"$(CUDA_PATH)/include/"
 EXTERNAL_CLIENT_LIBS=$(EXTERNAL_GTK_LIBS) \
-					-L"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.3/lib/x64" -l:cuda.lib \
+					-L"$(CUDA_PATH)/lib/x64" -l:cuda.lib \
 					-L./external-dependencies/NvidiaCodec/ -l:nvcuvid.lib -l:nvencodeapi.lib
 
 SERVER_SOURCES=source/Encoder.cpp \
