@@ -85,8 +85,8 @@ ifneq ($(OUT),)
 	EXECUTABLE_NAME = $(OUT)
 endif
 
-DEPENDENCIES = Common Common/dependencies/BufferLib Common/dependencies/BufferLib/dependencies/CallTrace
-DEPENDENCY_LIBS = Common/lib/common.a Common/dependencies/BufferLib/lib/bufferlib.a Common/dependencies/BufferLib/dependencies/CallTrace/lib/calltrace.a
+DEPENDENCIES = PlayVk Common Common/dependencies/BufferLib Common/dependencies/BufferLib/dependencies/CallTrace
+DEPENDENCY_LIBS = PlayVk/lib/playvk.a Common/lib/common.a Common/dependencies/BufferLib/lib/bufferlib.a Common/dependencies/BufferLib/dependencies/CallTrace/lib/calltrace.a
 DEPENDENCIES_DIR = ./dependencies
 SHARED_DEPENDENCIES =
 SHARED_DEPENDENCY_LIBS =
@@ -359,6 +359,7 @@ bin-clean:
 	$(RM_DIR) $(TARGET_LIB_DIR)
 	@echo [Log] Binaries cleaned successfully!
 	$(MAKE) --directory=./dependencies/Common clean
+	$(MAKE) --directory=./dependencies/PlayVk clean
 # 	$(MAKE) --directory=./shared-dependencies/CallTrace clean
 # 	$(MAKE) --directory=./dependencies/HPML clean
 # 	$(MAKE) --directory=../../shared-dependencies/HPML clean

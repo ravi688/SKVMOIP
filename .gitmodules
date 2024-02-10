@@ -1,3 +1,6 @@
 [submodule "dependencies/Common"]
 	path = dependencies/Common
 	url = https://github.com/ravi688/Common.git
+[submodule "dependencies/PlayVk"]
+	path = dependencies/PlayVk
+	url = https://github.com/ravi688/PlayVk
