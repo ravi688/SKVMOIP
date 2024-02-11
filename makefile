@@ -32,7 +32,8 @@ EXTERNAL_CLIENT_INCLUDES=$(EXTERNAL_GTK_INCLUDES) \
 						-I"$(CUDA_PATH)/include/"
 EXTERNAL_CLIENT_LIBS=$(EXTERNAL_GTK_LIBS) \
 					-L"$(CUDA_PATH)/lib/x64" -l:cuda.lib \
-					-L./external-dependencies/NvidiaCodec/ -l:nvcuvid.lib -l:nvencodeapi.lib
+					-L./external-dependencies/NvidiaCodec/ -l:nvcuvid.lib -l:nvencodeapi.lib \
+					-L"$(VK_SDK_PATH)/Lib/" -lvulkan-1
 
 SERVER_SOURCES=source/Encoder.cpp \
 				source/HDMIEncodeNetStream.cpp \

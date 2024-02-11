@@ -155,6 +155,15 @@ namespace SKVMOIP
 		buf_free(&m_rawInputBuffer);
 	}
 
+	void Window::runGameLoop()
+	{
+		while(!shouldClose(false))
+		{
+			invalidateRect();
+			pollEvents();
+		}
+	}
+
 	void Window::runGameLoop(u32 frameRate)
 	{
 		const f64 deltaTime = 1000.0 / frameRate;

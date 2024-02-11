@@ -63,6 +63,7 @@ namespace SKVMOIP
 			if(!m_window)
 			{
 				m_window = std::move(std::unique_ptr<Window>(new Window(1920, 1080, "Scalable KVM Over IP")));
+				m_presentEngine = std::move(std::unique_ptr<PresentEngine>(new PresentEngine(*m_window)));
 			}
 			if(!m_drawSurface)
 			{

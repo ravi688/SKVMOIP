@@ -5,6 +5,7 @@
 #include <SKVMOIP/KMNetStream.hpp>
 #include <SKVMOIP/Win32/Win32DrawSurface.hpp>
 #include <SKVMOIP/Window.hpp>
+#include <SKVMOIP/PresentEngine.hpp>
 #include <SKVMOIP/Event.hpp>
 #include <memory>
 
@@ -22,6 +23,7 @@ namespace SKVMOIP
 			std::unique_ptr<KMNetStream> m_kmNetStream;
 			std::unique_ptr<Win32::Win32DrawSurface> m_drawSurface;
 			std::unique_ptr<Window> m_window;
+			std::unique_ptr<PresentEngine> m_presentEngine;
 			Event::SubscriptionHandle m_keyboardInputHandle;
 			Event::SubscriptionHandle m_mouseInputHandle;
 			Event::SubscriptionHandle m_windowPaintHandle;

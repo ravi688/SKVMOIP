@@ -62,6 +62,7 @@ namespace SKVMOIP
 
 		Internal_WindowHandle getNativeHandle() { return m_handle; }
 
+		void runGameLoop();
 		void runGameLoop(u32 frameRate);
 	
 		bool shouldClose(bool isBlock = true);
