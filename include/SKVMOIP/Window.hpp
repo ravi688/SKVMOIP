@@ -31,6 +31,8 @@ namespace SKVMOIP
 		bool m_isMessageAvailable;
 		u32 m_width;
 		u32 m_height;
+		u32 m_clientWidth;
+		u32 m_clientHeight;
 		buffer_t m_rawInputBuffer;
 	public:
 
@@ -73,6 +75,9 @@ namespace SKVMOIP
 		std::pair<u32, u32> getSize() const;
 		u32 getWidth() const { return getSize().first; }
 		u32 getHeight() const { return getSize().second; }
+		std::pair<u32, u32> getClientSize() const;
+		u32 getClientWidth() const { return getClientSize().first; }
+		u32 getClientHeight() const { return getClientSize().second; }
 		void setPosition(s32 x, s32 y);
 		void setSizeAndPosition(s32 x, s32 y, u32 width, u32 height);
 		void setZOrder(HWND insertAfter);

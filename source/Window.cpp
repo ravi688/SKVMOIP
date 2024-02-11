@@ -44,6 +44,14 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 		{
 			int width = LOWORD(lParam);  // Macro to get the low-order word.
 			int height = HIWORD(lParam); // Macro to get the high-order word.
+			window->m_width = width;
+			window->m_height = height;
+			RECT rect { };
+			BOOL result = GetClientRect(hwnd, &rect);
+			if(result == 0)
+				Internal_ErrorExit("AdjustWindowRect");
+			window->m_clientWidth = rect.right;
+			window->m_clientHeight = rect.bottom;
 			break;
 		}
 
@@ -235,6 +243,12 @@ namespace SKVMOIP
 		{
 			m_width = width;
 			m_height = height;
+			RECT rect { };
+			BOOL result = GetClientRect(m_handle, &rect);
+			if(result == 0)
+				Internal_ErrorExit("AdjustWindowRect");
+			m_clientWidth = rect.right;
+			m_clientHeight = rect.bottom;
 		}
 	}
 
@@ -253,6 +267,11 @@ namespace SKVMOIP
 	{
 		if(SetWindowPos(m_handle, HWND_TOP, x, y, static_cast<int>(width), static_cast<int>(height), SWP_NOZORDER) == 0)
 			Internal_ErrorExit("SetWindowPos");
+	}
+
+	std::pair<u32, u32> Window::getClientSize() const
+	{
+		return { m_clientWidth, m_clientHeight };
 	}
 
 	void Window::setZOrder(HWND insertAfter)
