@@ -17,12 +17,13 @@ namespace SKVMOIP
 	{
 	private:
 		VkInstance m_vkInstance;
-		VkSurfaceKHR m_vkSurfaceKHR;
+		VkSurfaceKHR m_vkSurface;
 		VkPhysicalDevice m_vkPhysicalDevice;
 		VkDevice m_vkDevice;
 		VkQueue m_vkGraphicsQueue;
 		VkQueue m_vkPresentQueue;
-		VkSwapchainKHR m_vkSwapchainKHR;
+		VkSwapchainKHR m_vkSwapchain;
+		VkImageView* m_vkSwapchainImageViews;
 		VkCommandPool m_vkCommandPool;
 		VkCommandBuffer* m_vkCommandBuffers;
 		PvkSemaphoreCircularPool* m_pvkSemaphorePool;
@@ -30,7 +31,7 @@ namespace SKVMOIP
 		VkRenderPass m_vkRenderPass;
 		PvkImage m_pvkImage;
 		VkImageView m_vkImageView;
-		VkFramebuffer m_vkFramebuffer;
+		VkFramebuffer* m_vkFramebuffers;
 		VkSampler m_vkSampler;
 		VkDescriptorPool m_vkDescriptorPool;
 		VkDescriptorSetLayout m_vkDescriptorSetLayout;

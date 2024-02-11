@@ -71,6 +71,8 @@ namespace SKVMOIP
 		void releaseMouseCapture();
 		void setSize(u32 width, u32 height);
 		std::pair<u32, u32> getSize() const;
+		u32 getWidth() const { return getSize().first; }
+		u32 getHeight() const { return getSize().second; }
 		void setPosition(s32 x, s32 y);
 		void setSizeAndPosition(s32 x, s32 y, u32 width, u32 height);
 		void setZOrder(HWND insertAfter);
