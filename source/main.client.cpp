@@ -18,10 +18,10 @@ static std::vector<MachineData> GetMachineDataListFromServer()
 {
   std::vector<MachineData> machines = 
   {
-    { IP_ADDRESS(192, 168, 1, 8), IP_ADDRESS(192, 168, 1, 113), 2020, 2000, "Win11-AMD-Ryzen-5-5600G", 1  },
-    { IP_ADDRESS(192, 168, 1, 8), IP_ADDRESS(192, 168, 1, 114), 2020, 2000, "Ubuntu20-Intel-Core-i3-10100F", 2  },
-    { IP_ADDRESS(192, 168, 1, 8), IP_ADDRESS(192, 168, 1, 115), 2020, 2000, "MacOS-M1", 3  },
-    { IP_ADDRESS(192, 168, 1, 8), IP_ADDRESS(192, 168, 1, 116), 2020, 2000, "Encoder-Win10-Intel-Core-i5-6400T", 4  },
+    { IP_ADDRESS(192, 168, 1, 5), IP_ADDRESS(192, 168, 1, 113), 2020, 2000, "Win11-AMD-Ryzen-5-5600G", 1  },
+    { IP_ADDRESS(192, 168, 1, 5), IP_ADDRESS(192, 168, 1, 114), 2020, 2000, "Ubuntu20-Intel-Core-i3-10100F", 2  },
+    { IP_ADDRESS(192, 168, 1, 5), IP_ADDRESS(192, 168, 1, 115), 2020, 2000, "MacOS-M1", 3  },
+    { IP_ADDRESS(192, 168, 1, 5), IP_ADDRESS(192, 168, 1, 116), 2020, 2000, "Encoder-Win10-Intel-Core-i5-6400T", 4  },
   };
   return machines;
 }

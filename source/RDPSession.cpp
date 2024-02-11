@@ -7,7 +7,12 @@ namespace SKVMOIP
 {
 	static void MouseInputHandler(void* mouseInputData, void* userData);
 	static void KeyboardInputHandler(void* keyboardInputData, void* userData);
+	#ifndef USE_VULKAN_PRESENTATION
 	static void WindowPaintHandler(void* paintInfo, void* userData);
+	#endif
+	#ifdef USE_VULKAN_PRESENTATION
+	static void PresentHandler(void* paintInfo, void* userData);
+	#endif
 
 	RDPSession::RDPSession() : m_keyboardInputHandle(Event::GetInvalidSubscriptionHandle()), 
 							   m_mouseInputHandle(Event::GetInvalidSubscriptionHandle()),
@@ -63,7 +68,10 @@ namespace SKVMOIP
 			if(!m_window)
 			{
 				m_window = std::move(std::unique_ptr<Window>(new Window(1920, 1080, "Scalable KVM Over IP")));
+				#ifdef USE_VULKAN_PRESENTATION
 				m_presentEngine = std::move(std::unique_ptr<PresentEngine>(new PresentEngine(*m_window)));
+				m_presentEngine->setPresentCallback(PresentHandler, reinterpret_cast<void*>(this));
+				#endif
 			}
 			if(!m_drawSurface)
 			{
@@ -77,9 +85,13 @@ namespace SKVMOIP
 				m_mouseInputHandle = m_window->getEvent(Window::EventType::MouseInput).subscribe(MouseInputHandler, reinterpret_cast<void*>(this));
 			}
 			
+			#ifndef USE_VULKAN_PRESENTATION
 			m_windowPaintHandle = m_window->getEvent(Window::EventType::Paint).subscribe(WindowPaintHandler, reinterpret_cast<void*>(this));
 			m_window->runGameLoop(static_cast<u32>(60));
 			m_window->getEvent(Window::EventType::Paint).unsubscribe(m_windowPaintHandle);
+			#else
+			m_presentEngine->runGameLoop(static_cast<u32>(60));
+			#endif
 			
 			if(m_kmNetStream)
 			{
@@ -135,7 +147,27 @@ namespace SKVMOIP
 			isInvoked = true;
 		}
 	}
+
+	#ifdef USE_VULKAN_PRESENTATION
+	static void PresentHandler(void* buffer, void* userData)
+	{
+		RDPSession& rdp = *reinterpret_cast<RDPSession*>(userData);
+		auto& decodeNetStream = rdp.getDecodeNetStream();
+		if(auto frame = decodeNetStream->borrowFrameData())
+		{
+			// debug_log_info("FrameData borrowed");
+			auto frameData = FIFOPool<HDMIDecodeNetStream::FrameData>::GetValue(frame);
+			_assert(frameData.has_value());
+			// _assert(frameData->getSize() == drawSurface->getBufferSize());
+			/* Takes: 1 ms to 4 ms */
+			// memcpy(drawSurface->getPixels(), frameData->getPtr(), frameData->getSize());
+			decodeNetStream->returnFrameData(frame);
+			// debug_log_info("FrameData returned");
+		}	
+	}
+	#endif
 	
+	#ifndef USE_VULKAN_PRESENTATION
 	static void WindowPaintHandler(void* paintInfo, void* userData)
 	{
 		_assert(paintInfo != NULL);
@@ -162,4 +194,5 @@ namespace SKVMOIP
 		BitBlt(winPaintInfo->deviceContext, 0, 0, drawSurfaceSize.first, drawSurfaceSize.second, drawSurface->getHDC(), 0, 0, SRCCOPY);
 		auto t = stopwatch.stop();
 	}
+	#endif
 }

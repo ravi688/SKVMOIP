@@ -46,6 +46,8 @@ namespace SKVMOIP
 		void (*m_callback)(void*, void*);
 		void* m_userData;
 
+		void recordCommandBuffers();
+
 	public:
 		PresentEngine(Window& window);
 		PresentEngine(PresentEngine&) = delete;
