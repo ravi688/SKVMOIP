@@ -28,12 +28,14 @@ namespace SKVMOIP
 		VkCommandPool m_vkCommandPool;
 		VkCommandBuffer* m_vkCommandBuffers;
 		PvkSemaphoreCircularPool* m_pvkSemaphorePool;
-		PvkFencePool* m_pvkFencePool;
+		VkFence m_vkFence;
 		VkRenderPass m_vkRenderPass;
 		PvkImage m_pvkImage;
 		VkImageView m_vkImageView;
 		VkFramebuffer* m_vkFramebuffers;
 		VkSampler m_vkSampler;
+		PvkBuffer m_pvkBuffer;
+		void* m_mapPtr;
 		VkDescriptorPool m_vkDescriptorPool;
 		VkDescriptorSetLayout m_vkDescriptorSetLayout;
 		VkDescriptorSet* m_vkDescriptorSet;
@@ -44,7 +46,7 @@ namespace SKVMOIP
 
 		Window& m_window;
 
-		void (*m_callback)(void*, void*);
+		bool (*m_callback)(void*, void*);
 		void* m_userData;
 
 		void destroyWindowRelatedVkObjects();
@@ -60,7 +62,7 @@ namespace SKVMOIP
 		PresentEngine& operator=(PresentEngine&&) = delete;
 		~PresentEngine();
 
-		void setPresentCallback(void (*callback)(void* buffer, void* userData), void* userData) noexcept
+		void setPresentCallback(bool (*callback)(void* buffer, void* userData), void* userData) noexcept
 		{
 			m_callback = callback;
 			m_userData = userData;

@@ -11,7 +11,7 @@ namespace SKVMOIP
 	static void WindowPaintHandler(void* paintInfo, void* userData);
 	#endif
 	#ifdef USE_VULKAN_PRESENTATION
-	static void PresentHandler(void* paintInfo, void* userData);
+	static bool PresentHandler(void* paintInfo, void* userData);
 	#endif
 
 	RDPSession::RDPSession() : m_keyboardInputHandle(Event::GetInvalidSubscriptionHandle()), 
@@ -149,7 +149,7 @@ namespace SKVMOIP
 	}
 
 	#ifdef USE_VULKAN_PRESENTATION
-	static void PresentHandler(void* buffer, void* userData)
+	static bool PresentHandler(void* buffer, void* userData)
 	{
 		RDPSession& rdp = *reinterpret_cast<RDPSession*>(userData);
 		auto& decodeNetStream = rdp.getDecodeNetStream();
@@ -163,7 +163,9 @@ namespace SKVMOIP
 			// memcpy(drawSurface->getPixels(), frameData->getPtr(), frameData->getSize());
 			decodeNetStream->returnFrameData(frame);
 			// debug_log_info("FrameData returned");
-		}	
+			return true;
+		}
+		return false;
 	}
 	#endif
 	

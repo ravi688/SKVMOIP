@@ -149,7 +149,7 @@ namespace SKVMOIP
 		m_vkPipeline = pvkCreateGraphicsPipelineProfile0(m_vkDevice, m_vkPipelineLayout, m_vkRenderPass, m_window.getClientWidth(), m_window.getClientHeight(), 2, (PvkShader) { m_vkVertShaderModule, PVK_SHADER_TYPE_VERTEX }, (PvkShader) { m_vkFragShaderModule, PVK_SHADER_TYPE_FRAGMENT });
 	}
 
-	PresentEngine::PresentEngine(Window& window) : m_window(window), m_callback(NULL), m_userData(NULL)
+	PresentEngine::PresentEngine(Window& window) : m_window(window), m_callback(NULL), m_userData(NULL), m_mapPtr(NULL)
 	{
 		m_vkInstance = pvkCreateVulkanInstanceWithExtensions(2, "VK_KHR_win32_surface", "VK_KHR_surface");
 		m_vkSurface = pvkCreateSurface(m_vkInstance, GetModuleHandle(NULL), window.getNativeHandle());
@@ -174,10 +174,12 @@ namespace SKVMOIP
 		m_vkCommandBuffers = __pvkAllocateCommandBuffers(m_vkDevice, m_vkCommandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, PRESENT_ENGINE_IMAGE_COUNT);
 
 		m_pvkSemaphorePool = pvkCreateSemaphoreCircularPool(m_vkDevice, 2 * PRESENT_ENGINE_MAX_IMAGE_INFLIGHT_COUNT);
-		m_pvkFencePool = pvkCreateFencePool(m_vkDevice, PRESENT_ENGINE_IMAGE_COUNT);
+		m_vkFence = pvkCreateFence(m_vkDevice, (VkFenceCreateFlags)(0));
 		m_vkRenderPass = CreateRenderPass(m_vkDevice);
 
 		m_vkSampler = CreateSampler(m_vkDevice);
+		m_pvkBuffer = pvkCreateBuffer(m_vkPhysicalDevice, m_vkDevice, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, m_window.getWidth() * m_window.getHeight() * 4, 2, m_queueFamilyIndices);
+		PVK_CHECK(vkMapMemory(m_vkDevice, m_pvkBuffer.memory, 0, m_window.getWidth() * m_window.getHeight() * 4, 0, &m_mapPtr));
 
 		m_vkDescriptorPool = pvkCreateDescriptorPool(m_vkDevice, 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1);
 		m_vkDescriptorSetLayout = CreateDescriptorSetLayout(m_vkDevice);
@@ -223,9 +225,11 @@ namespace SKVMOIP
 		PVK_DELETE(m_vkDescriptorSet);
 		vkDestroyDescriptorSetLayout(m_vkDevice, m_vkDescriptorSetLayout, NULL);
 		vkDestroyDescriptorPool(m_vkDevice, m_vkDescriptorPool, NULL);
+		vkUnmapMemory(m_vkDevice, m_pvkBuffer.memory);
+		pvkDestroyBuffer(m_vkDevice, m_pvkBuffer);
 		vkDestroySampler(m_vkDevice, m_vkSampler, NULL);
 		vkDestroyRenderPass(m_vkDevice, m_vkRenderPass, NULL);
-		pvkDestroyFencePool(m_vkDevice, m_pvkFencePool);
+		vkDestroyFence(m_vkDevice, m_vkFence, NULL);
 		pvkDestroySemaphoreCircularPool(m_vkDevice, m_pvkSemaphorePool);
 		PVK_DELETE(m_vkCommandBuffers);
 		vkDestroyCommandPool(m_vkDevice, m_vkCommandPool, NULL);
@@ -253,32 +257,38 @@ namespace SKVMOIP
 			{
 				startTime = time;
 
+				bool isNewFrame = false;
 				if(m_callback != NULL)
-					m_callback(NULL, m_userData);
-
-				VkFence fence;
-				if(!pvkFencePoolAcquire(m_vkDevice, m_pvkFencePool, &fence))
-				{
-					m_window.pollEvents();
-					continue;
-				}
+					isNewFrame = m_callback(m_mapPtr, m_userData);
+				
 				uint32_t semaphoreIndex;
-				VkSemaphore imageAvailableSemaphore = pvkSemaphoreCircularPoolAcquire(m_pvkSemaphorePool, &semaphoreIndex);
+				VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE;
+				if(isNewFrame)
+					imageAvailableSemaphore = pvkSemaphoreCircularPoolAcquire(m_pvkSemaphorePool, &semaphoreIndex);
+
 				uint32_t index;
-				while(!pvkAcquireNextImageKHR(m_vkDevice, m_vkSwapchain, UINT64_MAX, imageAvailableSemaphore, fence, &index))
+				while(!pvkAcquireNextImageKHR(m_vkDevice, m_vkSwapchain, UINT64_MAX, imageAvailableSemaphore, m_vkFence, &index))
 				{
 					PVK_CHECK(vkDeviceWaitIdle(m_vkDevice));
-					imageAvailableSemaphore = pvkSemaphoreCircularPoolRecreate(m_vkDevice, m_pvkSemaphorePool, semaphoreIndex);
-					pvkResetFences(m_vkDevice, 1, &fence);
+					if(imageAvailableSemaphore != VK_NULL_HANDLE)
+						imageAvailableSemaphore = pvkSemaphoreCircularPoolRecreate(m_vkDevice, m_pvkSemaphorePool, semaphoreIndex);
+					pvkResetFences(m_vkDevice, 1, &m_vkFence);
 					recreate();
 				}
 
-				VkSemaphore renderFinishSemaphore = pvkSemaphoreCircularPoolAcquire(m_pvkSemaphorePool, NULL);
-				// execute commands
-				pvkSubmit(m_vkCommandBuffers[index], m_vkGraphicsQueue, imageAvailableSemaphore, renderFinishSemaphore, VK_NULL_HANDLE);
+				PVK_CHECK(vkWaitForFences(m_vkDevice, 1, &m_vkFence, VK_TRUE, UINT64_MAX));
+				PVK_CHECK(vkResetFences(m_vkDevice, 1, &m_vkFence));
+
+				VkSemaphore renderFinishSemaphore = VK_NULL_HANDLE;
+				if(isNewFrame)
+				{
+					renderFinishSemaphore = pvkSemaphoreCircularPoolAcquire(m_pvkSemaphorePool, NULL);
+					// execute commands
+					pvkSubmit(m_vkCommandBuffers[index], m_vkGraphicsQueue, imageAvailableSemaphore, renderFinishSemaphore, VK_NULL_HANDLE);
+				}
 
 				// present the output image
-				if(!pvkPresent(index, m_vkSwapchain, m_vkPresentQueue, renderFinishSemaphore))
+				if(!pvkPresent(index, m_vkSwapchain, m_vkPresentQueue, (renderFinishSemaphore == VK_NULL_HANDLE) ? 0 : 1, &renderFinishSemaphore))
 				{
 					PVK_CHECK(vkDeviceWaitIdle(m_vkDevice));
 					recreate();
