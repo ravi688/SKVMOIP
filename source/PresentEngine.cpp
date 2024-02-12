@@ -110,6 +110,45 @@ namespace SKVMOIP
 		return setLayout;
 	}
 
+	void PresentEngine::destroyWindowRelatedVkObjects()
+	{
+		vkDestroyPipeline(m_vkDevice, m_vkPipeline, NULL);
+		pvkDestroyFramebuffers(m_vkDevice, PRESENT_ENGINE_IMAGE_COUNT, m_vkFramebuffers);
+		PVK_DELETE(m_vkFramebuffers);
+		vkDestroyImageView(m_vkDevice, m_vkImageView, NULL);
+		pvkDestroyImage(m_vkDevice, m_pvkImage);
+		pvkDestroySwapchainImageViews(m_vkDevice, m_vkSwapchain, m_vkSwapchainImageViews);
+		PVK_DEBUG(m_vkSwapchainImageViews);
+		vkDestroySwapchainKHR(m_vkDevice, m_vkSwapchain, NULL);
+	}
+
+	void PresentEngine::createWindowRelatedVkObjects()
+	{
+		m_vkSwapchain = pvkCreateSwapchain(m_vkDevice, m_vkSurface, PRESENT_ENGINE_IMAGE_COUNT,
+													m_window.getClientWidth(), m_window.getClientHeight(), 
+													VK_FORMAT_B8G8R8A8_SRGB, 
+													VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, 
+													VK_PRESENT_MODE_FIFO_KHR,
+													2, m_queueFamilyIndices, VK_NULL_HANDLE);
+		u32 imageCount;
+		m_vkSwapchainImageViews = pvkCreateSwapchainImageViews(m_vkDevice, m_vkSwapchain, VK_FORMAT_B8G8R8A8_SRGB, &imageCount);
+		_assert(imageCount == PRESENT_ENGINE_IMAGE_COUNT);
+
+		m_pvkImage = pvkCreateImage(m_vkPhysicalDevice, m_vkDevice, 
+										VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+										VK_FORMAT_B8G8R8A8_SRGB, m_window.getClientWidth(), m_window.getClientHeight(), 
+										VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 
+										2, m_queueFamilyIndices);
+		m_vkImageView = pvkCreateImageView(m_vkDevice, m_pvkImage.handle, VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+		pvkWriteImageViewToDescriptor(m_vkDevice, *m_vkDescriptorSet, 0, m_vkImageView, m_vkSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
+		VkImageView attachments[PRESENT_ENGINE_IMAGE_COUNT];
+		for(u32 i = 0; i < PRESENT_ENGINE_IMAGE_COUNT; i++)
+			attachments[i] = m_vkSwapchainImageViews[i];
+		m_vkFramebuffers = pvkCreateFramebuffers(m_vkDevice, m_vkRenderPass, m_window.getClientWidth(), m_window.getClientHeight(), PRESENT_ENGINE_IMAGE_COUNT, 1, attachments);
+		m_vkPipeline = pvkCreateGraphicsPipelineProfile0(m_vkDevice, m_vkPipelineLayout, m_vkRenderPass, m_window.getClientWidth(), m_window.getClientHeight(), 2, (PvkShader) { m_vkVertShaderModule, PVK_SHADER_TYPE_VERTEX }, (PvkShader) { m_vkFragShaderModule, PVK_SHADER_TYPE_FRAGMENT });
+	}
+
 	PresentEngine::PresentEngine(Window& window) : m_window(window), m_callback(NULL), m_userData(NULL)
 	{
 		m_vkInstance = pvkCreateVulkanInstanceWithExtensions(2, "VK_KHR_win32_surface", "VK_KHR_surface");
@@ -122,23 +161,14 @@ namespace SKVMOIP
 														PRESENT_ENGINE_IMAGE_COUNT);
 		u32 graphicsQueueFamilyIndex = pvkFindQueueFamilyIndex(m_vkPhysicalDevice, VK_QUEUE_GRAPHICS_BIT);
 		u32 presentQueueFamilyIndex = pvkFindQueueFamilyIndexWithPresentSupport(m_vkPhysicalDevice, m_vkSurface);
-		u32 queueFamilyIndices[2] = { graphicsQueueFamilyIndex, presentQueueFamilyIndex };
+		m_queueFamilyIndices[0] = graphicsQueueFamilyIndex;
+		m_queueFamilyIndices[1] = presentQueueFamilyIndex;
 		m_vkDevice = pvkCreateLogicalDeviceWithExtensions(m_vkInstance, 
 																m_vkPhysicalDevice,
-																2, queueFamilyIndices,
+																2, m_queueFamilyIndices,
 																1, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 		vkGetDeviceQueue(m_vkDevice, graphicsQueueFamilyIndex, 0, &m_vkGraphicsQueue);
 		vkGetDeviceQueue(m_vkDevice, presentQueueFamilyIndex, 0, &m_vkPresentQueue);
-
-		m_vkSwapchain = pvkCreateSwapchain(m_vkDevice, m_vkSurface, PRESENT_ENGINE_IMAGE_COUNT,
-													window.getClientWidth(), window.getClientHeight(), 
-													VK_FORMAT_B8G8R8A8_SRGB, 
-													VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, 
-													VK_PRESENT_MODE_FIFO_KHR,
-													2, queueFamilyIndices, VK_NULL_HANDLE);
-		u32 imageCount;
-		m_vkSwapchainImageViews = pvkCreateSwapchainImageViews(m_vkDevice, m_vkSwapchain, VK_FORMAT_B8G8R8A8_SRGB, &imageCount);
-		_assert(imageCount == PRESENT_ENGINE_IMAGE_COUNT);
 
 		m_vkCommandPool = pvkCreateCommandPool(m_vkDevice, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, graphicsQueueFamilyIndex);
 		m_vkCommandBuffers = __pvkAllocateCommandBuffers(m_vkDevice, m_vkCommandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, PRESENT_ENGINE_IMAGE_COUNT);
@@ -147,29 +177,18 @@ namespace SKVMOIP
 		m_pvkFencePool = pvkCreateFencePool(m_vkDevice, PRESENT_ENGINE_IMAGE_COUNT);
 		m_vkRenderPass = CreateRenderPass(m_vkDevice);
 
-		m_pvkImage = pvkCreateImage(m_vkPhysicalDevice, m_vkDevice, 
-										VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-										VK_FORMAT_B8G8R8A8_SRGB, window.getClientWidth(), window.getClientHeight(), 
-										VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 
-										2, queueFamilyIndices);
-		m_vkImageView = pvkCreateImageView(m_vkDevice, m_pvkImage.handle, VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-		VkImageView attachments[PRESENT_ENGINE_IMAGE_COUNT];
-		for(u32 i = 0; i < PRESENT_ENGINE_IMAGE_COUNT; i++)
-			attachments[i] = m_vkSwapchainImageViews[i];
-		m_vkFramebuffers = pvkCreateFramebuffers(m_vkDevice, m_vkRenderPass, window.getClientWidth(), window.getClientHeight(), PRESENT_ENGINE_IMAGE_COUNT, 1, attachments);
-
 		m_vkSampler = CreateSampler(m_vkDevice);
 
 		m_vkDescriptorPool = pvkCreateDescriptorPool(m_vkDevice, 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1);
 		m_vkDescriptorSetLayout = CreateDescriptorSetLayout(m_vkDevice);
 		m_vkDescriptorSet = pvkAllocateDescriptorSets(m_vkDevice, m_vkDescriptorPool, 1, &m_vkDescriptorSetLayout);
-		pvkWriteImageViewToDescriptor(m_vkDevice, *m_vkDescriptorSet, 0, m_vkImageView, m_vkSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 	
 		m_vkFragShaderModule = pvkCreateShaderModule(m_vkDevice, "shaders/sample.frag.spv");
 		m_vkVertShaderModule = pvkCreateShaderModule(m_vkDevice, "shaders/sample.vert.spv");
 
 		m_vkPipelineLayout = pvkCreatePipelineLayout(m_vkDevice, 1, &m_vkDescriptorSetLayout);
-		m_vkPipeline = pvkCreateGraphicsPipelineProfile0(m_vkDevice, m_vkPipelineLayout, m_vkRenderPass, window.getClientWidth(), window.getClientHeight(), 2, (PvkShader) { m_vkVertShaderModule, PVK_SHADER_TYPE_VERTEX }, (PvkShader) { m_vkFragShaderModule, PVK_SHADER_TYPE_FRAGMENT });
+
+		createWindowRelatedVkObjects();
 		
 		recordCommandBuffers();
 	}
@@ -196,29 +215,30 @@ namespace SKVMOIP
 
 	PresentEngine::~PresentEngine()
 	{
+		PVK_CHECK(vkDeviceWaitIdle(m_vkDevice));
+		destroyWindowRelatedVkObjects();
 		vkDestroyPipelineLayout(m_vkDevice, m_vkPipelineLayout, NULL);
-		vkDestroyPipeline(m_vkDevice, m_vkPipeline, NULL);
 		vkDestroyShaderModule(m_vkDevice, m_vkFragShaderModule, NULL);
 		vkDestroyShaderModule(m_vkDevice, m_vkVertShaderModule, NULL);
 		PVK_DELETE(m_vkDescriptorSet);
 		vkDestroyDescriptorSetLayout(m_vkDevice, m_vkDescriptorSetLayout, NULL);
 		vkDestroyDescriptorPool(m_vkDevice, m_vkDescriptorPool, NULL);
 		vkDestroySampler(m_vkDevice, m_vkSampler, NULL);
-		pvkDestroyFramebuffers(m_vkDevice, PRESENT_ENGINE_IMAGE_COUNT, m_vkFramebuffers);
-		PVK_DELETE(m_vkFramebuffers);
-		vkDestroyImageView(m_vkDevice, m_vkImageView, NULL);
-		pvkDestroyImage(m_vkDevice, m_pvkImage);
 		vkDestroyRenderPass(m_vkDevice, m_vkRenderPass, NULL);
 		pvkDestroyFencePool(m_vkDevice, m_pvkFencePool);
 		pvkDestroySemaphoreCircularPool(m_vkDevice, m_pvkSemaphorePool);
 		PVK_DELETE(m_vkCommandBuffers);
 		vkDestroyCommandPool(m_vkDevice, m_vkCommandPool, NULL);
-		pvkDestroySwapchainImageViews(m_vkDevice, m_vkSwapchain, m_vkSwapchainImageViews);
-		PVK_DEBUG(m_vkSwapchainImageViews);
-		vkDestroySwapchainKHR(m_vkDevice, m_vkSwapchain, NULL);
 		vkDestroyDevice(m_vkDevice, NULL);
 		vkDestroySurfaceKHR(m_vkInstance, m_vkSurface, NULL);
 		vkDestroyInstance(m_vkInstance, NULL);
+	}
+
+	void PresentEngine::recreate()
+	{
+		destroyWindowRelatedVkObjects();
+		createWindowRelatedVkObjects();
+		recordCommandBuffers();
 	}
 
 	void PresentEngine::runGameLoop(u32 frameRate)
@@ -250,7 +270,7 @@ namespace SKVMOIP
 					PVK_CHECK(vkDeviceWaitIdle(m_vkDevice));
 					imageAvailableSemaphore = pvkSemaphoreCircularPoolRecreate(m_vkDevice, m_pvkSemaphorePool, semaphoreIndex);
 					pvkResetFences(m_vkDevice, 1, &fence);
-					// recreate();
+					recreate();
 				}
 
 				VkSemaphore renderFinishSemaphore = pvkSemaphoreCircularPoolAcquire(m_pvkSemaphorePool, NULL);
@@ -261,7 +281,7 @@ namespace SKVMOIP
 				if(!pvkPresent(index, m_vkSwapchain, m_vkPresentQueue, renderFinishSemaphore))
 				{
 					PVK_CHECK(vkDeviceWaitIdle(m_vkDevice));
-					// recreate();
+					recreate();
 				}
 			}
 			m_window.pollEvents();

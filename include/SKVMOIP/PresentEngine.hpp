@@ -20,6 +20,7 @@ namespace SKVMOIP
 		VkSurfaceKHR m_vkSurface;
 		VkPhysicalDevice m_vkPhysicalDevice;
 		VkDevice m_vkDevice;
+		uint32_t m_queueFamilyIndices[2];
 		VkQueue m_vkGraphicsQueue;
 		VkQueue m_vkPresentQueue;
 		VkSwapchainKHR m_vkSwapchain;
@@ -46,7 +47,10 @@ namespace SKVMOIP
 		void (*m_callback)(void*, void*);
 		void* m_userData;
 
+		void destroyWindowRelatedVkObjects();
+		void createWindowRelatedVkObjects();
 		void recordCommandBuffers();
+		void recreate();
 
 	public:
 		PresentEngine(Window& window);
