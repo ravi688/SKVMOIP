@@ -136,7 +136,7 @@ namespace SKVMOIP
 
 		m_pvkImage = pvkCreateImage(m_vkPhysicalDevice, m_vkDevice, 
 										VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-										VK_FORMAT_B8G8R8A8_SRGB, m_window.getClientWidth(), m_window.getClientHeight(), 
+										VK_FORMAT_B8G8R8A8_SRGB, m_window.getWidth(), m_window.getHeight(), 
 										VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 
 										2, m_queueFamilyIndices);
 		m_vkImageView = pvkCreateImageView(m_vkDevice, m_pvkImage.handle, VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -178,7 +178,7 @@ namespace SKVMOIP
 		m_vkRenderPass = CreateRenderPass(m_vkDevice);
 
 		m_vkSampler = CreateSampler(m_vkDevice);
-		m_pvkBuffer = pvkCreateBuffer(m_vkPhysicalDevice, m_vkDevice, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, m_window.getWidth() * m_window.getHeight() * 4, 2, m_queueFamilyIndices);
+		m_pvkBuffer = pvkCreateBuffer(m_vkPhysicalDevice, m_vkDevice, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, m_window.getWidth() * m_window.getHeight() * 4, 2, m_queueFamilyIndices);
 		PVK_CHECK(vkMapMemory(m_vkDevice, m_pvkBuffer.memory, 0, m_window.getWidth() * m_window.getHeight() * 4, 0, &m_mapPtr));
 
 		m_vkDescriptorPool = pvkCreateDescriptorPool(m_vkDevice, 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1);
@@ -206,6 +206,54 @@ namespace SKVMOIP
 		for(int index = 0; index < PRESENT_ENGINE_IMAGE_COUNT; index++)
 		{
 			pvkBeginCommandBuffer(m_vkCommandBuffers[index], (VkCommandBufferUsageFlagBits)0);
+				// Image Layout Transition: VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+				VkImageMemoryBarrier imageMemoryBarrier = { };
+				imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				imageMemoryBarrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+				imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+				imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+				imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+				imageMemoryBarrier.srcQueueFamilyIndex = m_queueFamilyIndices[0];
+				imageMemoryBarrier.dstQueueFamilyIndex = m_queueFamilyIndices[0];
+				imageMemoryBarrier.image = m_pvkImage.handle;
+				imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+				imageMemoryBarrier.subresourceRange.levelCount = 1;
+				imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+				imageMemoryBarrier.subresourceRange.layerCount = 1;
+				vkCmdPipelineBarrier(m_vkCommandBuffers[index],
+									VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 
+									VK_PIPELINE_STAGE_TRANSFER_BIT, 
+									VK_DEPENDENCY_BY_REGION_BIT,
+									0, NULL,
+									0, NULL,
+									1, &imageMemoryBarrier);
+				VkBufferImageCopy imageCopyInfo = { };
+				imageCopyInfo.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				imageCopyInfo.imageSubresource.layerCount = 1;
+				imageCopyInfo.imageExtent = { m_window.getWidth(), m_window.getHeight(), 1 };
+				vkCmdCopyBufferToImage(m_vkCommandBuffers[index], m_pvkBuffer.handle, m_pvkImage.handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyInfo);
+				imageMemoryBarrier = { };
+				imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+				imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+				imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				imageMemoryBarrier.srcQueueFamilyIndex = m_queueFamilyIndices[0];
+				imageMemoryBarrier.dstQueueFamilyIndex = m_queueFamilyIndices[0];
+				imageMemoryBarrier.image = m_pvkImage.handle;
+				imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+				imageMemoryBarrier.subresourceRange.levelCount = 1;
+				imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+				imageMemoryBarrier.subresourceRange.layerCount = 1;
+				vkCmdPipelineBarrier(m_vkCommandBuffers[index],
+									VK_PIPELINE_STAGE_TRANSFER_BIT, 
+									VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 
+									VK_DEPENDENCY_BY_REGION_BIT,
+									0, NULL,
+									0, NULL,
+									1, &imageMemoryBarrier);
 				pvkBeginRenderPass(m_vkCommandBuffers[index], m_vkRenderPass, m_vkFramebuffers[index], m_window.getClientWidth(), m_window.getClientHeight(), 1, &clearValue);
 					vkCmdBindPipeline(m_vkCommandBuffers[index], VK_PIPELINE_BIND_POINT_GRAPHICS, m_vkPipeline);
 					vkCmdBindDescriptorSets(m_vkCommandBuffers[index], VK_PIPELINE_BIND_POINT_GRAPHICS, m_vkPipelineLayout, 0, 1, m_vkDescriptorSet, 0, NULL);
@@ -255,6 +303,8 @@ namespace SKVMOIP
 			auto time = std::chrono::high_resolution_clock::now();
 			if(std::chrono::duration_cast<std::chrono::milliseconds>(time - startTime).count() >= deltaTime)
 			{
+				/* Takes: 2 ms to 4 ms - same as Win32 Blit */
+
 				startTime = time;
 
 				bool isNewFrame = false;

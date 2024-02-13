@@ -160,7 +160,7 @@ namespace SKVMOIP
 			_assert(frameData.has_value());
 			// _assert(frameData->getSize() == drawSurface->getBufferSize());
 			/* Takes: 1 ms to 4 ms */
-			// memcpy(drawSurface->getPixels(), frameData->getPtr(), frameData->getSize());
+			memcpy(buffer, frameData->getPtr(), frameData->getSize());
 			decodeNetStream->returnFrameData(frame);
 			// debug_log_info("FrameData returned");
 			return true;
