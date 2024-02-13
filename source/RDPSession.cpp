@@ -68,9 +68,9 @@ namespace SKVMOIP
 			if(!m_window)
 			{
 				m_window = std::move(std::unique_ptr<Window>(new Window(1920, 1080, "Scalable KVM Over IP")));
-				#ifdef USE_VULKAN_PRESENTATION
-				m_presentEngine = std::move(std::unique_ptr<PresentEngine>(new PresentEngine(*m_window)));
-				m_presentEngine->setPresentCallback(PresentHandler, reinterpret_cast<void*>(this));
+				m_presentEngine = std::move(std::unique_ptr<PresentEngine>(new PresentEngine(*m_window, *m_decodeNetStream)));
+				#ifdef USE_DIRECT_FRAME_DATA_COPY
+				m_decodeNetStream->addFrameDataStorage(m_presentEngine->getBufferPtr());
 				#endif
 			}
 			if(!m_drawSurface)
@@ -148,26 +148,6 @@ namespace SKVMOIP
 		}
 	}
 
-	#ifdef USE_VULKAN_PRESENTATION
-	static bool PresentHandler(void* buffer, void* userData)
-	{
-		RDPSession& rdp = *reinterpret_cast<RDPSession*>(userData);
-		auto& decodeNetStream = rdp.getDecodeNetStream();
-		if(auto frame = decodeNetStream->borrowFrameData())
-		{
-			// debug_log_info("FrameData borrowed");
-			auto frameData = FIFOPool<HDMIDecodeNetStream::FrameData>::GetValue(frame);
-			_assert(frameData.has_value());
-			// _assert(frameData->getSize() == drawSurface->getBufferSize());
-			/* Takes: 1 ms to 4 ms */
-			memcpy(buffer, frameData->getPtr(), frameData->getSize());
-			decodeNetStream->returnFrameData(frame);
-			// debug_log_info("FrameData returned");
-			return true;
-		}
-		return false;
-	}
-	#endif
 	
 	#ifndef USE_VULKAN_PRESENTATION
 	static void WindowPaintHandler(void* paintInfo, void* userData)
@@ -176,7 +156,7 @@ namespace SKVMOIP
 		RDPSession& rdp = *reinterpret_cast<RDPSession*>(userData);
 		auto& decodeNetStream = rdp.getDecodeNetStream();
 		auto& drawSurface = rdp.getDrawSurface();
-	
+
 		if(auto frame = decodeNetStream->borrowFrameData())
 		{
 			// debug_log_info("FrameData borrowed");

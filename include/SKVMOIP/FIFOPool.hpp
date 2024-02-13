@@ -26,7 +26,24 @@ namespace SKVMOIP
 		const u8* getPtr() const;
 		u8* getPtr();
 		u32 getSize() const;
-	};	
+	};
+
+	class DataBufferNoAlloc
+	{
+	private:
+		void* m_ptr;
+		u32 m_size;
+		bool m_isValid;
+
+	public:
+		DataBufferNoAlloc() noexcept : m_ptr(NULL), m_size(0), m_isValid(false) { }
+		DataBufferNoAlloc(void* ptr, u32 size) noexcept : m_ptr(ptr), m_size(size), m_isValid(true) { }
+		~DataBufferNoAlloc() noexcept { m_isValid = false; m_size = 0; m_ptr = NULL; }
+
+		const u8* getPtr() const noexcept { return reinterpret_cast<u8*>(m_ptr); }
+		u8* getPtr() noexcept { return reinterpret_cast<u8*>(m_ptr); }
+		u32 getSize() noexcept { return m_size; }
+	};
 
 	template<typename T>
 	class FIFOPool

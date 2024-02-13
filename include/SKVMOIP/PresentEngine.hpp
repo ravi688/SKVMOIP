@@ -2,14 +2,12 @@
 
 #include <SKVMOIP/defines.hpp>
 #include <SKVMOIP/Window.hpp>
+#include <SKVMOIP/HDMIDecodeNetStream.hpp>
 
 #ifdef GLOBAL_DEBUG
 #	define PVK_DEBUG
 #endif
 #include <PlayVk/PlayVk.h>
-
-#define PRESENT_ENGINE_IMAGE_COUNT 3
-#define PRESENT_ENGINE_MAX_IMAGE_INFLIGHT_COUNT 3
 
 namespace SKVMOIP
 {
@@ -45,9 +43,7 @@ namespace SKVMOIP
 		VkPipeline m_vkPipeline;
 
 		Window& m_window;
-
-		bool (*m_callback)(void*, void*);
-		void* m_userData;
+		HDMIDecodeNetStream& m_decodeNetStream;
 
 		void destroyWindowRelatedVkObjects();
 		void createWindowRelatedVkObjects();
@@ -55,18 +51,14 @@ namespace SKVMOIP
 		void recreate();
 
 	public:
-		PresentEngine(Window& window);
+		PresentEngine(Window& window, HDMIDecodeNetStream& decodeNetStream);
 		PresentEngine(PresentEngine&) = delete;
 		PresentEngine& operator=(PresentEngine&) = delete;
 		PresentEngine(PresentEngine&&) = delete;
 		PresentEngine& operator=(PresentEngine&&) = delete;
 		~PresentEngine();
 
-		void setPresentCallback(bool (*callback)(void* buffer, void* userData), void* userData) noexcept
-		{
-			m_callback = callback;
-			m_userData = userData;
-		}
+		void* getBufferPtr() const noexcept { return m_mapPtr; }
 		void runGameLoop(u32 frameRate);
 	};
 }

@@ -20,7 +20,12 @@ namespace SKVMOIP
 	class HDMIDecodeNetStream : public Network::AsyncQueueSocket
 	{
 	public:
-		typedef DataBuffer FrameData;
+		#ifdef USE_DIRECT_FRAME_DATA_COPY
+			typedef DataBufferNoAlloc FrameData;
+		#else
+			#warning "Still using DataBuffer"
+			typedef DataBuffer FrameData;
+		#endif
 
 	private:
 		FIFOPool<FrameData> m_frameDataPool;
@@ -59,6 +64,11 @@ namespace SKVMOIP
 	
 		~HDMIDecodeNetStream();
 	
+		#ifdef USE_DIRECT_FRAME_DATA_COPY
+		void addFrameDataStorage(void* buffer);
+		bool isFrameAvailable();
+		#endif
+		
 		/* Following two functions are supposed to be callled from another client thread (main thread) */
 		typename FIFOPool<FrameData>::PoolItemType borrowFrameData();
 		void returnFrameData(typename FIFOPool<FrameData>::PoolItemType frameData);

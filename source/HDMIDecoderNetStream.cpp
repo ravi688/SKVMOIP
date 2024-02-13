@@ -10,7 +10,11 @@ namespace SKVMOIP
 
 	HDMIDecodeNetStream::HDMIDecodeNetStream(u32 width, u32 height, u32 frNum, u32 frDen, u32 bitsPerPixel) : 
 												AsyncQueueSocket(std::move(Network::Socket(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP))),
+								#ifdef USE_DIRECT_FRAME_DATA_COPY
+												m_frameDataPool([](DataBufferNoAlloc& db) { }),
+								#else
 												m_frameDataPool([] (DataBuffer& db) { db.destroy(); }),
+								#endif
 												m_inFlightRequestCount(0),
 												m_decodeThread(decodeThreadHandler, this),
 												m_converter(width, height, frNum, frDen, bitsPerPixel),
@@ -60,6 +64,14 @@ namespace SKVMOIP
 		if(result != Network::Result::Success)
 			debug_log_error("Failed to close network socket");
 	}
+
+	#ifdef USE_DIRECT_FRAME_DATA_COPY
+	void HDMIDecodeNetStream::addFrameDataStorage(void* buffer)
+	{
+		std::lock_guard<std::mutex> lock(m_ClientMutex);
+		m_frameDataPool.createInactive(buffer, getUncompressedConvertedFrameSize());
+	}
+	#endif
 
 	typename FIFOPool<HDMIDecodeNetStream::FrameData>::PoolItemType HDMIDecodeNetStream::borrowFrameData()
 	{
@@ -155,6 +167,7 @@ namespace SKVMOIP
 						std::lock_guard<std::mutex> lock(m_ClientMutex);
 						if (!m_frameDataPool.hasInactive())
 						{
+							#ifndef USE_DIRECT_FRAME_DATA_COPY
 							if(m_frameDataPool.getCount() < MAX_FRAME_DATA_OBJECT_COUNT)
 							{
 								DEBUG_LOG_INFO("Allocating new FrameData object");
@@ -162,6 +175,7 @@ namespace SKVMOIP
 							}
 							// else
 								// debug_log_info("MAX_FRAME_DATA_OBJECT_COUNT(=%d) is reached", MAX_FRAME_DATA_OBJECT_COUNT);
+							#endif
 						}
 
 						if(auto result = m_frameDataPool.getInactive())

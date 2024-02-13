@@ -20,6 +20,9 @@
 
 #include <chrono>
 
+#define PRESENT_ENGINE_IMAGE_COUNT 3
+#define PRESENT_ENGINE_MAX_IMAGE_INFLIGHT_COUNT 3
+
 namespace SKVMOIP
 {
 	static VkRenderPass CreateRenderPass(VkDevice device)
@@ -149,7 +152,7 @@ namespace SKVMOIP
 		m_vkPipeline = pvkCreateGraphicsPipelineProfile0(m_vkDevice, m_vkPipelineLayout, m_vkRenderPass, m_window.getClientWidth(), m_window.getClientHeight(), 2, (PvkShader) { m_vkVertShaderModule, PVK_SHADER_TYPE_VERTEX }, (PvkShader) { m_vkFragShaderModule, PVK_SHADER_TYPE_FRAGMENT });
 	}
 
-	PresentEngine::PresentEngine(Window& window) : m_window(window), m_callback(NULL), m_userData(NULL), m_mapPtr(NULL)
+	PresentEngine::PresentEngine(Window& window, HDMIDecodeNetStream& decodeNetStream) : m_window(window), m_decodeNetStream(decodeNetStream), m_mapPtr(NULL)
 	{
 		m_vkInstance = pvkCreateVulkanInstanceWithExtensions(2, "VK_KHR_win32_surface", "VK_KHR_surface");
 		m_vkSurface = pvkCreateSurface(m_vkInstance, GetModuleHandle(NULL), window.getNativeHandle());
@@ -180,6 +183,9 @@ namespace SKVMOIP
 		m_vkSampler = CreateSampler(m_vkDevice);
 		m_pvkBuffer = pvkCreateBuffer(m_vkPhysicalDevice, m_vkDevice, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, m_window.getWidth() * m_window.getHeight() * 4, 2, m_queueFamilyIndices);
 		PVK_CHECK(vkMapMemory(m_vkDevice, m_pvkBuffer.memory, 0, m_window.getWidth() * m_window.getHeight() * 4, 0, &m_mapPtr));
+		#ifdef USE_DIRECT_FRAME_DATA_COPY
+		m_decodeNetStream.addFrameDataStorage(m_mapPtr);
+		#endif
 
 		m_vkDescriptorPool = pvkCreateDescriptorPool(m_vkDevice, 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1);
 		m_vkDescriptorSetLayout = CreateDescriptorSetLayout(m_vkDevice);
@@ -307,13 +313,10 @@ namespace SKVMOIP
 
 				startTime = time;
 
-				bool isNewFrame = false;
-				if(m_callback != NULL)
-					isNewFrame = m_callback(m_mapPtr, m_userData);
-				
+				auto frame = m_decodeNetStream.borrowFrameData();
 				uint32_t semaphoreIndex;
 				VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE;
-				if(isNewFrame)
+				if(frame)
 					imageAvailableSemaphore = pvkSemaphoreCircularPoolAcquire(m_pvkSemaphorePool, &semaphoreIndex);
 
 				uint32_t index;
@@ -330,12 +333,25 @@ namespace SKVMOIP
 				PVK_CHECK(vkResetFences(m_vkDevice, 1, &m_vkFence));
 
 				VkSemaphore renderFinishSemaphore = VK_NULL_HANDLE;
-				if(isNewFrame)
+				if(frame)
 				{
 					renderFinishSemaphore = pvkSemaphoreCircularPoolAcquire(m_pvkSemaphorePool, NULL);
+					
+					#ifndef USE_DIRECT_FRAME_DATA_COPY
+					auto frameData = FIFOPool<HDMIDecodeNetStream::FrameData>::GetValue(frame);
+					_assert(frameData.has_value());
+					// _assert(frameData->getSize() == drawSurface->getBufferSize());
+					/* Takes: 1 ms to 4 ms */
+					memcpy(m_mapPtr, frameData->getPtr(), frameData->getSize());
+					#endif 
+
 					// execute commands
-					pvkSubmit(m_vkCommandBuffers[index], m_vkGraphicsQueue, imageAvailableSemaphore, renderFinishSemaphore, VK_NULL_HANDLE);
+					pvkSubmit(m_vkCommandBuffers[index], m_vkGraphicsQueue, imageAvailableSemaphore, renderFinishSemaphore, m_vkFence);
+					PVK_CHECK(vkWaitForFences(m_vkDevice, 1, &m_vkFence, VK_TRUE, UINT64_MAX));
+					m_decodeNetStream.returnFrameData(frame);
+					PVK_CHECK(vkResetFences(m_vkDevice, 1, &m_vkFence));
 				}
+
 
 				// present the output image
 				if(!pvkPresent(index, m_vkSwapchain, m_vkPresentQueue, (renderFinishSemaphore == VK_NULL_HANDLE) ? 0 : 1, &renderFinishSemaphore))
