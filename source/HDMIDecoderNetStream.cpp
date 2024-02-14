@@ -115,8 +115,8 @@ namespace SKVMOIP
 		}
 	}
 
-	#define MAX_IN_FLIGHT_REQUEST_COUNT 2
-	#define MAX_FRAME_DATA_OBJECT_COUNT 1
+	#define MAX_IN_FLIGHT_REQUEST_COUNT 3
+	#define MAX_FRAME_DATA_OBJECT_COUNT 3
 	
 	void HDMIDecodeNetStream::decodeThreadHandler()
 	{
@@ -157,6 +157,27 @@ namespace SKVMOIP
 					auto decodeTime = decodeWatch.stop();
 					u8* frame = m_decoder.getFrame();
 					_assert(m_decoder.getFrameSize() == getUncompressedFrameSize());
+					#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
+					std::lock_guard<std::mutex> lock(m_ClientMutex);
+					if(!m_frameDataPool.hasInactive())
+					{
+						#ifndef USE_DIRECT_FRAME_DATA_COPY
+						if(m_frameDataPool.getCount() < MAX_FRAME_DATA_OBJECT_COUNT)
+						{
+							DEBUG_LOG_INFO("Allocating new FrameData object");
+							m_frameDataPool.createInactive(getUncompressedFrameSize());
+						}
+						// else
+							// debug_log_info("MAX_FRAME_DATA_OBJECT_COUNT(=%d) is reached", MAX_FRAME_DATA_OBJECT_COUNT);
+						#endif
+					}
+					if(auto result = m_frameDataPool.getInactive())
+					{
+						/* Takes: 1 ms to 2 ms*/
+						memcpy(FIFOPool<FrameData>::GetValue(result)->getPtr(), frame, m_decoder.getFrameSize());
+						m_frameDataPool.returnInactive(result);
+					}					
+					#else
 					u8* rgbData;
 					SKVMOIP::StopWatch convertWatch;
 					/* Takes: 5 ms to 10 ms */
@@ -194,6 +215,7 @@ namespace SKVMOIP
 						convertWatch.stop(); 
 						debug_log_error("Failed to convert color space"); 
 					}
+					#endif
 				}
 
 				else 

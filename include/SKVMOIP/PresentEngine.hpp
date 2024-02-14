@@ -31,6 +31,9 @@ namespace SKVMOIP
 		PvkImage m_pvkImage;
 		VkImageView m_vkImageView;
 		VkFramebuffer* m_vkFramebuffers;
+		#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
+		VkSamplerYcbcrConversion m_vkConversion;
+		#endif
 		VkSampler m_vkSampler;
 		PvkBuffer m_pvkBuffer;
 		void* m_mapPtr;

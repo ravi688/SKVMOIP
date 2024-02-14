@@ -17,6 +17,7 @@
 #include <SKVMOIP/PresentEngine.hpp>
 #include <SKVMOIP/Window.hpp>
 #include <SKVMOIP/assert.h>
+#include <SKVMOIP/StopWatch.hpp>
 
 #include <chrono>
 
@@ -65,16 +66,20 @@ namespace SKVMOIP
 		return renderPass;
 	}
 
-	static VkSampler CreateSampler(VkDevice device)
+	static VkSampler CreateSampler(VkDevice device, VkSamplerYcbcrConversion conversion)
 	{
+		VkSamplerYcbcrConversionInfo conversionInfo { };
+		conversionInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO;
+		conversionInfo.conversion = conversion;
 		VkSamplerCreateInfo cInfo { }; 
 		{
 			cInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+			cInfo.pNext = (conversion == VK_NULL_HANDLE) ? NULL : &conversionInfo;
 			cInfo.magFilter = VK_FILTER_LINEAR;
 			cInfo.minFilter = VK_FILTER_LINEAR;
-			cInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-			cInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-			cInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+			cInfo.addressModeU = (conversion == VK_NULL_HANDLE) ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			cInfo.addressModeV = (conversion == VK_NULL_HANDLE) ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			cInfo.addressModeW = (conversion == VK_NULL_HANDLE) ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 			cInfo.anisotropyEnable = VK_FALSE;
 			cInfo.maxAnisotropy = 1.0f; // Optional
 			cInfo.compareEnable = VK_FALSE;
@@ -91,14 +96,32 @@ namespace SKVMOIP
 		return sampler;
 	}
 
-	static VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device)
+	static VkSamplerYcbcrConversion CreateYUVConversion(VkDevice device)
+	{
+		VkSamplerYcbcrConversionCreateInfo cInfo = { };
+		cInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO;
+		cInfo.ycbcrModel = VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_709;
+		cInfo.ycbcrRange = VK_SAMPLER_YCBCR_RANGE_ITU_FULL;
+		cInfo.components = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
+		cInfo.chromaFilter = VK_FILTER_LINEAR;
+		cInfo.xChromaOffset = VK_CHROMA_LOCATION_MIDPOINT;
+		cInfo.yChromaOffset = VK_CHROMA_LOCATION_MIDPOINT;
+		cInfo.forceExplicitReconstruction = VK_FALSE;
+		cInfo.format = VK_FORMAT_G8_B8R8_2PLANE_420_UNORM;
+		VkSamplerYcbcrConversion sampler;
+		PVK_CHECK(vkCreateSamplerYcbcrConversion(device, &cInfo, NULL, &sampler));
+		return sampler;
+	}
+
+	static VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, VkSampler immutableSampler)
 	{
 		VkDescriptorSetLayoutBinding binding = 
 		{
 			.binding = 0,
 			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
 			.descriptorCount = 1,
-			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT
+			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+			.pImmutableSamplers = (immutableSampler	== VK_NULL_HANDLE) ? NULL :  &immutableSampler
 		};
 	
 		VkDescriptorSetLayoutCreateInfo cInfo = 
@@ -137,12 +160,23 @@ namespace SKVMOIP
 		m_vkSwapchainImageViews = pvkCreateSwapchainImageViews(m_vkDevice, m_vkSwapchain, VK_FORMAT_B8G8R8A8_SRGB, &imageCount);
 		_assert(imageCount == PRESENT_ENGINE_IMAGE_COUNT);
 
+		#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
+		m_pvkImage = pvkCreateImage2(m_vkPhysicalDevice, m_vkDevice, 
+										VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+										VK_FORMAT_G8_B8R8_2PLANE_420_UNORM, m_window.getWidth(), m_window.getHeight(), 
+										VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 
+										2, m_queueFamilyIndices);
+		m_vkImageView = pvkCreateImageView2(m_vkDevice, m_pvkImage.handle, VK_FORMAT_G8_B8R8_2PLANE_420_UNORM, 
+													(VkImageAspectFlagBits) (VK_IMAGE_ASPECT_COLOR_BIT), 
+													m_vkConversion);
+		#else
 		m_pvkImage = pvkCreateImage(m_vkPhysicalDevice, m_vkDevice, 
 										VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
 										VK_FORMAT_B8G8R8A8_SRGB, m_window.getWidth(), m_window.getHeight(), 
 										VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 
 										2, m_queueFamilyIndices);
 		m_vkImageView = pvkCreateImageView(m_vkDevice, m_pvkImage.handle, VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+		#endif
 		pvkWriteImageViewToDescriptor(m_vkDevice, *m_vkDescriptorSet, 0, m_vkImageView, m_vkSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
 		VkImageView attachments[PRESENT_ENGINE_IMAGE_COUNT];
@@ -161,15 +195,26 @@ namespace SKVMOIP
 														VK_FORMAT_B8G8R8A8_SRGB, 
 														VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, 
 														VK_PRESENT_MODE_FIFO_KHR,
-														PRESENT_ENGINE_IMAGE_COUNT);
+														PRESENT_ENGINE_IMAGE_COUNT,
+														#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
+														true
+														#else
+														false
+														#endif
+														);
 		u32 graphicsQueueFamilyIndex = pvkFindQueueFamilyIndex(m_vkPhysicalDevice, VK_QUEUE_GRAPHICS_BIT);
 		u32 presentQueueFamilyIndex = pvkFindQueueFamilyIndexWithPresentSupport(m_vkPhysicalDevice, m_vkSurface);
 		m_queueFamilyIndices[0] = graphicsQueueFamilyIndex;
 		m_queueFamilyIndices[1] = presentQueueFamilyIndex;
 		m_vkDevice = pvkCreateLogicalDeviceWithExtensions(m_vkInstance, 
 																m_vkPhysicalDevice,
-																2, m_queueFamilyIndices,
-																1, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+																2, m_queueFamilyIndices, 
+							#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
+																true, 2, VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_KHR_sampler_ycbcr_conversion"
+							#else
+																false, 1, VK_KHR_SWAPCHAIN_EXTENSION_NAME
+							#endif
+																);
 		vkGetDeviceQueue(m_vkDevice, graphicsQueueFamilyIndex, 0, &m_vkGraphicsQueue);
 		vkGetDeviceQueue(m_vkDevice, presentQueueFamilyIndex, 0, &m_vkPresentQueue);
 
@@ -180,15 +225,33 @@ namespace SKVMOIP
 		m_vkFence = pvkCreateFence(m_vkDevice, (VkFenceCreateFlags)(0));
 		m_vkRenderPass = CreateRenderPass(m_vkDevice);
 
-		m_vkSampler = CreateSampler(m_vkDevice);
+		#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
+		m_vkConversion = CreateYUVConversion(m_vkDevice);
+		#endif
+		m_vkSampler = CreateSampler(m_vkDevice,
+		#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
+			m_vkConversion
+		#else
+			VK_NULL_HANDLE
+		#endif
+									);
+		#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
+		m_pvkBuffer = pvkCreateBuffer(m_vkPhysicalDevice, m_vkDevice, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, (m_window.getWidth() * m_window.getHeight() * 3) >> 1, 2, m_queueFamilyIndices);
+		PVK_CHECK(vkMapMemory(m_vkDevice, m_pvkBuffer.memory, 0, (m_window.getWidth() * m_window.getHeight() * 3) >> 1, 0, &m_mapPtr));
+		#else
 		m_pvkBuffer = pvkCreateBuffer(m_vkPhysicalDevice, m_vkDevice, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, m_window.getWidth() * m_window.getHeight() * 4, 2, m_queueFamilyIndices);
 		PVK_CHECK(vkMapMemory(m_vkDevice, m_pvkBuffer.memory, 0, m_window.getWidth() * m_window.getHeight() * 4, 0, &m_mapPtr));
+		#endif
 		#ifdef USE_DIRECT_FRAME_DATA_COPY
 		m_decodeNetStream.addFrameDataStorage(m_mapPtr);
 		#endif
 
 		m_vkDescriptorPool = pvkCreateDescriptorPool(m_vkDevice, 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1);
-		m_vkDescriptorSetLayout = CreateDescriptorSetLayout(m_vkDevice);
+		#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
+		m_vkDescriptorSetLayout = CreateDescriptorSetLayout(m_vkDevice, m_vkSampler);
+		#else
+		m_vkDescriptorSetLayout = CreateDescriptorSetLayout(m_vkDevice, VK_NULL_HANDLE);
+		#endif
 		m_vkDescriptorSet = pvkAllocateDescriptorSets(m_vkDevice, m_vkDescriptorPool, 1, &m_vkDescriptorSetLayout);
 	
 		m_vkFragShaderModule = pvkCreateShaderModule(m_vkDevice, "shaders/sample.frag.spv");
@@ -222,7 +285,11 @@ namespace SKVMOIP
 				imageMemoryBarrier.srcQueueFamilyIndex = m_queueFamilyIndices[0];
 				imageMemoryBarrier.dstQueueFamilyIndex = m_queueFamilyIndices[0];
 				imageMemoryBarrier.image = m_pvkImage.handle;
+				#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
 				imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				#else
+				imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				#endif
 				imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
 				imageMemoryBarrier.subresourceRange.levelCount = 1;
 				imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
@@ -234,11 +301,25 @@ namespace SKVMOIP
 									0, NULL,
 									0, NULL,
 									1, &imageMemoryBarrier);
+				#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
+				VkBufferImageCopy imageCopyInfos[2] = { };
+				imageCopyInfos[0].bufferOffset = 0;
+				imageCopyInfos[0].imageSubresource.aspectMask = VK_IMAGE_ASPECT_PLANE_0_BIT;
+				imageCopyInfos[0].imageSubresource.layerCount = 1;
+				imageCopyInfos[0].imageExtent = { m_window.getWidth(), m_window.getHeight(), 1 };
+				imageCopyInfos[1].bufferOffset = m_window.getWidth() * m_window.getHeight();
+				imageCopyInfos[1].imageSubresource.aspectMask = VK_IMAGE_ASPECT_PLANE_1_BIT;
+				imageCopyInfos[1].imageSubresource.layerCount = 1;
+				imageCopyInfos[1].imageExtent = { m_window.getWidth() >> 1, m_window.getHeight() >> 1, 1 };
+				vkCmdCopyBufferToImage(m_vkCommandBuffers[index], m_pvkBuffer.handle, m_pvkImage.handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 2, imageCopyInfos);
+				#else
 				VkBufferImageCopy imageCopyInfo = { };
-				imageCopyInfo.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				imageCopyInfo.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;;
 				imageCopyInfo.imageSubresource.layerCount = 1;
 				imageCopyInfo.imageExtent = { m_window.getWidth(), m_window.getHeight(), 1 };
 				vkCmdCopyBufferToImage(m_vkCommandBuffers[index], m_pvkBuffer.handle, m_pvkImage.handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyInfo);
+				#endif
+
 				imageMemoryBarrier = { };
 				imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 				imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -248,7 +329,11 @@ namespace SKVMOIP
 				imageMemoryBarrier.srcQueueFamilyIndex = m_queueFamilyIndices[0];
 				imageMemoryBarrier.dstQueueFamilyIndex = m_queueFamilyIndices[0];
 				imageMemoryBarrier.image = m_pvkImage.handle;
+				#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
 				imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				#else
+				imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				#endif
 				imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
 				imageMemoryBarrier.subresourceRange.levelCount = 1;
 				imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
@@ -282,6 +367,9 @@ namespace SKVMOIP
 		vkUnmapMemory(m_vkDevice, m_pvkBuffer.memory);
 		pvkDestroyBuffer(m_vkDevice, m_pvkBuffer);
 		vkDestroySampler(m_vkDevice, m_vkSampler, NULL);
+		#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION	
+		vkDestroySamplerYcbcrConversion(m_vkDevice, m_vkConversion, NULL);
+		#endif
 		vkDestroyRenderPass(m_vkDevice, m_vkRenderPass, NULL);
 		vkDestroyFence(m_vkDevice, m_vkFence, NULL);
 		pvkDestroySemaphoreCircularPool(m_vkDevice, m_pvkSemaphorePool);
