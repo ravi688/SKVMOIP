@@ -30,7 +30,11 @@ namespace SKVMOIP
 	{
 		VkAttachmentDescription colorAttachment { };
 		{
+			#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
+			colorAttachment.format = VK_FORMAT_B8G8R8A8_UNORM;
+			#else
 			colorAttachment.format = VK_FORMAT_B8G8R8A8_SRGB;
+			#endif
 			colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 			colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 			colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -151,13 +155,21 @@ namespace SKVMOIP
 	void PresentEngine::createWindowRelatedVkObjects()
 	{
 		m_vkSwapchain = pvkCreateSwapchain(m_vkDevice, m_vkSurface, PRESENT_ENGINE_IMAGE_COUNT,
-													m_window.getClientWidth(), m_window.getClientHeight(), 
-													VK_FORMAT_B8G8R8A8_SRGB, 
+													m_window.getClientWidth(), m_window.getClientHeight(),
+													#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION 
+													VK_FORMAT_B8G8R8A8_UNORM, 
+													#else
+													VK_FORMAT_B8G8R8A8_SRGB,
+													#endif
 													VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, 
 													VK_PRESENT_MODE_FIFO_KHR,
 													2, m_queueFamilyIndices, VK_NULL_HANDLE);
 		u32 imageCount;
+		#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
+		m_vkSwapchainImageViews = pvkCreateSwapchainImageViews(m_vkDevice, m_vkSwapchain, VK_FORMAT_B8G8R8A8_UNORM, &imageCount);
+		#else
 		m_vkSwapchainImageViews = pvkCreateSwapchainImageViews(m_vkDevice, m_vkSwapchain, VK_FORMAT_B8G8R8A8_SRGB, &imageCount);
+		#endif
 		_assert(imageCount == PRESENT_ENGINE_IMAGE_COUNT);
 
 		#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
@@ -192,7 +204,11 @@ namespace SKVMOIP
 		m_vkSurface = pvkCreateSurface(m_vkInstance, GetModuleHandle(NULL), window.getNativeHandle());
 		m_vkPhysicalDevice = pvkGetPhysicalDevice(m_vkInstance, m_vkSurface, 
 														VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU, 
-														VK_FORMAT_B8G8R8A8_SRGB, 
+														#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
+														VK_FORMAT_B8G8R8A8_UNORM,
+														#else
+														VK_FORMAT_B8G8R8A8_SRGB,
+														#endif 
 														VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, 
 														VK_PRESENT_MODE_FIFO_KHR,
 														PRESENT_ENGINE_IMAGE_COUNT,
