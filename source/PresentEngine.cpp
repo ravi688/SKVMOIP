@@ -21,6 +21,8 @@
 
 #include <chrono>
 
+#define HDMI_CAPTURE_WIDTH 1920
+#define HDMI_CAPTURE_HEIGHT 1080
 #define PRESENT_ENGINE_IMAGE_COUNT 3
 #define PRESENT_ENGINE_MAX_IMAGE_INFLIGHT_COUNT 3
 
@@ -165,8 +167,6 @@ namespace SKVMOIP
 		vkDestroyPipeline(m_vkDevice, m_vkPipeline, NULL);
 		pvkDestroyFramebuffers(m_vkDevice, PRESENT_ENGINE_IMAGE_COUNT, m_vkFramebuffers);
 		PVK_DELETE(m_vkFramebuffers);
-		vkDestroyImageView(m_vkDevice, m_vkImageView, NULL);
-		pvkDestroyImage(m_vkDevice, m_pvkImage);
 		pvkDestroySwapchainImageViews(m_vkDevice, m_vkSwapchain, m_vkSwapchainImageViews);
 		PVK_DEBUG(m_vkSwapchainImageViews);
 		vkDestroySwapchainKHR(m_vkDevice, m_vkSwapchain, NULL);
@@ -191,25 +191,6 @@ namespace SKVMOIP
 		m_vkSwapchainImageViews = pvkCreateSwapchainImageViews(m_vkDevice, m_vkSwapchain, VK_FORMAT_B8G8R8A8_SRGB, &imageCount);
 		#endif
 		_assert(imageCount == PRESENT_ENGINE_IMAGE_COUNT);
-
-		#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
-		m_pvkImage = pvkCreateImage2(m_vkPhysicalDevice, m_vkDevice, 
-										VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-										VK_FORMAT_G8_B8R8_2PLANE_420_UNORM, m_window.getWidth(), m_window.getHeight(), 
-										VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 
-										2, m_queueFamilyIndices);
-		m_vkImageView = pvkCreateImageView2(m_vkDevice, m_pvkImage.handle, VK_FORMAT_G8_B8R8_2PLANE_420_UNORM, 
-													(VkImageAspectFlagBits) (VK_IMAGE_ASPECT_COLOR_BIT), 
-													m_vkConversion);
-		#else
-		m_pvkImage = pvkCreateImage(m_vkPhysicalDevice, m_vkDevice, 
-										VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-										VK_FORMAT_B8G8R8A8_SRGB, m_window.getWidth(), m_window.getHeight(), 
-										VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 
-										2, m_queueFamilyIndices);
-		m_vkImageView = pvkCreateImageView(m_vkDevice, m_pvkImage.handle, VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-		#endif
-		pvkWriteImageViewToDescriptor(m_vkDevice, *m_vkDescriptorSet, 0, m_vkImageView, m_vkSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
 		VkImageView attachments[PRESENT_ENGINE_IMAGE_COUNT];
 		for(u32 i = 0; i < PRESENT_ENGINE_IMAGE_COUNT; i++)
@@ -272,11 +253,11 @@ namespace SKVMOIP
 		#endif
 									);
 		#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
-		m_pvkBuffer = pvkCreateBuffer(m_vkPhysicalDevice, m_vkDevice, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, (m_window.getWidth() * m_window.getHeight() * 3) >> 1, 2, m_queueFamilyIndices);
-		PVK_CHECK(vkMapMemory(m_vkDevice, m_pvkBuffer.memory, 0, (m_window.getWidth() * m_window.getHeight() * 3) >> 1, 0, &m_mapPtr));
+		m_pvkBuffer = pvkCreateBuffer(m_vkPhysicalDevice, m_vkDevice, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, (HDMI_CAPTURE_WIDTH * HDMI_CAPTURE_HEIGHT * 3) >> 1, 2, m_queueFamilyIndices);
+		PVK_CHECK(vkMapMemory(m_vkDevice, m_pvkBuffer.memory, 0, (HDMI_CAPTURE_WIDTH * HDMI_CAPTURE_HEIGHT * 3) >> 1, 0, &m_mapPtr));
 		#else
-		m_pvkBuffer = pvkCreateBuffer(m_vkPhysicalDevice, m_vkDevice, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, m_window.getWidth() * m_window.getHeight() * 4, 2, m_queueFamilyIndices);
-		PVK_CHECK(vkMapMemory(m_vkDevice, m_pvkBuffer.memory, 0, m_window.getWidth() * m_window.getHeight() * 4, 0, &m_mapPtr));
+		m_pvkBuffer = pvkCreateBuffer(m_vkPhysicalDevice, m_vkDevice, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, HDMI_CAPTURE_WIDTH * HDMI_CAPTURE_HEIGHT * 4, 2, m_queueFamilyIndices);
+		PVK_CHECK(vkMapMemory(m_vkDevice, m_pvkBuffer.memory, 0, HDMI_CAPTURE_WIDTH * HDMI_CAPTURE_HEIGHT * 4, 0, &m_mapPtr));
 		#endif
 		#ifdef USE_DIRECT_FRAME_DATA_COPY
 		m_decodeNetStream.addFrameDataStorage(m_mapPtr);
@@ -294,6 +275,25 @@ namespace SKVMOIP
 		m_vkVertShaderModule = pvkCreateShaderModule(m_vkDevice, "shaders/sample.vert.spv");
 
 		m_vkPipelineLayout = pvkCreatePipelineLayout(m_vkDevice, 1, &m_vkDescriptorSetLayout);
+
+		#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
+		m_pvkImage = pvkCreateImage2(m_vkPhysicalDevice, m_vkDevice, 
+										VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+										VK_FORMAT_G8_B8R8_2PLANE_420_UNORM, HDMI_CAPTURE_WIDTH, HDMI_CAPTURE_HEIGHT, 
+										VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 
+										2, m_queueFamilyIndices);
+		m_vkImageView = pvkCreateImageView2(m_vkDevice, m_pvkImage.handle, VK_FORMAT_G8_B8R8_2PLANE_420_UNORM, 
+													(VkImageAspectFlagBits) (VK_IMAGE_ASPECT_COLOR_BIT), 
+													m_vkConversion);
+		#else
+		m_pvkImage = pvkCreateImage(m_vkPhysicalDevice, m_vkDevice, 
+										VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+										VK_FORMAT_B8G8R8A8_SRGB, HDMI_CAPTURE_WIDTH, HDMI_CAPTURE_HEIGHT, 
+										VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 
+										2, m_queueFamilyIndices);
+		m_vkImageView = pvkCreateImageView(m_vkDevice, m_pvkImage.handle, VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+		#endif
+		pvkWriteImageViewToDescriptor(m_vkDevice, *m_vkDescriptorSet, 0, m_vkImageView, m_vkSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
 		createWindowRelatedVkObjects();
 		
@@ -342,17 +342,17 @@ namespace SKVMOIP
 				imageCopyInfos[0].bufferOffset = 0;
 				imageCopyInfos[0].imageSubresource.aspectMask = VK_IMAGE_ASPECT_PLANE_0_BIT;
 				imageCopyInfos[0].imageSubresource.layerCount = 1;
-				imageCopyInfos[0].imageExtent = { m_window.getWidth(), m_window.getHeight(), 1 };
-				imageCopyInfos[1].bufferOffset = m_window.getWidth() * m_window.getHeight();
+				imageCopyInfos[0].imageExtent = { HDMI_CAPTURE_WIDTH, HDMI_CAPTURE_HEIGHT, 1 };
+				imageCopyInfos[1].bufferOffset = HDMI_CAPTURE_WIDTH * HDMI_CAPTURE_HEIGHT;
 				imageCopyInfos[1].imageSubresource.aspectMask = VK_IMAGE_ASPECT_PLANE_1_BIT;
 				imageCopyInfos[1].imageSubresource.layerCount = 1;
-				imageCopyInfos[1].imageExtent = { m_window.getWidth() >> 1, m_window.getHeight() >> 1, 1 };
+				imageCopyInfos[1].imageExtent = { HDMI_CAPTURE_WIDTH >> 1, HDMI_CAPTURE_HEIGHT >> 1, 1 };
 				vkCmdCopyBufferToImage(m_vkCommandBuffers[index], m_pvkBuffer.handle, m_pvkImage.handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 2, imageCopyInfos);
 				#else
 				VkBufferImageCopy imageCopyInfo = { };
 				imageCopyInfo.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;;
 				imageCopyInfo.imageSubresource.layerCount = 1;
-				imageCopyInfo.imageExtent = { m_window.getWidth(), m_window.getHeight(), 1 };
+				imageCopyInfo.imageExtent = { HDMI_CAPTURE_WIDTH, HDMI_CAPTURE_HEIGHT, 1 };
 				vkCmdCopyBufferToImage(m_vkCommandBuffers[index], m_pvkBuffer.handle, m_pvkImage.handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyInfo);
 				#endif
 
@@ -394,6 +394,8 @@ namespace SKVMOIP
 	{
 		PVK_CHECK(vkDeviceWaitIdle(m_vkDevice));
 		destroyWindowRelatedVkObjects();
+		vkDestroyImageView(m_vkDevice, m_vkImageView, NULL);
+		pvkDestroyImage(m_vkDevice, m_pvkImage);
 		vkDestroyPipelineLayout(m_vkDevice, m_vkPipelineLayout, NULL);
 		vkDestroyShaderModule(m_vkDevice, m_vkFragShaderModule, NULL);
 		vkDestroyShaderModule(m_vkDevice, m_vkVertShaderModule, NULL);
