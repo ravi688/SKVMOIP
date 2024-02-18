@@ -107,10 +107,10 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 			break;
 		}
 
-		case WM_DESTROY:
+		case WM_CLOSE:
 		{
-			DestroyWindow(hwnd);
-			break;
+			PostQuitMessage(0);
+			return 0;
 		}
 	}
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -193,9 +193,12 @@ namespace SKVMOIP
 	{
 		if(isBlock)
 		{
-			BOOL result = GetMessage(&m_msg, m_handle, 0, 0);
+			BOOL result = GetMessage(&m_msg, NULL, 0, 0);
 			if(result == 0)
+			{
+				DestroyWindow(m_handle);
 				return true;
+			}
 			else if(result == -1)
 			{
 				/* Invoke the error handler here*/
@@ -207,10 +210,11 @@ namespace SKVMOIP
 		else if(PeekMessage(&m_msg, NULL, 0, 0, PM_REMOVE) != 0)
 		{
 			m_isMessageAvailable = true;
-			bool isQuit = (m_msg.message == WM_QUIT);
-			if(isQuit)
-				pollEvents();
-			return isQuit;
+			if(m_msg.message == WM_QUIT)
+			{
+				DestroyWindow(m_handle);
+				return true;
+			}
 		}
 		return false;
 	}
