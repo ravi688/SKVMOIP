@@ -475,7 +475,7 @@ namespace SKVMOIP
 		case PS2Set1MakeCode::WWWRefresh: return HID_USAGE_ID_WWWREFRESH;
 		case PS2Set1MakeCode::WWWFavorites: return HID_USAGE_ID_WWWFAVORITES;*/
 			default:
-				debug_log_fetal_error("Invalid or Unused (Yet to be added) PS/2 Set 1 Make Code: %lu", makeCode);
+				DEBUG_LOG_WARNING("Invalid or Unused (Yet to be added) PS/2 Set 1 Make Code: %lu", makeCode);
 				return static_cast<HIDUsageID>(0);
 		}
 	}

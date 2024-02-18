@@ -62,6 +62,12 @@ namespace SKVMOIP
 	{
 		if(keyboardInput.keyStatus == Win32::KeyStatus::Pressed)
 		{
+			if(m_pressedKeys.find(keyboardInput.makeCode) != m_pressedKeys.end())
+				/* skip as the key is already pressed */
+				return;
+			else
+				m_pressedKeys.insert({keyboardInput.makeCode, Win32::KeyStatus::Pressed});
+
 			switch(keyboardInput.makeCode)
 			{
 				case PS2Set1MakeCode::LeftControl:
@@ -79,15 +85,12 @@ namespace SKVMOIP
 					break;
 				}
 			}
-	
-			if(m_pressedKeys.find(keyboardInput.makeCode) != m_pressedKeys.end())
-				/* skip as the key is already pressed */
-				return;
-			else
-				m_pressedKeys.insert({keyboardInput.makeCode, Win32::KeyStatus::Pressed});
 		}
 		else if(keyboardInput.keyStatus == Win32::KeyStatus::Released)
 		{
+			auto result = m_pressedKeys.erase(keyboardInput.makeCode);
+			_assert_wrn(result == 1);
+			
 			switch(keyboardInput.makeCode)
 			{
 				case PS2Set1MakeCode::LeftControl:
@@ -101,13 +104,11 @@ namespace SKVMOIP
 				{
 					u8 modifierKey = GetModifierBitFromMakeCode(IntToEnumClass<PS2Set1MakeCode>(keyboardInput.makeCode));
 					_assert(modifierKey != 0);
-					_assert((m_modifierKeys & modifierKey) == modifierKey);
+					_assert_wrn((m_modifierKeys & modifierKey) == modifierKey);
 					m_modifierKeys &= ~(modifierKey);
 					break;
 				}
 			}
-			auto result = m_pressedKeys.erase(keyboardInput.makeCode);
-			_assert(result == 1);
 		}
 	
 		Win32::KMInputData kmInputData = { Win32::RawInputDeviceType::Keyboard };
