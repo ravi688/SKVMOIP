@@ -430,7 +430,7 @@ namespace SKVMOIP
 		const f64 deltaTime = 1000.0 / frameRate;
 		auto startTime = std::chrono::high_resolution_clock::now();
 		/* Rendering & Presentation */
-		while(!m_window.shouldClose(false))
+		while(!m_window.shouldClose(true))
 		{
 			auto time = std::chrono::high_resolution_clock::now();
 			if(std::chrono::duration_cast<std::chrono::milliseconds>(time - startTime).count() >= deltaTime)
