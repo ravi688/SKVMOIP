@@ -69,6 +69,7 @@ namespace SKVMOIP
 	
 		bool shouldClose(bool isBlock = true);
 		void pollEvents();
+		void show();
 		void setMouseCapture();
 		void releaseMouseCapture();
 		void setSize(u32 width, u32 height);

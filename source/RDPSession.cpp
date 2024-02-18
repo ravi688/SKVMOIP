@@ -69,6 +69,7 @@ namespace SKVMOIP
 			{
 				m_window = std::move(std::unique_ptr<Window>(new Window(1920, 1080, "Scalable KVM Over IP")));
 				m_presentEngine = std::move(std::unique_ptr<PresentEngine>(new PresentEngine(*m_window, *m_decodeNetStream)));
+				m_window->show();
 				#ifdef USE_DIRECT_FRAME_DATA_COPY
 				m_decodeNetStream->addFrameDataStorage(m_presentEngine->getBufferPtr());
 				#endif

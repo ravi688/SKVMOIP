@@ -215,6 +215,11 @@ namespace SKVMOIP
 		return false;
 	}
 
+	void Window::show()
+	{
+		Win32::Win32ShowWindow(m_handle);
+	}
+
 	void Window::pollEvents()
 	{
 		if(!m_isMessageAvailable)

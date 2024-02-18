@@ -32,9 +32,12 @@ namespace Win32
 		if(hHandle == NULL)
 			Internal_ErrorExit("CreateWindowEx");
 
-		ShowWindow(hHandle, SW_SHOWNORMAL);
-
 		return hHandle;
+	}
+
+	SKVMOIP_API void Win32ShowWindow(HWND handle)
+	{
+		ShowWindow(handle, SW_SHOWNORMAL);
 	}
 
 	SKVMOIP_API void Win32DestroyWindow(HWND handle)
