@@ -59,26 +59,31 @@ namespace SKVMOIP
 
 	void RDPSession::start(const char* ipAddress, const char* portNumber)
 	{
+		/* if previous video session was connected, then destroy already constructed objects */
+		#ifdef USE_VULKAN_PRESENTATION
+		m_presentEngine.reset();
+		#else
+		m_drawSurface.reset();
+		#endif
+		m_window.reset();
+		m_decodeNetStream.reset();
+		
 		m_decodeNetStream = std::unique_ptr<HDMIDecodeNetStream>(new HDMIDecodeNetStream(1920, 1080, 60, 1, 32));
 		DEBUG_LOG_INFO("Trying to connect to %s:%s", ipAddress, portNumber);
 		/* pauses (acquires mutex from) the network thread and waiting for connecting with the server */
 		if(m_decodeNetStream->connect(ipAddress, portNumber) == Network::Result::Success)
 		{
 			DEBUG_LOG_INFO("Video Connected to %s:%s", ipAddress, portNumber);
-			if(!m_window)
-			{
-				m_window = std::move(std::unique_ptr<Window>(new Window(1920, 1080, "Scalable KVM Over IP")));
-				m_presentEngine = std::move(std::unique_ptr<PresentEngine>(new PresentEngine(*m_window, *m_decodeNetStream)));
-				m_window->show();
-				#ifdef USE_DIRECT_FRAME_DATA_COPY
-				m_decodeNetStream->addFrameDataStorage(m_presentEngine->getBufferPtr());
-				#endif
-			}
-			if(!m_drawSurface)
-			{
-				m_drawSurface = std::move(std::unique_ptr<Win32::Win32DrawSurface>(
-							new Win32::Win32DrawSurface(m_window->getNativeHandle(), m_window->getSize().first, m_window->getSize().second, 32)));
-			}
+			m_window = std::move(std::unique_ptr<Window>(new Window(1920, 1080, "Scalable KVM Over IP")));
+			#ifdef USE_VULKAN_PRESENTATION
+			m_presentEngine = std::move(std::unique_ptr<PresentEngine>(new PresentEngine(*m_window, *m_decodeNetStream)));
+			#else
+			m_drawSurface = std::move(std::unique_ptr<Win32::Win32DrawSurface>(new Win32::Win32DrawSurface(m_window->getNativeHandle(), 1920, 1080, 32)));
+			#endif
+			m_window->show();
+			#if defined(USE_DIRECT_FRAME_DATA_COPY) && defined(USE_VULKAN_PRESENTATION)
+			m_decodeNetStream->addFrameDataStorage(m_presentEngine->getBufferPtr());
+			#endif
 			
 			if(m_kmNetStream)
 			{
@@ -99,6 +104,14 @@ namespace SKVMOIP
 				m_window->getEvent(Window::EventType::MouseInput).unsubscribe(m_mouseInputHandle);
 				m_window->getEvent(Window::EventType::KeyboardInput).unsubscribe(m_keyboardInputHandle);
 			}
+
+			#ifdef USE_VULKAN_PRESENTATION
+			m_presentEngine.reset();
+			#else
+			m_drawSurface.reset();
+			#endif
+			m_window.reset();
+			m_decodeNetStream.reset();
 		}
 		else
 			DEBUG_LOG_ERROR("Failed to connect to Video Server at %s:%s", ipAddress, portNumber);
