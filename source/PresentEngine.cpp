@@ -432,6 +432,11 @@ namespace SKVMOIP
 		/* Rendering & Presentation */
 		while(!m_window.shouldClose(false))
 		{
+			if((m_window.getClientWidth() == 0) || (m_window.getClientHeight() == 0))
+			{
+				m_window.pollEvents();
+				continue;
+			}
 			auto time = std::chrono::high_resolution_clock::now();
 			if(std::chrono::duration_cast<std::chrono::milliseconds>(time - startTime).count() >= deltaTime)
 			{
