@@ -33,6 +33,8 @@ namespace SKVMOIP
 		std::mutex m_mutex;
 		std::mutex m_ClientMutex;
 		u32 m_inFlightRequestCount;
+		std::atomic<bool> m_isStopThread;
+		bool m_isDataAvailable;
 		std::thread m_decodeThread;
 		buffer_t m_nv12Buffer;
 		buffer_t m_decodeBuffer;
@@ -45,7 +47,6 @@ namespace SKVMOIP
 		/* rgb bits per pixel */
 		u32 m_bitsPerPixel;
 		Network::AsyncQueueSocket::BinaryFormatter m_receiveFormatter;
-		bool m_isDataAvailable;
 
 		friend void FrameReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData);
 	

@@ -16,14 +16,15 @@ namespace SKVMOIP
 												m_frameDataPool([] (DataBuffer& db) { db.destroy(); }),
 								#endif
 												m_inFlightRequestCount(0),
+												m_isStopThread(false),
+												m_isDataAvailable(false),
 												m_decodeThread(decodeThreadHandler, this),
 												m_converter(width, height, frNum, frDen, bitsPerPixel),
 												m_width(width), 
 												m_height(height),
 												m_frNum(frNum),
 												m_frDen(frDen),
-												m_bitsPerPixel(bitsPerPixel),
-												m_isDataAvailable(false)
+												m_bitsPerPixel(bitsPerPixel)
 	{
 		/* This buffer stores the encoded data which is just received from Network Thread to be decoded */
 		m_decodeBuffer = buf_create_byte_buffer(30 * 1024);
@@ -59,6 +60,7 @@ namespace SKVMOIP
 	
 	HDMIDecodeNetStream::~HDMIDecodeNetStream()
 	{
+		m_isStopThread = true;
 		m_decodeThread.join();
 		Network::Result result = AsyncQueueSocket::close();
 		if(result != Network::Result::Success)
@@ -123,7 +125,7 @@ namespace SKVMOIP
 		while(true)
 		{
 			std::unique_lock<std::mutex> lock(m_mutex);
-			while(!m_isDataAvailable)
+			while((!m_isDataAvailable) && (!m_isStopThread))
 			{
 				if(m_inFlightRequestCount < MAX_IN_FLIGHT_REQUEST_COUNT)
 				{
@@ -134,6 +136,9 @@ namespace SKVMOIP
 					debug_log_info("MAX_IN_FLIGHT_REQUEST_COUNT(=%d) is reached", MAX_IN_FLIGHT_REQUEST_COUNT);
 				m_dataAvailableCV.wait(lock);
 			}
+
+			if(m_isStopThread)
+				break;
 
 			if(m_isDataAvailable)
 			{
