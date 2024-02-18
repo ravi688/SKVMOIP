@@ -10,9 +10,6 @@
 #include <mutex>
 #include <atomic>
 
-#pragma GCC push_options
-#pragma GCC optimize("O0")
-
 namespace SKVMOIP
 {
 	static void FrameReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData);
@@ -75,5 +72,3 @@ namespace SKVMOIP
 		void returnFrameData(typename FIFOPool<FrameData>::PoolItemType frameData);
 	};
 }
-
-#pragma GCC pop_options
