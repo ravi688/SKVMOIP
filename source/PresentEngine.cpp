@@ -429,6 +429,45 @@ namespace SKVMOIP
 	{
 		const f64 deltaTime = 1000.0 / frameRate;
 		auto startTime = std::chrono::high_resolution_clock::now();
+
+		/* Transition layout of swapchain images to VK_IMAGE_LAYOUT_PRESET_SRC_KHR
+		 * This layout transition is necessary for the case when there is no decoded frame available in the first iteration in the render loop,
+		 * in which case, there won't be any automatic transition as the actual frame rendering command buffers won't be dispatched */
+		VkCommandBuffer* cmdBuffer = __pvkAllocateCommandBuffers(m_vkDevice, m_vkCommandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
+		VkImage* images = pvkGetSwapchainImages(m_vkDevice, m_vkSwapchain, NULL);
+		for(u32 i = 0; i < PRESENT_ENGINE_IMAGE_COUNT; i++)
+		{
+			pvkBeginCommandBuffer(*cmdBuffer, (VkCommandBufferUsageFlagBits)0);
+				// Image Layout Transition: VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+				VkImageMemoryBarrier imageMemoryBarrier = { };
+				imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				imageMemoryBarrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+				imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+				imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+				imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+				imageMemoryBarrier.srcQueueFamilyIndex = m_queueFamilyIndices[0];
+				imageMemoryBarrier.dstQueueFamilyIndex = m_queueFamilyIndices[0];
+				imageMemoryBarrier.image = images[i];
+				imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+				imageMemoryBarrier.subresourceRange.levelCount = 1;
+				imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+				imageMemoryBarrier.subresourceRange.layerCount = 1;
+				vkCmdPipelineBarrier(*cmdBuffer,
+									VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 
+									VK_PIPELINE_STAGE_TRANSFER_BIT, 
+									VK_DEPENDENCY_BY_REGION_BIT,
+									0, NULL,
+									0, NULL,
+									1, &imageMemoryBarrier);
+			pvkEndCommandBuffer(*cmdBuffer);
+			pvkSubmit(*cmdBuffer, m_vkGraphicsQueue, VK_NULL_HANDLE, VK_NULL_HANDLE	, m_vkFence);
+			PVK_CHECK(vkWaitForFences(m_vkDevice, 1, &m_vkFence, VK_TRUE, UINT64_MAX));
+			PVK_CHECK(vkResetFences(m_vkDevice, 1, &m_vkFence));
+		}
+		PVK_DELETE(images);
+		PVK_DELETE(cmdBuffer);
+
 		/* Rendering & Presentation */
 		while(!m_window.shouldClose(false))
 		{
