@@ -52,6 +52,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 				Internal_ErrorExit("AdjustWindowRect");
 			window->m_clientWidth = rect.right;
 			window->m_clientHeight = rect.bottom;
+			ClipCursor(&rect); 
 			break;
 		}
 
@@ -153,10 +154,20 @@ namespace SKVMOIP
 
 		gWindowsEventRegistry.insert(std::pair<HWND, std::unordered_map<EventType, Event>> { m_handle, std::move(eventMap) });
 		gWindowsSelfReferenceRegistry.insert(std::pair<HWND, Window*> { m_handle, this });
+
+		ShowCursor(FALSE);
+
+		GetClipCursor(&m_saveClipRect); 
+		GetClientRect(m_handle, &m_newClipRect);
+		ClipCursor(&m_newClipRect); 
+
+		setFullScreen(true);
 	}
 
 	Window::~Window()
 	{
+		ClipCursor(&m_saveClipRect);
+		ShowCursor(TRUE);
 		Win32::Win32DestroyWindow(m_handle);
 		gWindowsEventRegistry.erase(m_handle);
 		gWindowsSelfReferenceRegistry.erase(m_handle);
@@ -222,6 +233,63 @@ namespace SKVMOIP
 	void Window::show()
 	{
 		Win32::Win32ShowWindow(m_handle);
+	}
+
+	void Window::setFullScreen(bool isFullScreen)
+	{
+		// Below code is taken from: https://src.chromium.org/viewvc/chrome/trunk/src/ui/views/win/fullscreen_handler.cc?revision=HEAD&view=markup
+
+		// Save current window state if not already fullscreen.
+		if (!m_isFullScreen)
+		{
+			// Save current window information.  We force the window into restored mode
+			// before going fullscreen because Windows doesn't seem to hide the
+			// taskbar if the window is in the maximized state.
+			m_beforeFullScreenInfo.isZoomed = !!::IsZoomed(m_handle);
+			if (m_beforeFullScreenInfo.isZoomed)
+      			::SendMessage(m_handle, WM_SYSCOMMAND, SC_RESTORE, 0);
+    		m_beforeFullScreenInfo.style = GetWindowLong(m_handle, GWL_STYLE);
+    		m_beforeFullScreenInfo.exStyle = GetWindowLong(m_handle, GWL_EXSTYLE);
+    		GetWindowRect(m_handle, &m_beforeFullScreenInfo.windowRect);
+  		}
+
+  		m_isFullScreen = isFullScreen;
+
+  		if (m_isFullScreen)
+  		{
+    		// Set new window style and size.
+    		SetWindowLong(m_handle, GWL_STYLE, m_beforeFullScreenInfo.style & ~(WS_CAPTION | WS_THICKFRAME));
+    		SetWindowLong(m_handle, GWL_EXSTYLE, m_beforeFullScreenInfo.exStyle & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE));
+
+			// On expand, if we're given a window_rect, grow to it, otherwise do
+			// not resize.
+			// if (!for_metro)
+			{
+				MONITORINFO monitor_info;
+				monitor_info.cbSize = sizeof(monitor_info);
+				GetMonitorInfo(MonitorFromWindow(m_handle, MONITOR_DEFAULTTONEAREST), &monitor_info);
+				RECT rect = monitor_info.rcMonitor;
+				SetWindowPos(m_handle, NULL, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+    		}
+		}
+		else
+		{
+			// Reset original window style and size.  The multiple window size/moves
+			// here are ugly, but if SetWindowPos() doesn't redraw, the taskbar won't be
+			// repainted.  Better-looking methods welcome.
+			SetWindowLong(m_handle, GWL_STYLE, m_beforeFullScreenInfo.style);
+			SetWindowLong(m_handle, GWL_EXSTYLE, m_beforeFullScreenInfo.exStyle);
+
+			// if (!for_metro)
+			{
+				// On restore, resize to the previous saved rect size.
+				RECT rect = m_beforeFullScreenInfo.windowRect;
+				SetWindowPos(m_handle, NULL, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+			}
+
+			if (m_beforeFullScreenInfo.isZoomed)
+				::SendMessage(m_handle, WM_SYSCOMMAND, SC_MAXIMIZE, 0);
+		}
 	}
 
 	void Window::pollEvents()

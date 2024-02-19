@@ -34,6 +34,16 @@ namespace SKVMOIP
 		u32 m_clientWidth;
 		u32 m_clientHeight;
 		buffer_t m_rawInputBuffer;
+		RECT m_saveClipRect;
+		RECT m_newClipRect;
+		bool m_isFullScreen;
+		struct
+		{
+			BOOL isZoomed;
+			LONG style;
+			LONG exStyle;
+			RECT windowRect;
+		} m_beforeFullScreenInfo;
 	public:
 
 
@@ -70,6 +80,7 @@ namespace SKVMOIP
 		bool shouldClose(bool isBlock = true);
 		void pollEvents();
 		void show();
+		void setFullScreen(bool isFullScreen);
 		void setMouseCapture();
 		void releaseMouseCapture();
 		void setSize(u32 width, u32 height);
