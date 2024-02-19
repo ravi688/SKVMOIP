@@ -48,7 +48,8 @@ CLIENT_SOURCES=source/third_party/NvDecoder.cpp \
 				source/HDMIDecoderNetStream.cpp \
 				source/KMNetStream.cpp \
 				source/HIDUsageID.cpp \
-				source/RDPSession.cpp
+				source/RDPSession.cpp \
+				source/PresentEngine.cpp
 TEST_SOURCES=source/main.cpp
 GUI_SOURCES=$(wildcard source/GUI/*.cpp)
 GUITEST_SOURCES=source/main.guitest.cpp
