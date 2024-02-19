@@ -18,13 +18,17 @@ shader: $(SPIRV_SHADERS)
 .PHONY: clean
 .PHONY: MESSAGE
 
+ifeq ($(BUILD),client)
+TARGETS = MESSAGE shader
+endif
+
 MESSAGE:
 	@echo [Log] Building SKVMOIP Shaders
 
-debug: MESSAGE shader
+debug: $(TARGETS)
 	@echo [Log] PlayVk Shaders have been built successfully
 	
-release: MESSAGE shader
+release: $(TARGETS)
 	@echo [Log] PlayVk Shaders have been built successfully
 
 clean:
