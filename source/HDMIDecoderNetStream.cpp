@@ -158,71 +158,74 @@ namespace SKVMOIP
 					lock.unlock();
 					m_dataAvailableCV.notify_one();
 
-					_assert(nFrameReturned == 1);
+					// _assert(nFrameReturned == 1);
 					auto decodeTime = decodeWatch.stop();
-					u8* frame = m_decoder.getFrame();
-					_assert(m_decoder.getFrameSize() == getUncompressedFrameSize());
-					#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
-					std::lock_guard<std::mutex> lock(m_ClientMutex);
-					if(!m_frameDataPool.hasInactive())
+
+					for(u32 i = 0; i < nFrameReturned; i++)
 					{
-						#ifndef USE_DIRECT_FRAME_DATA_COPY
-						if(m_frameDataPool.getCount() < MAX_FRAME_DATA_OBJECT_COUNT)
-						{
-							DEBUG_LOG_INFO("Allocating new FrameData object");
-							m_frameDataPool.createInactive(getUncompressedFrameSize());
-						}
-						// else
-							// debug_log_info("MAX_FRAME_DATA_OBJECT_COUNT(=%d) is reached", MAX_FRAME_DATA_OBJECT_COUNT);
-						#endif
-					}
-					if(auto result = m_frameDataPool.getInactive())
-					{
-						/* Takes: 1 ms to 2 ms*/
-						memcpy(FIFOPool<FrameData>::GetValue(result)->getPtr(), frame, m_decoder.getFrameSize());
-						m_frameDataPool.returnInactive(result);
-					}					
-					#else
-					u8* rgbData;
-					SKVMOIP::StopWatch convertWatch;
-					/* Takes: 5 ms to 10 ms */
-					if((rgbData = m_converter.convert(frame, m_decoder.getFrameSize())) != NULL)
-					{
-						auto convertTime = convertWatch.stop();
-						
+						u8* frame = m_decoder.getFrame();
+						_assert(m_decoder.getFrameSize() == getUncompressedFrameSize());
+						#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
 						std::lock_guard<std::mutex> lock(m_ClientMutex);
-						if (!m_frameDataPool.hasInactive())
+						if(!m_frameDataPool.hasInactive())
 						{
 							#ifndef USE_DIRECT_FRAME_DATA_COPY
 							if(m_frameDataPool.getCount() < MAX_FRAME_DATA_OBJECT_COUNT)
 							{
 								DEBUG_LOG_INFO("Allocating new FrameData object");
-								m_frameDataPool.createInactive(getUncompressedConvertedFrameSize());
+								m_frameDataPool.createInactive(getUncompressedFrameSize());
 							}
 							// else
 								// debug_log_info("MAX_FRAME_DATA_OBJECT_COUNT(=%d) is reached", MAX_FRAME_DATA_OBJECT_COUNT);
 							#endif
 						}
-
 						if(auto result = m_frameDataPool.getInactive())
 						{
-							auto rgbDataSize = m_converter.getRGBDataSize();
-							_assert(rgbDataSize == FIFOPool<FrameData>::GetValue(result)->getSize());
-							_assert(rgbDataSize == getUncompressedConvertedFrameSize());
 							/* Takes: 1 ms to 2 ms*/
-							memcpy(FIFOPool<FrameData>::GetValue(result)->getPtr(), rgbData, rgbDataSize);
+							memcpy(FIFOPool<FrameData>::GetValue(result)->getPtr(), frame, m_decoder.getFrameSize());
 							m_frameDataPool.returnInactive(result);
-						}
-						// debug_log_info("Time info: decode: %lu, convert: %lu, encodedSize: %.2f kb", decodeTime, convertTime, buf_get_element_count(&m_decodeBuffer) / 1024.0);
-					}
-					else 
-					{ 
-						convertWatch.stop(); 
-						debug_log_error("Failed to convert color space"); 
-					}
-					#endif
-				}
+						}					
+						#else
+						u8* rgbData;
+						SKVMOIP::StopWatch convertWatch;
+						/* Takes: 5 ms to 10 ms */
+						if((rgbData = m_converter.convert(frame, m_decoder.getFrameSize())) != NULL)
+						{
+							auto convertTime = convertWatch.stop();
+						
+							std::lock_guard<std::mutex> lock(m_ClientMutex);
+							if (!m_frameDataPool.hasInactive())
+							{
+								#ifndef USE_DIRECT_FRAME_DATA_COPY
+								if(m_frameDataPool.getCount() < MAX_FRAME_DATA_OBJECT_COUNT)
+								{
+									DEBUG_LOG_INFO("Allocating new FrameData object");
+									m_frameDataPool.createInactive(getUncompressedConvertedFrameSize());
+								}
+								// else
+									// debug_log_info("MAX_FRAME_DATA_OBJECT_COUNT(=%d) is reached", MAX_FRAME_DATA_OBJECT_COUNT);
+								#endif
+							}
 
+							if(auto result = m_frameDataPool.getInactive())
+							{
+								auto rgbDataSize = m_converter.getRGBDataSize();
+								_assert(rgbDataSize == FIFOPool<FrameData>::GetValue(result)->getSize());
+								_assert(rgbDataSize == getUncompressedConvertedFrameSize());
+								/* Takes: 1 ms to 2 ms*/
+								memcpy(FIFOPool<FrameData>::GetValue(result)->getPtr(), rgbData, rgbDataSize);
+								m_frameDataPool.returnInactive(result);
+							}
+						// debug_log_info("Time info: decode: %lu, convert: %lu, encodedSize: %.2f kb", decodeTime, convertTime, buf_get_element_count(&m_decodeBuffer) / 1024.0);
+						}
+						else 
+						{ 
+							convertWatch.stop(); 
+							debug_log_error("Failed to convert color space"); 
+						}
+						#endif
+					}
+				}
 				else 
 				{ 
 					decodeWatch.stop();
