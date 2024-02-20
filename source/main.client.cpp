@@ -81,7 +81,11 @@ static void OnVideoClicked(u32 id, void* userData)
 	debug_log_info("%u:%s", id, __FUNCTION__);
 
 	auto it = gActiveSessions->find(id);
-	_ASSERT(it != gActiveSessions->end());
+	if(it == gActiveSessions->end())
+	{
+		DEBUG_LOG_ERROR("Please click on \"Connect\" button first to establish connection with the host");
+		return;
+	}
 	std::unique_ptr<RDPSession>& rdp = it->second;
 
 	std::string ipAddrString(gMachineDataList[id].getVideoIPAddressStr());
