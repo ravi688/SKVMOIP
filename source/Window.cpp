@@ -84,6 +84,57 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 				{
 					RAWKEYBOARD* rawKeyboard = &rawInput->data.keyboard;
 					Win32::KeyboardInput keyboardInput = Win32::DecodeRawKeyboardInput(rawKeyboard);
+					std::vector<Win32::KeyboardInput>& curKeyComb = window->m_curKeyComb;
+					auto& m_pressedKeys = window->m_pressedKeys;
+					if(keyboardInput.keyStatus == Win32::KeyStatus::Pressed)
+					{
+						if(m_pressedKeys.find(keyboardInput.makeCode) != m_pressedKeys.end())
+							/* skip as the key is already pressed */
+							break;
+						else
+							m_pressedKeys.insert({keyboardInput.makeCode, Win32::KeyStatus::Pressed});
+
+						curKeyComb.push_back(keyboardInput);
+
+						bool isKeyComb = false;
+						for(auto& keyCombEventPair : window->m_keyCombs)
+						{
+							std::vector<Win32::KeyCode>& keyComb = keyCombEventPair.first;
+							if(keyComb.size() != curKeyComb.size())
+								continue;
+							else
+							{
+								bool isMatched = true;
+								for(std::size_t i = 0; i < curKeyComb.size(); i++)
+								{
+									if(IntToEnumClass<Win32::KeyCode>(static_cast<u8>(curKeyComb[i].virtualKey)) != keyComb[i])
+									{
+										isMatched = false;
+										break;
+									}
+								}
+								if(!isMatched)
+									continue;
+								keyCombEventPair.second.publish(reinterpret_cast<void*>(&curKeyComb));
+								isKeyComb = true;
+								break;
+							}
+						}
+						if(isKeyComb)
+							break;
+					}
+					else
+					{
+						auto result = m_pressedKeys.erase(keyboardInput.makeCode);
+						_assert_wrn(result == 1);
+
+						_assert(keyboardInput.keyStatus == Win32::KeyStatus::Released);
+						Win32::KeyCode virtualKey = IntToEnumClass<Win32::KeyCode>(static_cast<u8>(curKeyComb.back().virtualKey));
+						if(virtualKey == keyboardInput.virtualKey)
+							curKeyComb.pop_back();
+						else
+							curKeyComb.clear();
+					}
 					getEvent(*eventMap, SKVMOIP::Window::EventType::KeyboardInput).publish(reinterpret_cast<void*>(&keyboardInput));
 					break;
 				}
@@ -155,19 +206,14 @@ namespace SKVMOIP
 		gWindowsEventRegistry.insert(std::pair<HWND, std::unordered_map<EventType, Event>> { m_handle, std::move(eventMap) });
 		gWindowsSelfReferenceRegistry.insert(std::pair<HWND, Window*> { m_handle, this });
 
-		ShowCursor(FALSE);
-
-		GetClipCursor(&m_saveClipRect); 
-		GetClientRect(m_handle, &m_newClipRect);
-		ClipCursor(&m_newClipRect); 
-
-		setFullScreen(true);
+		GetClipCursor(&m_saveClipRect);
+		// setFullScreen(true);
+		// showCursor(false);
 	}
 
 	Window::~Window()
 	{
-		ClipCursor(&m_saveClipRect);
-		ShowCursor(TRUE);
+		// showCursor(true);
 		Win32::Win32DestroyWindow(m_handle);
 		gWindowsEventRegistry.erase(m_handle);
 		gWindowsSelfReferenceRegistry.erase(m_handle);
@@ -292,6 +338,22 @@ namespace SKVMOIP
 		}
 	}
 
+	void Window::showCursor(bool isShow)
+	{
+		if(isShow)
+		{
+			ClipCursor(&m_saveClipRect);
+			ShowCursor(TRUE);
+		}
+		else
+		{
+			ShowCursor(FALSE);
+			GetClipCursor(&m_saveClipRect); 
+			GetClientRect(m_handle, &m_newClipRect);
+			ClipCursor(&m_newClipRect);
+		}
+	}
+
 	void Window::pollEvents()
 	{
 		if(!m_isMessageAvailable)
@@ -405,5 +467,12 @@ namespace SKVMOIP
 		}
 
 		return it2->second;
+	}
+
+	Event& Window::createKeyCombinationEvent(const KeyComb& keyComb)
+	{
+		std::size_t index = m_keyCombs.size();
+		m_keyCombs.push_back({ keyComb, Event() });
+		return m_keyCombs[index].second;
 	}
 }

@@ -4,7 +4,6 @@
 #include <SKVMOIP/Win32/Win32RawInput.hpp>
 #include <SKVMOIP/Network/NetworkAsyncQueueSocket.hpp>
 
-#include <unordered_map>
 #include <chrono>
 #include <optional>
 
@@ -16,7 +15,6 @@ namespace SKVMOIP
 	{
 		friend void PowerStatusReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData);
 	private:
-		std::unordered_map<u32, Win32::KeyStatus> m_pressedKeys;
 		u8 m_modifierKeys;
 		std::chrono::time_point<std::chrono::steady_clock> m_startTime;
 		u32 m_mouseMinDelay;

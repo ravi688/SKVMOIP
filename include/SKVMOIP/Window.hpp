@@ -4,6 +4,11 @@
 #include <SKVMOIP/Event.hpp>
 
 #include <SKVMOIP/Win32/Win32Window.hpp>
+#include <SKVMOIP/Win32/Win32KeyCodes.hpp>
+#include <SKVMOIP/Win32/Win32RawInput.hpp>
+
+#include <unordered_map>
+#include <vector>
 
 #ifdef PLATFORM_WINDOWS
 #	define WIN32_LEAN_AND_MEAN
@@ -44,6 +49,11 @@ namespace SKVMOIP
 			LONG exStyle;
 			RECT windowRect;
 		} m_beforeFullScreenInfo;
+
+		std::unordered_map<u32, Win32::KeyStatus> m_pressedKeys;
+		typedef std::vector<Win32::KeyCode> KeyComb;
+		std::vector<std::pair<KeyComb, Event>> m_keyCombs;
+		std::vector<Win32::KeyboardInput> m_curKeyComb;
 	public:
 
 
@@ -77,10 +87,12 @@ namespace SKVMOIP
 		void runGameLoop();
 		void runGameLoop(u32 frameRate);
 	
+		bool isFullScreen() const noexcept { return m_isFullScreen; }
 		bool shouldClose(bool isBlock = true);
 		void pollEvents();
 		void show();
 		void setFullScreen(bool isFullScreen);
+		void showCursor(bool isShow);
 		void setMouseCapture();
 		void releaseMouseCapture();
 		void setSize(u32 width, u32 height);
@@ -101,6 +113,7 @@ namespace SKVMOIP
 		void uninstallLocalHook(HookHandle hookHandle);
 
 		Event& getEvent(EventType evenType);
+		Event& createKeyCombinationEvent(const KeyComb& keyComb);
 	};
 
 } /* SKVMOIP */

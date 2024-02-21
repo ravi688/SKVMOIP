@@ -5,6 +5,8 @@
 
 namespace SKVMOIP
 {
+	static void FullScreenHandler(void* keyComb, void* userData);
+	static void LockHandler(void* keyComb, void* userData);
 	static void MouseInputHandler(void* mouseInputData, void* userData);
 	static void KeyboardInputHandler(void* keyboardInputData, void* userData);
 	#ifndef USE_VULKAN_PRESENTATION
@@ -91,6 +93,8 @@ namespace SKVMOIP
 				m_mouseInputHandle = m_window->getEvent(Window::EventType::MouseInput).subscribe(MouseInputHandler, reinterpret_cast<void*>(this));
 			}
 			
+			m_window->createKeyCombinationEvent({ Win32::KeyCode::KEYCODE_CTRL, Win32::KeyCode::KEYCODE_ALT, Win32::KEYCODE_RETURN_ENTER }).subscribe(FullScreenHandler, reinterpret_cast<void*>(this));
+			m_window->createKeyCombinationEvent({ Win32::KeyCode::KEYCODE_CTRL, Win32::KeyCode::KEYCODE_ALT, Win32::KeyCode::KEYCODE_K }).subscribe(LockHandler, reinterpret_cast<void*>(this));
 			#ifndef USE_VULKAN_PRESENTATION
 			m_windowPaintHandle = m_window->getEvent(Window::EventType::Paint).subscribe(WindowPaintHandler, reinterpret_cast<void*>(this));
 			m_window->runGameLoop(static_cast<u32>(60));
@@ -124,6 +128,38 @@ namespace SKVMOIP
 			if(m_kmConnectThread && m_kmConnectThread->joinable())
 				m_kmConnectThread->join();
 		}
+	}
+
+	static void FullScreenHandler(void* keyCombPtr, void* userData)
+	{
+		RDPSession& rdp = *reinterpret_cast<RDPSession*>(userData);
+		auto& window = rdp.getWindow();
+		if(!window->isFullScreen())
+		{
+			window->setFullScreen(true);
+			window->showCursor(false);
+		}
+		else
+		{
+			window->setFullScreen(false);
+			window->showCursor(true);
+		}
+		
+		std::vector<Win32::KeyboardInput>& keyComb = *reinterpret_cast<std::vector<Win32::KeyboardInput>*>(keyCombPtr);
+		_assert(keyComb.size() >= 2);
+		auto& kmNetStream = rdp.getKMNetStream();
+		for(std::size_t i = 0; i < (keyComb.size() - 1); i++)
+		{
+			Win32::KeyboardInput keyboardInput = keyComb[i];
+			keyboardInput.keyStatus	= Win32::KeyStatus::Released;
+			kmNetStream->sendKeyboardInput(keyboardInput);
+		}
+		debug_log_info("Full Screen Toggled");
+	}
+
+	static void LockHandler(void* keyComb, void* userData)
+	{
+		debug_log_info("Lock toggled");
 	}
 
 	static void MouseInputHandler(void* mouseInputData, void* userData)
