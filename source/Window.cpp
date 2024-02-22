@@ -283,9 +283,15 @@ namespace SKVMOIP
 		return false;
 	}
 
-	void Window::show()
+	void Window::show(bool isFullScreen)
 	{
 		Win32::Win32ShowWindow(m_handle);
+		if(isFullScreen)
+		{
+			setFullScreen(true);
+			if(!isLocked())
+				lock(true);
+		}
 	}
 
 	void Window::setFullScreen(bool isFullScreen)

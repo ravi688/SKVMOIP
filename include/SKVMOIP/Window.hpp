@@ -93,7 +93,7 @@ namespace SKVMOIP
 		bool shouldClose(bool isBlock = true);
 		void lock(bool isLock) { showCursor(!isLock); }
 		void pollEvents();
-		void show();
+		void show(bool isFullScreen = true);
 		void setFullScreen(bool isFullScreen);
 		void showCursor(bool isShow);
 		void setMouseCapture();

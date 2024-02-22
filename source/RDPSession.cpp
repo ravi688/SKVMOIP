@@ -132,9 +132,9 @@ namespace SKVMOIP
 
 	static void FullScreenHandler(void* keyCombPtr, void* userData)
 	{
-		static bool wasLocked = false;
 		RDPSession& rdp = *reinterpret_cast<RDPSession*>(userData);
 		auto& window = rdp.getWindow();
+		static bool wasLocked = window->isLocked();
 		if(!window->isFullScreen())
 		{
 			window->setFullScreen(true);
