@@ -52,7 +52,16 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 				Internal_ErrorExit("AdjustWindowRect");
 			window->m_clientWidth = rect.right;
 			window->m_clientHeight = rect.bottom;
-			ClipCursor(&rect); 
+			if(window->isLocked())
+			{
+				RECT winRect;
+				GetWindowRect(hwnd, &winRect);
+
+				winRect.right = rect.right + winRect.left;
+				winRect.bottom = rect.bottom + winRect.top;
+
+				ClipCursor(&winRect); 
+			}
 			break;
 		}
 
@@ -188,7 +197,7 @@ static int SKVM_getWin32HookFromHookType(SKVMOIP::Window::HookType hookType)
 namespace SKVMOIP
 {
 
-	Window::Window(u32 width, u32 height, const char* name) : m_isMessageAvailable(false), m_width(width), m_height(height)
+	Window::Window(u32 width, u32 height, const char* name) : m_isMessageAvailable(false), m_width(width), m_height(height), m_isFullScreen(false), m_isLocked(false)
 	{
 		m_handle = Win32::Win32CreateWindow(width, height, name, WindowProc);
 		setSize(width, height);
@@ -207,13 +216,11 @@ namespace SKVMOIP
 		gWindowsSelfReferenceRegistry.insert(std::pair<HWND, Window*> { m_handle, this });
 
 		GetClipCursor(&m_saveClipRect);
-		// setFullScreen(true);
-		// showCursor(false);
 	}
 
 	Window::~Window()
 	{
-		// showCursor(true);
+		lock(false);
 		Win32::Win32DestroyWindow(m_handle);
 		gWindowsEventRegistry.erase(m_handle);
 		gWindowsSelfReferenceRegistry.erase(m_handle);
@@ -340,6 +347,7 @@ namespace SKVMOIP
 
 	void Window::showCursor(bool isShow)
 	{
+		m_isLocked = !isShow;
 		if(isShow)
 		{
 			ClipCursor(&m_saveClipRect);
@@ -348,9 +356,14 @@ namespace SKVMOIP
 		else
 		{
 			ShowCursor(FALSE);
-			GetClipCursor(&m_saveClipRect); 
 			GetClientRect(m_handle, &m_newClipRect);
-			ClipCursor(&m_newClipRect);
+			RECT winRect;
+			GetWindowRect(m_handle, &winRect);
+
+			winRect.right = m_newClipRect.right + winRect.left;
+			winRect.bottom = m_newClipRect.bottom + winRect.top;
+
+			ClipCursor(&winRect);
 		}
 	}
 

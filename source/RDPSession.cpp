@@ -132,17 +132,21 @@ namespace SKVMOIP
 
 	static void FullScreenHandler(void* keyCombPtr, void* userData)
 	{
+		static bool wasLocked = false;
 		RDPSession& rdp = *reinterpret_cast<RDPSession*>(userData);
 		auto& window = rdp.getWindow();
 		if(!window->isFullScreen())
 		{
 			window->setFullScreen(true);
-			window->showCursor(false);
+			wasLocked = window->isLocked();
+			if(!wasLocked)
+				window->lock(true);
 		}
 		else
 		{
 			window->setFullScreen(false);
-			window->showCursor(true);
+			if(!wasLocked)
+				window->lock(false);
 		}
 		
 		std::vector<Win32::KeyboardInput>& keyComb = *reinterpret_cast<std::vector<Win32::KeyboardInput>*>(keyCombPtr);
@@ -157,8 +161,21 @@ namespace SKVMOIP
 		debug_log_info("Full Screen Toggled");
 	}
 
-	static void LockHandler(void* keyComb, void* userData)
+	static void LockHandler(void* keyCombPtr, void* userData)
 	{
+		RDPSession& rdp = *reinterpret_cast<RDPSession*>(userData);
+		auto& window = rdp.getWindow();
+		window->lock(!window->isLocked());
+
+		std::vector<Win32::KeyboardInput>& keyComb = *reinterpret_cast<std::vector<Win32::KeyboardInput>*>(keyCombPtr);
+		_assert(keyComb.size() >= 2);
+		auto& kmNetStream = rdp.getKMNetStream();
+		for(std::size_t i = 0; i < (keyComb.size() - 1); i++)
+		{
+			Win32::KeyboardInput keyboardInput = keyComb[i];
+			keyboardInput.keyStatus	= Win32::KeyStatus::Released;
+			kmNetStream->sendKeyboardInput(keyboardInput);
+		}
 		debug_log_info("Lock toggled");
 	}
 
@@ -167,6 +184,8 @@ namespace SKVMOIP
 		static bool isInvoked = false;
 		_assert(mouseInputData != NULL);
 		RDPSession& rdp = *reinterpret_cast<RDPSession*>(userData);
+		if(!rdp.getWindow()->isLocked())
+			return;
 		auto& kmNetStream = rdp.getKMNetStream();
 		if(rdp.isConnected())
 		{
@@ -185,6 +204,8 @@ namespace SKVMOIP
 		static bool isInvoked = false;
 		_assert(keyboardInputData != NULL);
 		RDPSession& rdp = *reinterpret_cast<RDPSession*>(userData);
+		if(!rdp.getWindow()->isLocked())
+			return;
 		auto& kmNetStream = rdp.getKMNetStream();
 		if(rdp.isConnected())
 		{

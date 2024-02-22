@@ -54,6 +54,7 @@ namespace SKVMOIP
 		typedef std::vector<Win32::KeyCode> KeyComb;
 		std::vector<std::pair<KeyComb, Event>> m_keyCombs;
 		std::vector<Win32::KeyboardInput> m_curKeyComb;
+		bool m_isLocked;
 	public:
 
 
@@ -87,8 +88,10 @@ namespace SKVMOIP
 		void runGameLoop();
 		void runGameLoop(u32 frameRate);
 	
+		bool isLocked() const noexcept { return m_isLocked; }
 		bool isFullScreen() const noexcept { return m_isFullScreen; }
 		bool shouldClose(bool isBlock = true);
+		void lock(bool isLock) { showCursor(!isLock); }
 		void pollEvents();
 		void show();
 		void setFullScreen(bool isFullScreen);
