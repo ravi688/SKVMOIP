@@ -41,6 +41,8 @@ Installing and setting up the software suite is easy to follow and requires no s
 - Install glslang using `$pacman -S mingw-w64-x86_64-glslang`, this is only required for Client Build
 - Install gtk3 using `$pacman -S mingw-w64-x86_64-gtk3`, this is only required for Client Build
 - Clone this repository using `$git clone https://github.com/ravi688/SKVMOIP`
+- Change directory to SKVMOIP using $cd SKVMOIP`
+- Setup dependencies using `$git submodule update --init`
 
 #### Setting up the STM32F401CCU6 and W5500 via SPI interface
 Connect GND and 3.3 Vcc pins of the W5500 to the GND and 3.3 Vcc pins of STM32 MCU. Now check if the W5500 and STM32 MCU both are powering on (the red lights should light up on both).
@@ -64,6 +66,7 @@ It requires building the server executable first and then deploying it to the en
 - cd into the git repo directory (on the server computer) using `$cd SKVMOIP`
 - Make sure to run `$make -s clean` for previous builds if any
 - Run `$make -s build BUILD=server OUT=server`, this will start the server build process
+  ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/5d2ec0c2-a12c-4267-b215-63b535c74115)
 - And outputs a `server.exe` executable file
 - Run the application using `./server.exe`
 - Now, note down the IP address and Port number at which the server is listening for connections
@@ -76,6 +79,9 @@ It requires buildilng the installer first and then deploying it to a Windows Cli
 - cd into the git repo directory (on the client computer) using `$cd SKVMOIP`
 - Make sure to run `$make -s clean` for previous builds if any
 - Run `$make -s build BUILD=client OUT=client`, this will start the client build process
+  ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/cb4909e5-9b20-43fd-8290-7a759876257b)
+  ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/6cdaad28-ecca-4cb6-9dd4-d0d28476cab8)
+
 - And outputs a `client.exe` executable file
 - Run the application using `./client.exe`
 - Now you must have to first select a machine and click on `Connect` button
