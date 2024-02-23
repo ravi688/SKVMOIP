@@ -7,6 +7,9 @@ Many people have built cheap solutions such as PiKVM and TinyPilot - but I still
 
 Therefore, I started this project to invent a Scalable KVM Over IP software suite we can be installed on cheap hardware modules and on a client computer. This KVMK Over IP is scalable to any size because it uses ethernet wiring to communicate with the computers/servers with only one Encoder Server; hence no need to replicate the "pricy" hardware for each machine to be managed.
 
+![image](https://github.com/ravi688/SKVMOIP/assets/67525292/d246b7cc-0b23-474b-8a22-5f4ae3b16c89)
+
+
 ### Features of SKVMOIP
 1. Keyboard Over IP, works even to boot systems into their BIOS and without any software installed on the target system.
 2. Mouse Over IP, works even in the BIOS of the systems and without any software installed on the target system.
