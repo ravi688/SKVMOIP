@@ -16,7 +16,7 @@ Therefore, I started this project to invent a Scalable KVM Over IP software suit
 
 ### What's in the Software Suite
 1. Firmware Software for STM32401CCU6 and W5500 WizChip
-2. Client Software for a Client Computer.
+2. Client Software for a Client Computer, called "SKVMOIP Client".
 3. Server Software for HDMI stream Encoder Server.
 
 ### Hardware Requirements
@@ -28,10 +28,16 @@ Therefore, I started this project to invent a Scalable KVM Over IP software suit
 7. A client computer either running Windows or Linux.
 
 ### How to setup the SKVMOIP?
-Installing and setting up the software suite is easy to follow and requires no special technical knowledge.
+Installing and setting up the software suite is easy to follow and requires no special technical knowledge. However, currently only Windows in msys2 environment is supported.
 
-Clone this repository:
-`$ git clone https://github.com/ravi688/SKVMOIP`
+- Install Msys2 development environment from [here](https://www.msys2.org/)
+- Launch the `MSYS2 MINGW64` from start menu
+- Install gcc using `$pacman -S mingw-w64-x86_64-gcc`
+- Install make using `$pacman -S mingw-w64-x86_64-make`
+- Install git using `$pacman -S git`
+- Install glslang using `$pacman -S mingw-w64-x86_64-glslang`, this is only required for Client Build
+- Install gtk3 using `$pacman -S mingw-w64-x86_64-gtk3`, this is only required for Client Build
+- Clone this repository using `$git clone https://github.com/ravi688/SKVMOIP`
 
 #### Setting up the STM32F401CCU6 and W5500 via SPI interface
 Connect GND and 3.3 Vcc pins of the W5500 to the GND and 3.3 Vcc pins of STM32 MCU. Now check if the W5500 and STM32 MCU both are powering on (the red lights should light up on both).
@@ -51,25 +57,28 @@ NOTE: Before plugging the ST link programmer, make appropriate connections to th
 Click on the `Run` tab on the menu bar on the top, and select `run` to build and upload the executable on the Microcontroller.
 
 #### Setting up server for Windows
-It requires building the server executable first and then deploying it to the encoder server computer.
-1. `cd SKVMOIP`
-2. `./build.sh BUILD=server PLATFORM=Windows INSTALLER=1`
-3. `cd build/Windows`
-4. Now double click on `SKVMOIP_Server_Installer.exe` to execute the installer as usually you do to install any other Windows software package.
+It requires building the server executable first and then deploying it to the encoder server computer (a windows computer).
+- cd into the git repo directory (on the server computer) using `$cd SKVMOIP`
+- Make sure to run `$make -s clean` for previous builds if any
+- Run `$make -s build BUILD=server OUT=server`, this will start the server build process
+- And outputs a `server.exe` executable file
+- Run the application using `./server.exe`
+- Now, note down the IP address and Port number at which the server is listening for connections
+- Done!
 
 #### Setting up client For Windows
-It requires buildilng the installer first and then executing the installer to install the client in Windows.
-1. `cd SKVMOIP`
-2. `./build.sh PLATFORM=Windows INSTALLER=1`
-3. `cd build/Windows`
-4. Now double click on `SKVMOIP_Installer.exe` to execute the installer as usually you do to install any other Windows software package.
+It requires buildilng the installer first and then deploying it to a Windows Client Computer.
+- cd into the git repo directory (on the client computer) using `$cd SKVMOIP`
+- Make sure to run `$make -s clean` for previous builds if any
+- Run `$make -s build BUILD=client OUT=client`, this will start the client build process
+- And outputs a `client.exe` executable file
+- Run the application using `./client.exe`
+- Now you must have to first select a machine and click on `Connect` button
+- Once, the connection has been established, you would need to click on `Video` button to start using Remote Desktop.
+- Done!
 
 #### Setting up client For Linux
-It is rather identical to Windows case above.
-1. `cd SKVMOIP`
-2. `./build.sh PLATFORM=Linux INSTALLER=1`
-3. `cd build/Linux`
-4. `sudo dpkg -i ./SKVMOIP_Installer.deb`
+In-Progress
 
 ### TODO
 1. Add HDMI Routing over IP support to scale Video Over IP across local networks (as LANs are very fast, can handle the RAW HDMI data).'
