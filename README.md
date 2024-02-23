@@ -68,6 +68,8 @@ It requires building the server executable first and then deploying it to the en
 - Run the application using `./server.exe`
 - Now, note down the IP address and Port number at which the server is listening for connections
 - Done!
+![image](https://github.com/ravi688/SKVMOIP/assets/67525292/933de9b9-6281-46f5-ae44-58413b717d26)
+
 
 #### Setting up client For Windows
 It requires buildilng the installer first and then deploying it to a Windows Client Computer.
