@@ -23,12 +23,19 @@ Therefore, I started this project to invent a Scalable KVM Over IP software suit
 3. Server Software for HDMI stream Encoder Server.
 
 ### Hardware Requirements
-1. STM32F401CCU6 Microcontroller
-2. W5500 Wizchip Ethernet Module
-4. ST Link Programmer
-5. HDMI capture device
-6. A Video Encoder server computer (usually a mini PC with enough processing power, more quantitative data will be added here in future).
-7. A client computer either running Windows or Linux.
+1. STM32F401CCU6 Microcontroller <br>
+   ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/f13e7252-0d89-49c2-a52f-ebf7803b3bd0)
+2. W5500 Wizchip Ethernet Module <br>
+   ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/7b2a3e0d-1f28-4178-b4c7-9ac473994901)
+
+4. ST Link Programmer <br>
+   ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/9f430d93-381f-4cf5-9f4b-c1bbdd53215a)
+
+6. HDMI capture device <br>
+   ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/527fcdd5-13f4-42a7-b2b5-5d3d4fa4df7d)
+
+8. A Video Encoder server computer (usually a mini PC with enough processing power, more quantitative data will be added here in future).
+9. A client computer either running Windows or Linux.
 
 ### How to setup the SKVMOIP?
 Installing and setting up the software suite is easy to follow and requires no special technical knowledge. However, currently only Windows in msys2 environment is supported.
