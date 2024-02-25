@@ -131,14 +131,14 @@ namespace SKVMOIP
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 		if(m_window)
 		{
-			if(m_kmConnectThread && m_kmConnectThread->joinable())
-				m_kmConnectThread->join();
 			if(m_kmNetStream)
 			{
 				m_window->getEvent(Window::EventType::MouseInput).unsubscribe(m_mouseInputHandle);
 				m_window->getEvent(Window::EventType::KeyboardInput).unsubscribe(m_keyboardInputHandle);
 			}
 		}
+		if(m_kmConnectThread && m_kmConnectThread->joinable())
+			m_kmConnectThread->join();
 	}
 
 	static void FullScreenHandler(void* keyCombPtr, void* userData)
