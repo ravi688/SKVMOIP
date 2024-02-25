@@ -2,10 +2,13 @@
 This repository contains source code for a SKVMOIP for Windows and Linux platforms written in C++.<br>
 
 ### Introduction
-There are many options available in the market for KVKM over IP, however most of them are either made for a corporate or very expensive for individuals - and still not scalable enough.
+There are many options available in the market for KVM over IP, however most of them are either made for a corporate or very expensive for individuals - and still not scalable enough.
 Many people have built cheap solutions such as PiKVM and TinyPilot - but I still find them expensive given that they can only support one machine and one would need to spend more money to replicate over multiple machines.
 
 Therefore, I started this project to invent a Scalable KVM Over IP software suite we can be installed on cheap hardware modules and on a client computer. This KVMK Over IP is scalable to any size because it uses ethernet wiring to communicate with the computers/servers with only one Encoder Server; hence no need to replicate the "pricy" hardware for each machine to be managed.
+
+![image](https://github.com/ravi688/SKVMOIP/assets/67525292/d246b7cc-0b23-474b-8a22-5f4ae3b16c89)
+
 
 ### Features of SKVMOIP
 1. Keyboard Over IP, works even to boot systems into their BIOS and without any software installed on the target system.
@@ -16,22 +19,37 @@ Therefore, I started this project to invent a Scalable KVM Over IP software suit
 
 ### What's in the Software Suite
 1. Firmware Software for STM32401CCU6 and W5500 WizChip
-2. Client Software for a Client Computer.
+2. Client Software for a Client Computer, called "SKVMOIP Client".
 3. Server Software for HDMI stream Encoder Server.
 
 ### Hardware Requirements
-1. STM32F401CCU6 Microcontroller
-2. W5500 Wizchip Ethernet Module
-4. ST Link Programmer
-5. HDMI capture device
-6. A Video Encoder server computer (usually a mini PC with enough processing power, more quantitative data will be added here in future).
-7. A client computer either running Windows or Linux.
+1. STM32F401CCU6 Microcontroller <br>
+   ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/f13e7252-0d89-49c2-a52f-ebf7803b3bd0)
+2. W5500 Wizchip Ethernet Module <br>
+   ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/7b2a3e0d-1f28-4178-b4c7-9ac473994901)
+
+4. ST Link Programmer <br>
+   ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/9f430d93-381f-4cf5-9f4b-c1bbdd53215a)
+
+6. HDMI capture device <br>
+   ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/527fcdd5-13f4-42a7-b2b5-5d3d4fa4df7d)
+
+8. A Video Encoder server computer (usually a mini PC with enough processing power, more quantitative data will be added here in future).
+9. A client computer either running Windows or Linux.
 
 ### How to setup the SKVMOIP?
-Installing and setting up the software suite is easy to follow and requires no special technical knowledge.
+Installing and setting up the software suite is easy to follow and requires no special technical knowledge. However, currently only Windows in msys2 environment is supported.
 
-Clone this repository:
-`$ git clone https://github.com/ravi688/SKVMOIP`
+- Install Msys2 development environment from [here](https://www.msys2.org/)
+- Launch the `MSYS2 MINGW64` from start menu
+- Install gcc using `$pacman -S mingw-w64-x86_64-gcc`
+- Install make using `$pacman -S mingw-w64-x86_64-make`
+- Install git using `$pacman -S git`
+- Install glslang using `$pacman -S mingw-w64-x86_64-glslang`, this is only required for Client Build
+- Install gtk3 using `$pacman -S mingw-w64-x86_64-gtk3`, this is only required for Client Build
+- Clone this repository using `$git clone https://github.com/ravi688/SKVMOIP`
+- Change directory to SKVMOIP using $cd SKVMOIP`
+- Setup dependencies using `$git submodule update --init`
 
 #### Setting up the STM32F401CCU6 and W5500 via SPI interface
 Connect GND and 3.3 Vcc pins of the W5500 to the GND and 3.3 Vcc pins of STM32 MCU. Now check if the W5500 and STM32 MCU both are powering on (the red lights should light up on both).
@@ -51,25 +69,34 @@ NOTE: Before plugging the ST link programmer, make appropriate connections to th
 Click on the `Run` tab on the menu bar on the top, and select `run` to build and upload the executable on the Microcontroller.
 
 #### Setting up server for Windows
-It requires building the server executable first and then deploying it to the encoder server computer.
-1. `cd SKVMOIP`
-2. `./build.sh BUILD=server PLATFORM=Windows INSTALLER=1`
-3. `cd build/Windows`
-4. Now double click on `SKVMOIP_Server_Installer.exe` to execute the installer as usually you do to install any other Windows software package.
+It requires building the server executable first and then deploying it to the encoder server computer (a windows computer).
+- cd into the git repo directory (on the server computer) using `$cd SKVMOIP`
+- Make sure to run `$make -s clean` for previous builds if any
+- Run `$make -s build BUILD=server OUT=server`, this will start the server build process
+  ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/5d2ec0c2-a12c-4267-b215-63b535c74115)
+- And outputs a `server.exe` executable file
+- Run the application using `./server.exe`
+- Now, note down the IP address and Port number at which the server is listening for connections
+- Done!
+![image](https://github.com/ravi688/SKVMOIP/assets/67525292/933de9b9-6281-46f5-ae44-58413b717d26)
+
 
 #### Setting up client For Windows
-It requires buildilng the installer first and then executing the installer to install the client in Windows.
-1. `cd SKVMOIP`
-2. `./build.sh PLATFORM=Windows INSTALLER=1`
-3. `cd build/Windows`
-4. Now double click on `SKVMOIP_Installer.exe` to execute the installer as usually you do to install any other Windows software package.
+It requires buildilng the installer first and then deploying it to a Windows Client Computer.
+- cd into the git repo directory (on the client computer) using `$cd SKVMOIP`
+- Make sure to run `$make -s clean` for previous builds if any
+- Run `$make -s build BUILD=client OUT=client`, this will start the client build process
+  ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/cb4909e5-9b20-43fd-8290-7a759876257b)
+  ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/6cdaad28-ecca-4cb6-9dd4-d0d28476cab8)
+
+- And outputs a `client.exe` executable file
+- Run the application using `./client.exe`
+- Now you must have to first select a machine and click on `Connect` button
+- Once, the connection has been established, you would need to click on `Video` button to start using Remote Desktop.
+- Done!
 
 #### Setting up client For Linux
-It is rather identical to Windows case above.
-1. `cd SKVMOIP`
-2. `./build.sh PLATFORM=Linux INSTALLER=1`
-3. `cd build/Linux`
-4. `sudo dpkg -i ./SKVMOIP_Installer.deb`
+In-Progress
 
 ### TODO
 1. Add HDMI Routing over IP support to scale Video Over IP across local networks (as LANs are very fast, can handle the RAW HDMI data).'
