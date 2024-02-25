@@ -533,4 +533,113 @@ namespace SKVMOIP
 			m_window.pollEvents();
 		}
 	}
+
+	void PresentEngine::runGameLoop(u32 frameRate, std::atomic<bool>& isLoop)
+	{
+		const f64 deltaTime = 1000.0 / frameRate;
+		auto startTime = std::chrono::high_resolution_clock::now();
+
+		/* Transition layout of swapchain images to VK_IMAGE_LAYOUT_PRESET_SRC_KHR
+		 * This layout transition is necessary for the case when there is no decoded frame available in the first iteration in the render loop,
+		 * in which case, there won't be any automatic transition as the actual frame rendering command buffers won't be dispatched */
+		VkCommandBuffer* cmdBuffer = __pvkAllocateCommandBuffers(m_vkDevice, m_vkCommandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
+		VkImage* images = pvkGetSwapchainImages(m_vkDevice, m_vkSwapchain, NULL);
+		for(u32 i = 0; i < PRESENT_ENGINE_IMAGE_COUNT; i++)
+		{
+			pvkBeginCommandBuffer(*cmdBuffer, (VkCommandBufferUsageFlagBits)0);
+				// Image Layout Transition: VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+				VkImageMemoryBarrier imageMemoryBarrier = { };
+				imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				imageMemoryBarrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+				imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+				imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+				imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+				imageMemoryBarrier.srcQueueFamilyIndex = m_queueFamilyIndices[0];
+				imageMemoryBarrier.dstQueueFamilyIndex = m_queueFamilyIndices[0];
+				imageMemoryBarrier.image = images[i];
+				imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+				imageMemoryBarrier.subresourceRange.levelCount = 1;
+				imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+				imageMemoryBarrier.subresourceRange.layerCount = 1;
+				vkCmdPipelineBarrier(*cmdBuffer,
+									VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 
+									VK_PIPELINE_STAGE_TRANSFER_BIT, 
+									VK_DEPENDENCY_BY_REGION_BIT,
+									0, NULL,
+									0, NULL,
+									1, &imageMemoryBarrier);
+			pvkEndCommandBuffer(*cmdBuffer);
+			pvkSubmit(*cmdBuffer, m_vkGraphicsQueue, VK_NULL_HANDLE, VK_NULL_HANDLE	, m_vkFence);
+			PVK_CHECK(vkWaitForFences(m_vkDevice, 1, &m_vkFence, VK_TRUE, UINT64_MAX));
+			PVK_CHECK(vkResetFences(m_vkDevice, 1, &m_vkFence));
+		}
+		PVK_DELETE(images);
+		PVK_DELETE(cmdBuffer);
+
+		/* Rendering & Presentation */
+		while(isLoop && (!m_window.shouldClose(false)))
+		{
+			if((m_window.getClientWidth() == 0) || (m_window.getClientHeight() == 0))
+			{
+				m_window.pollEvents();
+				continue;
+			}
+			auto time = std::chrono::high_resolution_clock::now();
+			if(std::chrono::duration_cast<std::chrono::milliseconds>(time - startTime).count() >= deltaTime)
+			{
+				/* Takes: 2 ms to 4 ms - same as Win32 Blit */
+
+				startTime = time;
+
+				auto frame = m_decodeNetStream.borrowFrameData();
+				uint32_t semaphoreIndex;
+				VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE;
+				if(frame)
+					imageAvailableSemaphore = pvkSemaphoreCircularPoolAcquire(m_pvkSemaphorePool, &semaphoreIndex);
+
+				uint32_t index;
+				while(!pvkAcquireNextImageKHR(m_vkDevice, m_vkSwapchain, UINT64_MAX, imageAvailableSemaphore, m_vkFence, &index))
+				{
+					PVK_CHECK(vkDeviceWaitIdle(m_vkDevice));
+					if(imageAvailableSemaphore != VK_NULL_HANDLE)
+						imageAvailableSemaphore = pvkSemaphoreCircularPoolRecreate(m_vkDevice, m_pvkSemaphorePool, semaphoreIndex);
+					pvkResetFences(m_vkDevice, 1, &m_vkFence);
+					recreate();
+				}
+
+				PVK_CHECK(vkWaitForFences(m_vkDevice, 1, &m_vkFence, VK_TRUE, UINT64_MAX));
+				PVK_CHECK(vkResetFences(m_vkDevice, 1, &m_vkFence));
+
+				VkSemaphore renderFinishSemaphore = VK_NULL_HANDLE;
+				if(frame)
+				{
+					renderFinishSemaphore = pvkSemaphoreCircularPoolAcquire(m_pvkSemaphorePool, NULL);
+					
+					#ifndef USE_DIRECT_FRAME_DATA_COPY
+					auto frameData = FIFOPool<HDMIDecodeNetStream::FrameData>::GetValue(frame);
+					_assert(frameData.has_value());
+					// _assert(frameData->getSize() == drawSurface->getBufferSize());
+					/* Takes: 1 ms to 4 ms */
+					memcpy(m_mapPtr, frameData->getPtr(), frameData->getSize());
+					#endif 
+
+					// execute commands
+					pvkSubmit(m_vkCommandBuffers[index], m_vkGraphicsQueue, imageAvailableSemaphore, renderFinishSemaphore, m_vkFence);
+					PVK_CHECK(vkWaitForFences(m_vkDevice, 1, &m_vkFence, VK_TRUE, UINT64_MAX));
+					m_decodeNetStream.returnFrameData(frame);
+					PVK_CHECK(vkResetFences(m_vkDevice, 1, &m_vkFence));
+				}
+
+
+				// present the output image
+				if(!pvkPresent(index, m_vkSwapchain, m_vkPresentQueue, (renderFinishSemaphore == VK_NULL_HANDLE) ? 0 : 1, &renderFinishSemaphore))
+				{
+					PVK_CHECK(vkDeviceWaitIdle(m_vkDevice));
+					recreate();
+				}
+			}
+			m_window.pollEvents();
+		}
+	}
 }

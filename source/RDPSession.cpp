@@ -21,24 +21,27 @@ namespace SKVMOIP
 							   m_windowPaintHandle(Event::GetInvalidSubscriptionHandle()),
 							   m_isKMNetStreamConnected(false),
 							   m_connectionStatusCallback(NULL),
-							   m_callbackUserData(NULL)
+							   m_callbackUserData(NULL),
+							   m_isValid(true)
 	{
-
 	}
 
 	bool RDPSession::isConnected() 
 	{
+		assert(DESCRIPTION(m_isValid), "you're trying to use invalid RDPSession object, perhaps you have destroyed it in some another thread?");
 		return m_isKMNetStreamConnected && m_kmNetStream->isCanSendOrReceive();
 	}
 
 	void RDPSession::setConnectionStatusCallback(void (*callback)(bool isUp, void* userData), void* userData)
 	{
+		assert(DESCRIPTION(m_isValid), "you're trying to use invalid RDPSession object, perhaps you have destroyed it in some another thread?");
 		m_connectionStatusCallback = callback;
 		m_callbackUserData = userData;
 	}
 
 	void RDPSession::connect(const char* kmIPAddress, const char* kmPortNumber)
 	{
+		assert(DESCRIPTION(m_isValid), "you're trying to use invalid RDPSession object, perhaps you have destroyed it in some another thread?");
 		m_kmNetStream = std::unique_ptr<KMNetStream>(new KMNetStream());
 		m_kmConnectThread = std::unique_ptr<std::thread>(new std::thread([this](std::string kmIPAddress, std::string kmPortNumber)
 			{
@@ -61,6 +64,7 @@ namespace SKVMOIP
 
 	void RDPSession::start(const char* ipAddress, const char* portNumber)
 	{
+		assert(DESCRIPTION(m_isValid), "you're trying to use invalid RDPSession object, perhaps you have destroyed it in some another thread?");
 		/* if previous video session was connected, then destroy already constructed objects */
 		#ifdef USE_VULKAN_PRESENTATION
 		m_presentEngine.reset();
@@ -97,10 +101,10 @@ namespace SKVMOIP
 			m_window->createKeyCombinationEvent({ Win32::KeyCode::KEYCODE_CTRL, Win32::KeyCode::KEYCODE_ALT, Win32::KeyCode::KEYCODE_K }).subscribe(LockHandler, reinterpret_cast<void*>(this));
 			#ifndef USE_VULKAN_PRESENTATION
 			m_windowPaintHandle = m_window->getEvent(Window::EventType::Paint).subscribe(WindowPaintHandler, reinterpret_cast<void*>(this));
-			m_window->runGameLoop(static_cast<u32>(60));
+			m_window->runGameLoop(static_cast<u32>(60), m_isValid);
 			m_window->getEvent(Window::EventType::Paint).unsubscribe(m_windowPaintHandle);
 			#else
-			m_presentEngine->runGameLoop(static_cast<u32>(60));
+			m_presentEngine->runGameLoop(static_cast<u32>(60), m_isValid);
 			#endif
 			
 			if(m_kmNetStream)
@@ -123,10 +127,17 @@ namespace SKVMOIP
 
 	RDPSession::~RDPSession()
 	{
+		m_isValid = false;
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 		if(m_window)
 		{
 			if(m_kmConnectThread && m_kmConnectThread->joinable())
 				m_kmConnectThread->join();
+			if(m_kmNetStream)
+			{
+				m_window->getEvent(Window::EventType::MouseInput).unsubscribe(m_mouseInputHandle);
+				m_window->getEvent(Window::EventType::KeyboardInput).unsubscribe(m_keyboardInputHandle);
+			}
 		}
 	}
 

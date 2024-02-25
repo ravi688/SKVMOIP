@@ -29,6 +29,7 @@ namespace SKVMOIP
 			Event::SubscriptionHandle m_windowPaintHandle;
 			std::atomic<bool> m_isKMNetStreamConnected;
 			std::unique_ptr<std::thread> m_kmConnectThread;
+			std::atomic<bool> m_isValid;
 
 			void (*m_connectionStatusCallback)(bool isUp, void* userData);
 			void* m_callbackUserData;

@@ -59,6 +59,36 @@ namespace SKVMOIP
 					}
 				});
 		}
+
+		void OnAddClicked(GtkWidget* button, void* userData)
+		{
+		  debug_log_info ("Add button clicked");
+		}
+
+		void OnEditClicked(GtkWidget* button, void* userData)
+		{
+		  debug_log_info ("Edit button clicked");
+		}
+
+		void OnRemoveClicked(GtkWidget* button, void* userData)
+		{
+		  debug_log_info ("Remove button clicked");
+		  for(u32 id : gSelectedMachines)
+		  {
+		  	/* If this machine is currently active, then terminate all the connections related to it, by destroying it */
+		  	if(gActiveSessions->find(id) != gActiveSessions->end())
+		  	{
+		  			std::unique_ptr<RDPSession>& rdp = (*gActiveSessions)[id];
+		  			rdp.reset();
+		  			auto result = gActiveSessions->erase(id);
+		  			_assert(result == 1);
+		  	}
+
+		  	/* Remove the machine's UI from the dashboard */
+		  	gMainUI->removeMachine(id);
+		  }
+		  gSelectedMachines.clear();
+		}
 	}
 }
 

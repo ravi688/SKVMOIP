@@ -253,6 +253,23 @@ namespace SKVMOIP
 		}
 	}
 
+	void Window::runGameLoop(u32 frameRate, std::atomic<bool>& isLoop)
+	{
+		const f64 deltaTime = 1000.0 / frameRate;
+		auto startTime = std::chrono::high_resolution_clock::now();
+		while(isLoop && (!shouldClose(false)))
+		{
+			auto time = std::chrono::high_resolution_clock::now();
+			if(std::chrono::duration_cast<std::chrono::milliseconds>(time - startTime).count() >= deltaTime)
+			{
+				invalidateRect();	
+				startTime = time;
+			}
+			
+			pollEvents();
+		}
+	}
+
 	bool Window::shouldClose(bool isBlock)
 	{
 		if(isBlock)

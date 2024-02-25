@@ -9,6 +9,7 @@
 
 #include <unordered_map>
 #include <vector>
+#include <atomic>
 
 #ifdef PLATFORM_WINDOWS
 #	define WIN32_LEAN_AND_MEAN
@@ -87,6 +88,7 @@ namespace SKVMOIP
 
 		void runGameLoop();
 		void runGameLoop(u32 frameRate);
+		void runGameLoop(u32 frameRate, std::atomic<bool>& isLoop);
 	
 		bool isLocked() const noexcept { return m_isLocked; }
 		bool isFullScreen() const noexcept { return m_isFullScreen; }

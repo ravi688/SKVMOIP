@@ -19,20 +19,11 @@ namespace SKVMOIP
 		
 		void OnConnectClicked(GtkWidget* button, void* userData);
 		
-		static void OnAddClicked(GtkWidget* button, void* userData)
-		{
-		  debug_log_info ("Add button clicked");
-		}
+		void OnAddClicked(GtkWidget* button, void* userData);
+
+		void OnEditClicked(GtkWidget* button, void* userData);
 		
-		static void OnEditClicked(GtkWidget* button, void* userData)
-		{
-		  debug_log_info ("Edit button clicked");
-		}
-		
-		static void OnRemoveClicked(GtkWidget* button, void* userData)
-		{
-		  debug_log_info ("Remove button clicked");
-		}
+		void OnRemoveClicked(GtkWidget* button, void* userData);
 
 		MainUI::MainUI(GtkApplication* app) : m_app(app), m_idGenerator(0)
 		{

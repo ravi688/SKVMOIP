@@ -9,6 +9,8 @@
 #endif
 #include <PlayVk/PlayVk.h>
 
+#include <atomic>
+
 namespace SKVMOIP
 {
 	class PresentEngine
@@ -63,5 +65,6 @@ namespace SKVMOIP
 
 		void* getBufferPtr() const noexcept { return m_mapPtr; }
 		void runGameLoop(u32 frameRate);
+		void runGameLoop(u32 frameRate, std::atomic<bool>& isLoop);
 	};
 }
