@@ -12,11 +12,12 @@ Therefore, I started this project to invent a Scalable KVM Over IP software suit
 
 
 ### Features of SKVMOIP
-1. Keyboard Over IP, works even to boot systems into their BIOS and without any software installed on the target system.
-2. Mouse Over IP, works even in the BIOS of the systems and without any software installed on the target system.
-3. Video Over IP, works even before the system boots and without any software installed on the target system.
-4. Power/Reset/HDDLED/PowerLED Over IP, turn On or Off the systems remotely just like you do onsite by pressing the power button.
-5. Easy to use Client software for Windows and Linux platforms.
+1. GPU Accelerated Video Decoding and Presenting the images on the display.
+2. Keyboard Over IP, works even to boot systems into their BIOS and without any software installed on the target system.
+3. Mouse Over IP, works even in the BIOS of the systems and without any software installed on the target system.
+4. Video Over IP, works even before the system boots and without any software installed on the target system.
+5. Power/Reset/HDDLED/PowerLED Over IP, turn On or Off the systems remotely just like you do onsite by pressing the power button.
+6. Easy to use Client software for Windows and Linux platforms.
 
 ### What's in the Software Suite
 1. Firmware Software for STM32401CCU6 and W5500 WizChip
