@@ -1,6 +1,22 @@
+
 # Scalable KVM Over IP (SKVMOIP)
 This repository contains source code for a SKVMOIP for Windows and Linux platforms written in C++.<br> <br>
 <a href="https://www.buymeacoffee.com/raviprakashsingh" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+
+### Currently supported Operating Systems: <br>
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Windows_logo_-_2012.svg/1024px-Windows_logo_-_2012.svg.png" alt="drawing" width="60"/>
+
+### Support in-progress Operating Systems: <br>
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Tux.svg/398px-Tux.svg.png" alt="drawing" width="60"/>
+
+### Currently supported GPU vendors: <br>
+<img src="https://www.nvidia.com/content/nvidiaGDC/us/en_US/about-nvidia/legal-info/logo-brand-usage/_jcr_content/root/responsivegrid/nv_container_392921705/nv_container_412055486/nv_image.coreimg.100.850.png/1703060329095/nvidia-logo-horz.png" alt="drawing" width="150"/>
+
+### Support in-progress GPU vendors: <br> <br>
+<img src="https://static.wikia.nocookie.net/logopedia/images/a/a4/Intel_2020.svg/revision/latest?cb=20201010162844" alt="drawing" width="85"/> <br> <br>
+<img src="https://logos-world.net/wp-content/uploads/2020/03/AMD-Logo-700x394.png" alt="drawing" width="100"/>
+
+If you're a corporate and willing to sponsor me, feel free to reach me out at ravi.prakash.singh@protonmail.com!
 
 ### Introduction
 There are many options available in the market for KVM over IP, however most of them are either made for a corporate or very expensive for individuals - and still not scalable enough.
