@@ -16,7 +16,7 @@ This repository contains source code for a SKVMOIP for Windows and Linux platfor
 <img src="https://static.wikia.nocookie.net/logopedia/images/a/a4/Intel_2020.svg/revision/latest?cb=20201010162844" alt="drawing" width="85"/> <br> <br>
 <img src="https://logos-world.net/wp-content/uploads/2020/03/AMD-Logo-700x394.png" alt="drawing" width="100"/>
 
-If you're a corporate and willing to sponsor me, feel free to reach me out at ravi.prakash.singh@protonmail.com!
+**If you're a corporate and willing to sponsor me, feel free to reach me out at ravi.prakash.singh@protonmail.com!**
 
 ### Introduction
 There are many options available in the market for KVM over IP, however most of them are either made for a corporate or very expensive for individuals - and still not scalable enough.
