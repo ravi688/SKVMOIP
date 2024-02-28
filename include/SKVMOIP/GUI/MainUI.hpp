@@ -27,7 +27,9 @@ namespace SKVMOIP
 		  MainUI(MainUI&) = delete;
 		  MainUI& operator=(MainUI&) = delete;
 		  ~MainUI() = default;
-		
+
+		  operator GtkWidget*() noexcept { return m_window; }
+
 		  template<typename... Args>
 		  u32 createMachine(Args... args)
 		  {

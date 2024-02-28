@@ -28,6 +28,7 @@ namespace SKVMOIP
       char m_videoUSBPortNumberStr[USB_PORT_STR_LEN];
     
     public:
+      MachineData() = default;
       MachineData(u32 videoIPAddress, u32 keyMoIPAddress, u16 videoPortNumber, u16 keyMoPortNumber, const char* name, u8 videoUSBPortNumber = 0) noexcept;
       ~MachineData() noexcept = default;
     

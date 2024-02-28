@@ -8,9 +8,11 @@
 
 #include <SKVMOIP/GUI/MachineUI.hpp>
 #include <SKVMOIP/GUI/MainUI.hpp>
+#include <SKVMOIP/GUI/AddUI.hpp>
 #include <SKVMOIP/MachineData.hpp>
 
 #include <SKVMOIP/RDPSession.hpp>
+
 
 using namespace SKVMOIP;
 
@@ -30,6 +32,14 @@ static std::vector<MachineData> gMachineDataList;
 static std::unique_ptr<SKVMOIP::GUI::MainUI> gMainUI;
 static std::vector<u32> gSelectedMachines;
 static std::unordered_map<u32, std::unique_ptr<RDPSession>>* gActiveSessions;
+
+static void OnMachineSelect(u32 id, void* userData);
+static void OnMachineDeselect(u32 id, void* userData);
+static void OnVideoClicked(u32 id, void* userData);
+static void OnPowerPress(u32 id, void* userData);
+static void OnPowerRelease(u32 id, void* userData);
+static void OnResetPress(u32 id, void* userData);
+static void OnResetRelease(u32 id, void* userData);
 
 namespace SKVMOIP
 {
@@ -60,9 +70,36 @@ namespace SKVMOIP
 				});
 		}
 
+		static std::optional<MachineData> GetMachineDataFromUser()
+		{
+			
+			MachineData data;
+			AddUI addWizard(*gMainUI, [](MachineData& inData, void* outData) { *reinterpret_cast<MachineData*>(outData) = inData; }, reinterpret_cast<void*>(&data));
+			return { };
+		}
+
 		void OnAddClicked(GtkWidget* button, void* userData)
 		{
 		  debug_log_info ("Add button clicked");
+
+		 	if(std::optional<MachineData> data = GetMachineDataFromUser())
+		 	{
+				u32 id = gMainUI->createMachine("Dummy Machine");
+				auto& ui = gMainUI->getMachine(id);
+	    
+	    	ui.setName(data->getName());
+	    	ui.setOutputAddress(data->getVideoIPAddressStr(), data->getVideoPortNumberStr());
+	    	ui.setInputAddress(data->getKeyMoIPAddressStr(), data->getKeyMoPortNumberStr());
+	    	ui.setStatus("Status: Unknown");
+
+	    	ui.setSelectDeselectCallback(OnMachineSelect, OnMachineDeselect, NULL);
+	    	ui.setVideoButtonCallback(OnVideoClicked, NULL);
+	    	ui.setPowerButtonPressCallback(OnPowerPress, NULL);
+	    	ui.setPowerButtonReleaseCallback(OnPowerRelease, NULL);
+	    	ui.setResetButtonPressCallback(OnResetPress, NULL);
+	    	ui.setResetButtonReleaseCallback(OnResetRelease, NULL);
+		 		gMachineDataList.push_back(data.value());
+		 	}
 		}
 
 		void OnEditClicked(GtkWidget* button, void* userData)
