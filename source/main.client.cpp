@@ -72,7 +72,6 @@ namespace SKVMOIP
 
 		static std::optional<MachineData> GetMachineDataFromUser()
 		{
-			
 			MachineData data;
 			AddUI addWizard(*gMainUI, [](MachineData& inData, void* outData) { *reinterpret_cast<MachineData*>(outData) = inData; }, reinterpret_cast<void*>(&data));
 			return { };

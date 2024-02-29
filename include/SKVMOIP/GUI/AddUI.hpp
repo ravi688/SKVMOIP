@@ -9,9 +9,12 @@ namespace SKVMOIP
 {
 	namespace GUI
 	{
+		static void OkButtonClickCallback(GtkButton* button, gpointer userData);
 		class AddUI
 		{
+			friend void OkButtonClickCallback(GtkButton* button, gpointer userData);
 		private:
+			GtkWidget* m_parent;
 			GtkWidget* m_window;
 			GtkWidget* m_topLevelVBox;
 			GtkWidget* m_entryVBox;
