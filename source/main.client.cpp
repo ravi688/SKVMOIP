@@ -41,6 +41,9 @@ static void OnPowerRelease(u32 id, void* userData);
 static void OnResetPress(u32 id, void* userData);
 static void OnResetRelease(u32 id, void* userData);
 
+static void OnAddMachineDataValid(MachineData& data, void* userData);
+static void OnAddUICancelClicked(GtkWidget* button, void* userData);
+
 namespace SKVMOIP
 {
 	namespace GUI
@@ -70,35 +73,11 @@ namespace SKVMOIP
 				});
 		}
 
-		static std::optional<MachineData> GetMachineDataFromUser()
-		{
-			MachineData data;
-			AddUI addWizard(*gMainUI, [](MachineData& inData, void* outData) { *reinterpret_cast<MachineData*>(outData) = inData; }, reinterpret_cast<void*>(&data));
-			return { };
-		}
-
 		void OnAddClicked(GtkWidget* button, void* userData)
 		{
 		  debug_log_info ("Add button clicked");
 
-		 	if(std::optional<MachineData> data = GetMachineDataFromUser())
-		 	{
-				u32 id = gMainUI->createMachine("Dummy Machine");
-				auto& ui = gMainUI->getMachine(id);
-	    
-	    	ui.setName(data->getName());
-	    	ui.setOutputAddress(data->getVideoIPAddressStr(), data->getVideoPortNumberStr());
-	    	ui.setInputAddress(data->getKeyMoIPAddressStr(), data->getKeyMoPortNumberStr());
-	    	ui.setStatus("Status: Unknown");
-
-	    	ui.setSelectDeselectCallback(OnMachineSelect, OnMachineDeselect, NULL);
-	    	ui.setVideoButtonCallback(OnVideoClicked, NULL);
-	    	ui.setPowerButtonPressCallback(OnPowerPress, NULL);
-	    	ui.setPowerButtonReleaseCallback(OnPowerRelease, NULL);
-	    	ui.setResetButtonPressCallback(OnResetPress, NULL);
-	    	ui.setResetButtonReleaseCallback(OnResetRelease, NULL);
-		 		gMachineDataList.push_back(data.value());
-		 	}
+		  gMainUI->showAddUI(OnAddMachineDataValid, OnAddUICancelClicked, NULL);
 		}
 
 		void OnEditClicked(GtkWidget* button, void* userData)
@@ -126,6 +105,32 @@ namespace SKVMOIP
 		  gSelectedMachines.clear();
 		}
 	}
+}
+
+static void OnAddUICancelClicked(GtkWidget* button, void* userData)
+{
+		gMainUI->hideAddUI();
+}
+
+static void OnAddMachineDataValid(MachineData& data, void* userData)
+{
+		u32 id = gMainUI->createMachine((strlen(data.getName()) <= 0) ? "Untitled Machine" : data.getName());
+		auto& ui = gMainUI->getMachine(id);
+	    
+	  ui.setName(data.getName());
+	  ui.setOutputAddress(data.getVideoIPAddressStr(), data.getVideoPortNumberStr());
+	  ui.setInputAddress(data.getKeyMoIPAddressStr(), data.getKeyMoPortNumberStr());
+	  ui.setStatus("Status: Unknown");
+
+	  ui.setSelectDeselectCallback(OnMachineSelect, OnMachineDeselect, NULL);
+	  ui.setVideoButtonCallback(OnVideoClicked, NULL);
+	  ui.setPowerButtonPressCallback(OnPowerPress, NULL);
+	  ui.setPowerButtonReleaseCallback(OnPowerRelease, NULL);
+	  ui.setResetButtonPressCallback(OnResetPress, NULL);
+	  ui.setResetButtonReleaseCallback(OnResetRelease, NULL);
+		gMachineDataList.push_back(data);
+
+		gMainUI->hideAddUI();
 }
 
 static void OnMachineSelect(u32 id, void* userData)

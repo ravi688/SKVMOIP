@@ -2,8 +2,10 @@
 
 #include <SKVMOIP/defines.hpp>
 #include <SKVMOIP/GUI/MachineUI.hpp>
+#include <SKVMOIP/GUI/AddUI.hpp>
 #include <unordered_map>
 #include <vector>
+#include <memory>
 #include <gtk/gtk.h>
 
 namespace SKVMOIP
@@ -16,6 +18,7 @@ namespace SKVMOIP
 		  GtkApplication* m_app;
 		  GtkWidget* m_window;
 		  GtkWidget* m_bottomCont;
+		  std::unique_ptr<AddUI> m_addUI;
 		  std::unordered_map<u32, MachineUI*> m_machineUIs;
 		  std::vector<u32> m_invalidIDs;
 		  u32 m_idGenerator;
@@ -49,6 +52,9 @@ namespace SKVMOIP
 		  }
 		  void removeMachine(u32 id);
 		  MachineUI& getMachine(u32 id);
+
+		  void showAddUI(void (*onAddCallbackHandler)(MachineData& data, void* userData), void (*onCancelClickhandler)(GtkWidget* button, void* userData), void* userData);
+		  void hideAddUI();
 		};
 	}
 }

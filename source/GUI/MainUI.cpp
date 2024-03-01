@@ -116,5 +116,14 @@ namespace SKVMOIP
 		  return *m_machineUIs[id];
 		}
 
+		void MainUI::showAddUI(void (*onAddCallbackHandler)(MachineData& data, void* userData), void (*onCancelClickhandler)(GtkWidget* button, void* userData), void* userData)
+		{
+		  m_addUI = std::move(std::unique_ptr<AddUI>(new AddUI(m_window, onAddCallbackHandler, onCancelClickhandler, userData)));
+		}
+
+		void MainUI::hideAddUI()
+		{
+			m_addUI.reset();
+		}
 	}
 }

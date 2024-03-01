@@ -1,5 +1,6 @@
 #include <SKVMOIP/GUI/AddUI.hpp>
 #include <optional>
+#include <SKVMOIP/debug.h>
 
 #define WINDOW_MIN_SIZE_X 500
 #define WINDOW_MIN_SIZE_Y 400
@@ -53,30 +54,34 @@ namespace SKVMOIP
 			{
 				std::optional<std::pair<u32, u16>> voipAddr = parseIPAndPort(voipAddrStr);
 				if(!voipAddr.has_value())
+				{
 					/* parse error, either invalid IPV4 address or the port number */
+					debug_log_info("Parse error: Invalid voip IPV4 address or Port Number");
 					return;
+				}
 				std::optional<std::pair<u32, u16>> kmoipAddr = parseIPAndPort(kmoipAddrStr);
 				if(!kmoipAddr.has_value())
+				{
 					/* parse error, either invalid IPV4 address or the port number */
+					debug_log_info("Parse error: Invalid kmoip IPV4 address or Port Number");
 					return;
-				const char* name = "Dummy Name"/* TODO */;
+				}
+				const char* name = gtk_entry_get_text(GTK_ENTRY(ui.m_nameEntry));
 				MachineData data(voipAddr->first, kmoipAddr->first, voipAddr->second, kmoipAddr->second, name);
 				ui.m_onAddCallback(data, ui.m_userData);
 			}
 			else 
 			{
-				/* show error window */
+				/* TODO: show error window */
+				debug_log_info("Parse error: Invalid voip IPV4 address:port or kmoip IPV4 address:port");
+				return;			
 			}
-			gtk_widget_destroy(ui.m_window);
 		}
 
-		AddUI::AddUI(GtkWidget* parent, void (*onAddCallbackHandler)(MachineData& data, void* userData), void* userData) : m_parent(parent), m_onAddCallback(onAddCallbackHandler), m_userData(userData)
+		AddUI::AddUI(GtkWidget* parent, void (*onAddCallbackHandler)(MachineData& data, void* userData), void (*onAddUICancelClicked)(GtkWidget* button, void* userData), void* userData) : m_parent(parent), m_onAddCallback(onAddCallbackHandler), m_userData(userData)
 		{
 			m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
-
-			gtk_widget_set_sensitive(parent, FALSE);
-			gtk_widget_set_can_focus(parent, FALSE);
 			gtk_window_set_title(GTK_WINDOW(m_window), "Add Machine");
 			gtk_widget_set_size_request(m_window, WINDOW_MIN_SIZE_X, WINDOW_MIN_SIZE_Y);
 		  	gtk_window_set_default_size(GTK_WINDOW(m_window), WINDOW_DEF_SIZE_X, WINDOW_DEF_SIZE_Y);
@@ -109,18 +114,19 @@ namespace SKVMOIP
 		  			g_signal_connect(G_OBJECT(m_okButton), "clicked", G_CALLBACK(OkButtonClickCallback), reinterpret_cast<void*>(this));
 		  			gtk_box_pack_start(GTK_BOX(m_buttonHBox), m_okButton, TRUE, TRUE, 0);
 		  			m_cancelButton = gtk_button_new_with_label("Cancel");
+		  			g_signal_connect(G_OBJECT(m_cancelButton), "clicked", G_CALLBACK(onAddUICancelClicked), userData);
 		  			gtk_box_pack_start(GTK_BOX(m_buttonHBox), m_cancelButton, TRUE, TRUE, 0);
 
 		  	gtk_container_add(GTK_CONTAINER(m_window), m_topLevelVBox);
 
+		  	gtk_window_set_modal(GTK_WINDOW(m_window), TRUE);
 			gtk_widget_show_all(m_window);
 			gtk_window_present(GTK_WINDOW(m_window));
-			gtk_widget_set_sensitive(m_parent, TRUE);
-			gtk_widget_set_can_focus(m_parent, TRUE);
 		}
 
 		AddUI::~AddUI()
 		{
+			gtk_widget_destroy(m_window);
 		}
 	}
 }
