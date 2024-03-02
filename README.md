@@ -55,6 +55,10 @@ Therefore, I started this project to invent a Scalable KVM Over IP software suit
 8. A Video Encoder server computer (usually a mini PC with enough processing power, more quantitative data will be added here in future).
 9. A client computer either running Windows or Linux.
 
+### GPU Vendor Software Support Requirements
+1. [Nvidia Cuda Toolkit](https://developer.nvidia.com/cuda-downloads)
+2. [Vulkan SDK](https://www.lunarg.com/vulkan-sdk/)
+
 ### How to setup the SKVMOIP?
 Installing and setting up the software suite is easy to follow and requires no special technical knowledge. However, currently only Windows in msys2 environment is supported.
 
