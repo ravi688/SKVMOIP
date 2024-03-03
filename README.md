@@ -113,7 +113,10 @@ It requires buildilng the installer first and then deploying it to a Windows Cli
 
 - And outputs a `client.exe` executable file
 - Run the application using `./client.exe`
-- Now you must have to first select a machine and click on `Connect` button
+- Now click on `Add` button on the top right, you'll be shown a machine add wizard window
+- Fill in the Machine details, VIP is the Video Server IP address reported by the SKVMOIP server process and the KMIP is the Keyboard Mouse Server IP address which is set to `192.168.1.113:2000`, and click `Ok`<br>
+  ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/e6a9c85c-b5c3-46f8-82ce-840d7d2167d4)
+- After that, select the newly added machine and click on `Connect` button to handshake with both the video and km servers.
 - Once, the connection has been established, you would need to click on `Video` button to start using Remote Desktop.
 - Done!
 
