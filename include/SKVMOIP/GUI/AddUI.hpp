@@ -38,6 +38,8 @@ namespace SKVMOIP
 		public:
 			AddUI(GtkWidget* window, void (*onAddCallbackHandler)(MachineData& data, void* userData), void (*onAddUICancelClicked)(GtkWidget* button, void* userData), void* userData);
 			~AddUI();
+
+			void populate(MachineData& data);
 		};
 	}
 }

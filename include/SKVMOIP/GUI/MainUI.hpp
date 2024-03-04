@@ -18,6 +18,9 @@ namespace SKVMOIP
 		  GtkApplication* m_app;
 		  GtkWidget* m_window;
 		  GtkWidget* m_bottomCont;
+		  GtkWidget* m_connectButton;
+		  GtkWidget* m_editButton;
+		  GtkWidget* m_removeButton;
 		  std::unique_ptr<AddUI> m_addUI;
 		  std::unordered_map<u32, MachineUI*> m_machineUIs;
 		  std::vector<u32> m_invalidIDs;
@@ -53,8 +56,12 @@ namespace SKVMOIP
 		  void removeMachine(u32 id);
 		  MachineUI& getMachine(u32 id);
 
-		  void showAddUI(void (*onAddCallbackHandler)(MachineData& data, void* userData), void (*onCancelClickhandler)(GtkWidget* button, void* userData), void* userData);
+		  AddUI& showAddUI(void (*onAddCallbackHandler)(MachineData& data, void* userData), void (*onCancelClickhandler)(GtkWidget* button, void* userData), void* userData);
 		  void hideAddUI();
+
+	  	  void setConnectButtonActive(bool isActive);
+		  void setEditButtonActive(bool isActive);
+		  void setRemoveButtonActive(bool isActive);
 		};
 	}
 }

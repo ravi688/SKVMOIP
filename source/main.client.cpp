@@ -20,10 +20,10 @@ static std::vector<MachineData> GetMachineDataListFromServer()
 {
   std::vector<MachineData> machines = 
   {
-    { IP_ADDRESS(192, 168, 1, 8), IP_ADDRESS(192, 168, 1, 113), 2020, 2000, "Win11-AMD-Ryzen-5-5600G", 1  },
-    { IP_ADDRESS(192, 168, 1, 8), IP_ADDRESS(192, 168, 1, 114), 2020, 2000, "Ubuntu20-Intel-Core-i3-10100F", 2  },
-    { IP_ADDRESS(192, 168, 1, 8), IP_ADDRESS(192, 168, 1, 115), 2020, 2000, "MacOS-M1", 3  },
-    { IP_ADDRESS(192, 168, 1, 8), IP_ADDRESS(192, 168, 1, 116), 2020, 2000, "Encoder-Win10-Intel-Core-i5-6400T", 4  },
+    { IP_ADDRESS(192, 168, 1, 5), IP_ADDRESS(192, 168, 1, 113), 2020, 2000, "Win11-AMD-Ryzen-5-5600G", 1  },
+    { IP_ADDRESS(192, 168, 1, 5), IP_ADDRESS(192, 168, 1, 114), 2020, 2000, "Ubuntu20-Intel-Core-i3-10100F", 2  },
+    { IP_ADDRESS(192, 168, 1, 5), IP_ADDRESS(192, 168, 1, 115), 2020, 2000, "MacOS-M1", 3  },
+    { IP_ADDRESS(192, 168, 1, 5), IP_ADDRESS(192, 168, 1, 116), 2020, 2000, "Encoder-Win10-Intel-Core-i5-6400T", 4  },
   };
   return machines;
 }
@@ -42,7 +42,10 @@ static void OnResetPress(u32 id, void* userData);
 static void OnResetRelease(u32 id, void* userData);
 
 static void OnAddMachineDataValid(MachineData& data, void* userData);
+static void OnEditMachineDataValid(MachineData& data, void* userData);
 static void OnAddUICancelClicked(GtkWidget* button, void* userData);
+
+static MachineData& getFirstSelectedMachine();
 
 namespace SKVMOIP
 {
@@ -83,6 +86,8 @@ namespace SKVMOIP
 		void OnEditClicked(GtkWidget* button, void* userData)
 		{
 		  debug_log_info ("Edit button clicked");
+		  AddUI& ui = gMainUI->showAddUI(OnEditMachineDataValid, OnAddUICancelClicked, NULL);
+		  ui.populate(getFirstSelectedMachine());
 		}
 
 		void OnRemoveClicked(GtkWidget* button, void* userData)
@@ -129,13 +134,41 @@ static void OnAddMachineDataValid(MachineData& data, void* userData)
 	  ui.setResetButtonPressCallback(OnResetPress, NULL);
 	  ui.setResetButtonReleaseCallback(OnResetRelease, NULL);
 		gMachineDataList.push_back(data);
+		MachineData& _data = gMachineDataList.back();
+		_data.setID(id);
 
 		gMainUI->hideAddUI();
+}
+
+static OptionalReference<MachineData> getMachineDataFromID(u32 id)
+{
+	auto it = std::find_if(gMachineDataList.begin(), gMachineDataList.end(), [id](MachineData& data) { return data.getID() == id; });
+	if(it == gMachineDataList.end())
+		return { };
+	else
+		return { *it };
+}
+
+static MachineData& getFirstSelectedMachine()
+{
+	u32 selectedID = gSelectedMachines.front();
+	OptionalReference<MachineData> refData = getMachineDataFromID(selectedID);
+	_assert(refData.has_value());
+	return *refData;	
+}
+
+static void OnEditMachineDataValid(MachineData& data, void* userData)
+{
+	getFirstSelectedMachine() = data;
+	gMainUI->hideAddUI();
 }
 
 static void OnMachineSelect(u32 id, void* userData)
 {
 	gSelectedMachines.push_back(id);
+	gMainUI->setConnectButtonActive(true);
+	gMainUI->setEditButtonActive(true);
+	gMainUI->setRemoveButtonActive(true);
 	debug_log_info("%u:%s", id, __FUNCTION__);
 }
 
@@ -144,6 +177,12 @@ static void OnMachineDeselect(u32 id, void* userData)
 	auto it = std::find(gSelectedMachines.begin(), gSelectedMachines.end(), id);
 	assert(it != gSelectedMachines.end());
 	gSelectedMachines.erase(it);
+	if(gSelectedMachines.size() == 0)
+	{
+		gMainUI->setConnectButtonActive(false);
+		gMainUI->setEditButtonActive(false);
+		gMainUI->setRemoveButtonActive(false);
+	}
 	debug_log_info("%u:%s", id, __FUNCTION__);
 }
 
@@ -230,6 +269,7 @@ static void on_activate (GtkApplication *app) {
 		u32 id = gMainUI->createMachine("Dummy Machine");
 		auto& ui = gMainUI->getMachine(id);
 		auto& data = gMachineDataList[i];
+		data.setID(id);
 	    
 	    ui.setName(data.getName());
 	    ui.setOutputAddress(data.getVideoIPAddressStr(), data.getVideoPortNumberStr());

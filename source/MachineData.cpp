@@ -14,7 +14,8 @@ namespace SKVMOIP
 							m_keyMoIPAddress(keyMoIPAddress), 
 							m_videoPortNumber(videoPortNumber), 
 							m_keyMoPortNumber(keyMoPortNumber), 
-							m_videoUSBPortNumber(videoUSBPortNumber)
+							m_videoUSBPortNumber(videoUSBPortNumber),
+                            m_id(0)
   {
     u32 len = strlen(name);
     _assert(len < 255);

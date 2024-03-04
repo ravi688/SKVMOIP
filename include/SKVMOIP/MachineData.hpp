@@ -27,6 +27,8 @@ namespace SKVMOIP
       char m_videoPortNumberStr[PORT_STR_LEN];
       char m_videoUSBPortNumberStr[USB_PORT_STR_LEN];
     
+      u32 m_id;
+
     public:
       MachineData() = default;
       MachineData(u32 videoIPAddress, u32 keyMoIPAddress, u16 videoPortNumber, u16 keyMoPortNumber, const char* name, u8 videoUSBPortNumber = 0) noexcept;
@@ -44,5 +46,8 @@ namespace SKVMOIP
       const char* getVideoPortNumberStr() const noexcept { return m_videoPortNumberStr; }
       const char* getKeyMoPortNumberStr() const noexcept { return m_keyMoPortNumberStr; }
       const char* getVideoUSBPortNumberStr() const noexcept { return m_videoUSBPortNumberStr; }
+
+      void setID(u32 id) noexcept { m_id = id; }
+      u32 getID() const noexcept { return m_id; }
     };
 }

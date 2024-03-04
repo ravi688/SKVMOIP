@@ -16,7 +16,7 @@ namespace SKVMOIP
 {
 	namespace GUI
 	{
-		static std::optional<std::pair<u32, u16>> parseIPAndPort(const char* str)
+		static std::optional<std::pair<std::pair<u32, u16>, std::optional<u8>>> parseIPAndPort(const char* str)
 		{
 			const char* ptr = str;
 			u8 ip[4];
@@ -40,7 +40,14 @@ namespace SKVMOIP
 				/* invalid port number */
 				return { };
 			u16 port = atoi(ptr);
-			return { { BIT32_PACK8(ip[0], ip[1], ip[2], ip[3]), port } };
+
+			ptr = strchr(str, ':');
+			if(ptr != NULL)
+			{
+				u8 usbPort = atoi(ptr);
+				return { { { BIT32_PACK8(ip[0], ip[1], ip[2], ip[3]), port }, { usbPort } } };
+			}
+			return { { { BIT32_PACK8(ip[0], ip[1], ip[2], ip[3]), port }, { } } };
 		}
 
 		static void OkButtonClickCallback(GtkButton* button, gpointer userData)
@@ -52,14 +59,14 @@ namespace SKVMOIP
 			u32 kmoipLen = strlen(kmoipAddrStr);
 			if((voipLen >= IPV4_MIN_STRLEN) && (voipLen <= IPV4_MAX_STRLEN) || (kmoipLen >= IPV4_MIN_STRLEN) && (kmoipLen <= IPV4_MAX_STRLEN))
 			{
-				std::optional<std::pair<u32, u16>> voipAddr = parseIPAndPort(voipAddrStr);
+				std::optional<std::pair<std::pair<u32, u16>, std::optional<u8>>> voipAddr = parseIPAndPort(voipAddrStr);
 				if(!voipAddr.has_value())
 				{
 					/* parse error, either invalid IPV4 address or the port number */
 					debug_log_info("Parse error: Invalid voip IPV4 address or Port Number");
 					return;
 				}
-				std::optional<std::pair<u32, u16>> kmoipAddr = parseIPAndPort(kmoipAddrStr);
+				std::optional<std::pair<std::pair<u32, u16>, std::optional<u8>>> kmoipAddr = parseIPAndPort(kmoipAddrStr);
 				if(!kmoipAddr.has_value())
 				{
 					/* parse error, either invalid IPV4 address or the port number */
@@ -67,7 +74,7 @@ namespace SKVMOIP
 					return;
 				}
 				const char* name = gtk_entry_get_text(GTK_ENTRY(ui.m_nameEntry));
-				MachineData data(voipAddr->first, kmoipAddr->first, voipAddr->second, kmoipAddr->second, name);
+				MachineData data(voipAddr->first.first, kmoipAddr->first.first, voipAddr->first.second, kmoipAddr->first.second, name);
 				ui.m_onAddCallback(data, ui.m_userData);
 			}
 			else 
@@ -127,6 +134,41 @@ namespace SKVMOIP
 		AddUI::~AddUI()
 		{
 			gtk_widget_destroy(m_window);
+		}
+
+		static std::string getCompleteAddress(const char* ipAddress, const char* portNumber, const char* usbNumber)
+		{
+			std::string str;
+			str.append(ipAddress);
+			str.append(":");
+			str.append(portNumber);
+			if(usbNumber != NULL)
+			{
+				str.append(":");
+				str.append(usbNumber);
+			}
+			return str;
+		}
+
+		static inline std::string getVIPAddress(MachineData& data)
+		{
+			return getCompleteAddress(data.getVideoIPAddressStr(), data.getVideoPortNumberStr(), data.getVideoUSBPortNumberStr());
+		}
+      
+      	static inline std::string getKMIPAddress(MachineData& data)
+      	{
+			return getCompleteAddress(data.getKeyMoIPAddressStr(), data.getKeyMoPortNumberStr(), NULL);
+		}
+
+		void AddUI::populate(MachineData& data)
+		{
+			gtk_entry_set_text(GTK_ENTRY(m_nameEntry), data.getName());
+
+			std::string vipAddr = getVIPAddress(data);
+			gtk_entry_set_text(GTK_ENTRY(m_VIPAddrEntry), vipAddr.c_str());
+
+			std::string kmipAddr = getKMIPAddress(data);
+			gtk_entry_set_text(GTK_ENTRY(m_KMIPAddrEntry), kmipAddr.c_str());
 		}
 	}
 }

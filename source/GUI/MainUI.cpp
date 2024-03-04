@@ -48,10 +48,10 @@ namespace SKVMOIP
 		          GtkWidget* textInputField = gtk_entry_new();
 		          GtkWidget* connectStatusLabel = gtk_label_new("");
 		        GtkWidget* buttonCont = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-		        GtkWidget* connectButton = gtk_button_new_with_label("Connect");
+		        GtkWidget* connectButton = m_connectButton = gtk_button_new_with_label("Connect");
 		        GtkWidget* addButton = gtk_button_new_with_label("Add");
-		        GtkWidget* editButton = gtk_button_new_with_label("Edit");
-		        GtkWidget* removeButton = gtk_button_new_with_label("Remove");
+		        GtkWidget* editButton = m_editButton = gtk_button_new_with_label("Edit");
+		        GtkWidget* removeButton = m_removeButton = gtk_button_new_with_label("Remove");
 		    GtkWidget* scrolledWindow = gtk_scrolled_window_new(NULL, NULL);
 		    GtkWidget* bottomCont = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 		
@@ -93,6 +93,10 @@ namespace SKVMOIP
 		  gtk_container_set_border_width(GTK_CONTAINER(window), 10);
 		  gtk_container_add(GTK_CONTAINER(window), topLevelCont);
 		
+
+		  setConnectButtonActive(false);
+		  setEditButtonActive(false);
+		  setRemoveButtonActive(false);
 		
 		  gtk_widget_show_all(window);
 		  gtk_window_present(GTK_WINDOW(window));
@@ -116,14 +120,30 @@ namespace SKVMOIP
 		  return *m_machineUIs[id];
 		}
 
-		void MainUI::showAddUI(void (*onAddCallbackHandler)(MachineData& data, void* userData), void (*onCancelClickhandler)(GtkWidget* button, void* userData), void* userData)
+		AddUI& MainUI::showAddUI(void (*onAddCallbackHandler)(MachineData& data, void* userData), void (*onCancelClickhandler)(GtkWidget* button, void* userData), void* userData)
 		{
 		  m_addUI = std::move(std::unique_ptr<AddUI>(new AddUI(m_window, onAddCallbackHandler, onCancelClickhandler, userData)));
+		  return *m_addUI;
 		}
 
 		void MainUI::hideAddUI()
 		{
 			m_addUI.reset();
+		}
+
+		void MainUI::setConnectButtonActive(bool isActive)
+		{
+			gtk_widget_set_sensitive(m_connectButton, isActive ? TRUE : FALSE);
+		}
+
+		void MainUI::setEditButtonActive(bool isActive)
+		{
+			gtk_widget_set_sensitive(m_editButton, isActive ? TRUE : FALSE);
+		}
+
+		void MainUI::setRemoveButtonActive(bool isActive)
+		{
+			gtk_widget_set_sensitive(m_removeButton, isActive ? TRUE : FALSE);
 		}
 	}
 }
