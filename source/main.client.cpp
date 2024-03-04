@@ -46,6 +46,7 @@ static void OnEditMachineDataValid(MachineData& data, void* userData);
 static void OnAddUICancelClicked(GtkWidget* button, void* userData);
 
 static MachineData& getFirstSelectedMachine();
+static OptionalReference<MachineData> getMachineDataFromID(u32 id);
 
 namespace SKVMOIP
 {
@@ -71,7 +72,9 @@ namespace SKVMOIP
 							SKVMOIP::GUI::MachineUI* muiptr = reinterpret_cast<SKVMOIP::GUI::MachineUI*>(userData);
 							muiptr->setStatus(isUp ? "Status: Connected" : "Status: No Response");
 						}, reinterpret_cast<void*>(&mui));
-						rdp->connect(gMachineDataList[id].getKeyMoIPAddressStr(), gMachineDataList[id].getKeyMoPortNumberStr());
+						OptionalReference<MachineData> data = getMachineDataFromID(id);
+						_assert(data.has_value());
+						rdp->connect(data->getKeyMoIPAddressStr(), data->getKeyMoPortNumberStr());
 					}
 				});
 		}
@@ -163,6 +166,7 @@ static void OnEditMachineDataValid(MachineData& data, void* userData)
 	if(dstData == data)
 	{
 		debug_log_info("Didn't edit anything");
+		gMainUI->hideAddUI();
 		return;
 	}
 	u32 id = dstData.getID();
@@ -212,8 +216,10 @@ static void OnVideoClicked(u32 id, void* userData)
 	}
 	std::unique_ptr<RDPSession>& rdp = it->second;
 
-	std::string ipAddrString(gMachineDataList[id].getVideoIPAddressStr());
-	std::string prtNumString(gMachineDataList[id].getVideoPortNumberStr());
+	OptionalReference<MachineData> data = getMachineDataFromID(id);
+	_assert(data.has_value());
+	std::string ipAddrString(data->getVideoIPAddressStr());
+	std::string prtNumString(data->getVideoPortNumberStr());
 	auto sessionThread = std::thread([](RDPSession* rdp, std::string ipAddress, std::string portNumber)
 	{
 		rdp->start(ipAddress.c_str(), portNumber.c_str());
