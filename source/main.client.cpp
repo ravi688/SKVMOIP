@@ -292,7 +292,7 @@ static void on_activate (GtkApplication *app) {
 		data.setID(id);
 	    
 	    ui.setName(data.getName());
-	    ui.setOutputAddress(data.getVideoIPAddressStr(), data.getVideoPortNumberStr());
+	    ui.setOutputAddress(data.getVideoIPAddressStr(), data.getVideoPortNumberStr(), data.getVideoUSBPortNumberStr());
 	    ui.setInputAddress(data.getKeyMoIPAddressStr(), data.getKeyMoPortNumberStr());
 	    ui.setStatus("Status: Unknown");
 
