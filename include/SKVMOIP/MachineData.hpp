@@ -34,6 +34,8 @@ namespace SKVMOIP
       MachineData(u32 videoIPAddress, u32 keyMoIPAddress, u16 videoPortNumber, u16 keyMoPortNumber, const char* name, u8 videoUSBPortNumber = 0) noexcept;
       ~MachineData() noexcept = default;
     
+      bool operator==(const MachineData& data) const;
+
       u32 getVideoIPAddress() const noexcept { return m_videoIPAddress; }
       u32 getKeyMoIPAddress() const noexcept { return m_keyMoIPAddress; }
       u16 getVideoPortNumber() const noexcept { return m_videoPortNumber; }

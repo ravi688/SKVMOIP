@@ -39,12 +39,12 @@ namespace SKVMOIP
 			if(ptr == NULL)
 				/* invalid port number */
 				return { };
-			u16 port = atoi(ptr);
+			u16 port = atoi(++ptr);
 
-			ptr = strchr(str, ':');
+			ptr = strchr(ptr, ':');
 			if(ptr != NULL)
 			{
-				u8 usbPort = atoi(ptr);
+				u8 usbPort = atoi(++ptr);
 				return { { { BIT32_PACK8(ip[0], ip[1], ip[2], ip[3]), port }, { usbPort } } };
 			}
 			return { { { BIT32_PACK8(ip[0], ip[1], ip[2], ip[3]), port }, { } } };
@@ -74,7 +74,7 @@ namespace SKVMOIP
 					return;
 				}
 				const char* name = gtk_entry_get_text(GTK_ENTRY(ui.m_nameEntry));
-				MachineData data(voipAddr->first.first, kmoipAddr->first.first, voipAddr->first.second, kmoipAddr->first.second, name);
+				MachineData data(voipAddr->first.first, kmoipAddr->first.first, voipAddr->first.second, kmoipAddr->first.second, name, voipAddr->second.value());
 				ui.m_onAddCallback(data, ui.m_userData);
 			}
 			else 

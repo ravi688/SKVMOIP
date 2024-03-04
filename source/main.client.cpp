@@ -159,7 +159,21 @@ static MachineData& getFirstSelectedMachine()
 
 static void OnEditMachineDataValid(MachineData& data, void* userData)
 {
-	getFirstSelectedMachine() = data;
+	MachineData& dstData = getFirstSelectedMachine();
+	if(dstData == data)
+	{
+		debug_log_info("Didn't edit anything");
+		return;
+	}
+	u32 id = dstData.getID();
+	dstData = data;
+	dstData.setID(id);
+	auto& ui = gMainUI->getMachine(id);
+	ui.setName(data.getName());
+	ui.setOutputAddress(data.getVideoIPAddressStr(), data.getVideoPortNumberStr());
+	ui.setInputAddress(data.getKeyMoIPAddressStr(), data.getKeyMoPortNumberStr());
+	ui.setStatus("Status: Unknown");
+
 	gMainUI->hideAddUI();
 }
 
