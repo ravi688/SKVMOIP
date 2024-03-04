@@ -55,6 +55,10 @@ Therefore, I started this project to invent a Scalable KVM Over IP software suit
 8. A Video Encoder server computer (usually a mini PC with enough processing power, more quantitative data will be added here in future).
 9. A client computer either running Windows or Linux.
 
+### GPU Vendor Software Support Requirements
+1. [Nvidia Cuda Toolkit](https://developer.nvidia.com/cuda-downloads)
+2. [Vulkan SDK](https://www.lunarg.com/vulkan-sdk/)
+
 ### How to setup the SKVMOIP?
 Installing and setting up the software suite is easy to follow and requires no special technical knowledge. However, currently only Windows in msys2 environment is supported.
 
@@ -109,7 +113,10 @@ It requires buildilng the installer first and then deploying it to a Windows Cli
 
 - And outputs a `client.exe` executable file
 - Run the application using `./client.exe`
-- Now you must have to first select a machine and click on `Connect` button
+- Now click on `Add` button on the top right, you'll be shown a machine add wizard window
+- Fill in the Machine details, VIP is the Video Server IP address reported by the SKVMOIP server process and the KMIP is the Keyboard Mouse Server IP address which is set to `192.168.1.113:2000`, and click `Ok`<br>
+  ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/e6a9c85c-b5c3-46f8-82ce-840d7d2167d4)
+- After that, select the newly added machine and click on `Connect` button to handshake with both the video and km servers.
 - Once, the connection has been established, you would need to click on `Video` button to start using Remote Desktop.
 - Done!
 
