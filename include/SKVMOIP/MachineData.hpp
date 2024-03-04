@@ -35,6 +35,7 @@ namespace SKVMOIP
       ~MachineData() noexcept = default;
     
       bool operator==(const MachineData& data) const;
+      MachineData& operator=(const MachineData&  data);
 
       u32 getVideoIPAddress() const noexcept { return m_videoIPAddress; }
       u32 getKeyMoIPAddress() const noexcept { return m_keyMoIPAddress; }

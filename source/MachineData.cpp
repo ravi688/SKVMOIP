@@ -52,4 +52,21 @@ namespace SKVMOIP
     bool b12 = strcmp(m_videoUSBPortNumberStr, data.m_videoUSBPortNumberStr) == 0;
     return b1 && b2 && b3 && b4 && b5 && b6 && b7 && b8 && b9 && b10 && b11 && b12;
   }
+
+  MachineData& MachineData::operator=(const MachineData&  data)
+  {
+    m_videoIPAddress == data.m_videoIPAddress;
+    m_keyMoIPAddress == data.m_keyMoIPAddress;
+    m_keyMoPortNumber == data.m_keyMoPortNumber;
+    m_videoPortNumber == data.m_videoPortNumber;
+    m_videoUSBPortNumber == data.m_videoUSBPortNumber;
+    m_nameLength == data.m_nameLength;
+    strcpy(reinterpret_cast<char*>(m_name), reinterpret_cast<const char*>(data.m_name));
+    strcpy(m_videoIPAddressStr, data.m_videoIPAddressStr);
+    strcpy(m_keyMoIPAddressStr, data.m_keyMoIPAddressStr);
+    strcpy(m_keyMoPortNumberStr, data.m_keyMoPortNumberStr);
+    strcpy(m_videoPortNumberStr, data.m_videoPortNumberStr);
+    strcpy(m_videoUSBPortNumberStr, data.m_videoUSBPortNumberStr);
+    return *this;
+  }
 }
