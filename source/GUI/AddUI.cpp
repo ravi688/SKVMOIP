@@ -85,9 +85,17 @@ namespace SKVMOIP
 			}
 		}
 
-		AddUI::AddUI(GtkWidget* parent, void (*onAddCallbackHandler)(MachineData& data, void* userData), void (*onAddUICancelClicked)(GtkWidget* button, void* userData), void* userData) : m_parent(parent), m_onAddCallback(onAddCallbackHandler), m_userData(userData)
+		static gboolean OnWindowDelete(GtkWidget* self, GdkEvent* event, gpointer userData)
+		{
+			AddUI* ui = reinterpret_cast<AddUI*>(userData);
+			ui->m_isValid = false;
+			return FALSE;
+		}
+
+		AddUI::AddUI(GtkWidget* parent, void (*onAddCallbackHandler)(MachineData& data, void* userData), void (*onAddUICancelClicked)(GtkWidget* button, void* userData), void* userData) : m_parent(parent), m_onAddCallback(onAddCallbackHandler), m_userData(userData), m_isValid(true)
 		{
 			m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+			g_signal_connect(G_OBJECT(m_window), "delete-event", G_CALLBACK(OnWindowDelete), reinterpret_cast<void*>(this));
 
 			gtk_window_set_title(GTK_WINDOW(m_window), "Add Machine");
 			gtk_widget_set_size_request(m_window, WINDOW_MIN_SIZE_X, WINDOW_MIN_SIZE_Y);
@@ -133,7 +141,8 @@ namespace SKVMOIP
 
 		AddUI::~AddUI()
 		{
-			gtk_widget_destroy(m_window);
+			if(m_isValid)
+				gtk_widget_destroy(m_window);
 		}
 
 		static std::string getCompleteAddress(const char* ipAddress, const char* portNumber, const char* usbNumber)
