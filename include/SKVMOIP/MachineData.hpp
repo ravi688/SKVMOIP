@@ -8,7 +8,9 @@
 #define IPV4_STR_LEN (15 + 1)
 #define PORT_STR_LEN (5 + 1)
 #define USB_PORT_STR_LEN (3 + 1)
+#define NAME_MAX_LEN 256
 #define IP_ADDRESS(ip1, ip2, ip3, ip4) BIT32_PACK8(ip1, ip2, ip3, ip4)
+
 
 namespace SKVMOIP
 {
@@ -21,7 +23,7 @@ namespace SKVMOIP
       u16 m_videoPortNumber;
       u8 m_videoUSBPortNumber;
       u8 m_nameLength;
-      u8 m_name[255];
+      u8 m_name[NAME_MAX_LEN];
     
       char m_videoIPAddressStr[IPV4_STR_LEN];
       char m_keyMoIPAddressStr[IPV4_STR_LEN];
@@ -58,6 +60,6 @@ namespace SKVMOIP
       u32 getID() const noexcept { return m_id; }
 
       void serialize(std::ostream& stream) const;
-      void deserialize(std::istream& stream);
+      bool deserialize(std::istream& stream);
     };
 }

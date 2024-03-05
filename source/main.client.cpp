@@ -45,8 +45,8 @@ static std::optional<std::vector<MachineData>> GetMachineDataListFromFile(const 
 	while(!file.eof())
 	{
 		MachineData data;
-		data.deserialize(file);
-		machines.push_back(data);
+		if(data.deserialize(file))
+				machines.push_back(data);
 	}
 
 	file.close();

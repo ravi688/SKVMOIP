@@ -90,23 +90,97 @@ namespace SKVMOIP
 
   void MachineData::serialize(std::ostream& stream) const
   {
-    stream << "UINT32 m_videoIPAddress: " << m_videoIPAddress << "\n";
-    stream << "UINT32 m_keyMoIPAddress: " << m_keyMoIPAddress << "\n";
-    stream << "UINT16 m_keyMoPortNumber: " << m_keyMoPortNumber << "\n";
-    stream << "UINT16 m_videoPortNumber: " << m_videoPortNumber << "\n";
-    stream << "UINT8 m_videoUSBPortNumber: " << m_videoUSBPortNumber << "\n";
-    stream << "UINT8[] m_name: " << m_name << "\n";
-    stream << "CHAR[] m_videoIPAddressStr: " << m_videoIPAddressStr << "\n";
-    stream << "CHAR[] m_keyMoIPAddressStr: " << m_keyMoIPAddressStr << "\n";
-    stream << "CHAR[] m_keyMoPortNumberStr: " << m_keyMoPortNumberStr << "\n";
-    stream << "CHAR[] m_videoPortNumberStr: " << m_videoPortNumberStr << "\n";
-    stream << "CHAR[] m_videoUSBPortNumberStr: " << m_videoUSBPortNumberStr << "\n";
+    stream << "{\n";
+    stream << "\tUINT32 m_videoIPAddress: " << m_videoIPAddress << "\n";
+    stream << "\tUINT32 m_keyMoIPAddress: " << m_keyMoIPAddress << "\n";
+    stream << "\tUINT16 m_keyMoPortNumber: " << m_keyMoPortNumber << "\n";
+    stream << "\tUINT16 m_videoPortNumber: " << m_videoPortNumber << "\n";
+    stream << "\tUINT8 m_videoUSBPortNumber: " << static_cast<u16>(m_videoUSBPortNumber) << "\n";
+    stream << "\tUINT8[] m_name: " << m_name << "\n";
+    stream << "\tCHAR[] m_videoIPAddressStr: " << m_videoIPAddressStr << "\n";
+    stream << "\tCHAR[] m_keyMoIPAddressStr: " << m_keyMoIPAddressStr << "\n";
+    stream << "\tCHAR[] m_keyMoPortNumberStr: " << m_keyMoPortNumberStr << "\n";
+    stream << "\tCHAR[] m_videoPortNumberStr: " << m_videoPortNumberStr << "\n";
+    stream << "\tCHAR[] m_videoUSBPortNumberStr: " << m_videoUSBPortNumberStr << "\n";
+    stream << "}\n";
     stream.flush();
   }
-  
-  void MachineData::deserialize(std::istream& stream)
+
+  static bool strnequal(const char* buffer, const char* const literal, u32* const outLen)
   {
+    *outLen = strlen(literal);
+    return strncmp(buffer, literal, *outLen) == 0;
+  }
+  
+  bool MachineData::deserialize(std::istream& stream)
+  {
+    char buffer[512];
+    u32 len;
+
+    stream.getline(buffer, 512);
+    if(!strnequal(buffer, "{", &len))
+      return false;
+
+    stream.getline(buffer, 512);
+    if(!strnequal(buffer, "\tUINT32 m_videoIPAddress: ", &len))
+      return false;
+    m_videoIPAddress = atoi(buffer + len);
+
+    stream.getline(buffer, 512);
+    if(!strnequal(buffer, "\tUINT32 m_keyMoIPAddress: ", &len))
+      return false;
+    m_keyMoIPAddress = atoi(buffer + len);
+
+    stream.getline(buffer, 512);
+    if(!strnequal(buffer, "\tUINT16 m_keyMoPortNumber: ", &len))
+      return false;
+    m_keyMoPortNumber = atoi(buffer + len);
+
+    stream.getline(buffer, 512);
+    if(!strnequal(buffer, "\tUINT16 m_videoPortNumber: ", &len))
+      return false;
+    m_videoPortNumber = atoi(buffer + len);
+
+    stream.getline(buffer, 512);
+    if(!strnequal(buffer, "\tUINT8 m_videoUSBPortNumber: ", &len))
+      return false;
+    m_videoUSBPortNumber = atoi(buffer + len);
+
+    stream.getline(buffer, 512);
+    if(!strnequal(buffer, "\tUINT8[] m_name: ", &len))
+      return false;
+    strncpy(reinterpret_cast<char*>(m_name), buffer + len, NAME_MAX_LEN);
+
+    stream.getline(buffer, 512);
+    if(!strnequal(buffer, "\tCHAR[] m_videoIPAddressStr: ", &len))
+      return false;
+    strncpy(m_videoIPAddressStr, buffer + len, IPV4_STR_LEN);
     
+    stream.getline(buffer, 512);
+    if(!strnequal(buffer, "\tCHAR[] m_keyMoIPAddressStr: ", &len))
+      return false;
+    strncpy(m_keyMoIPAddressStr, buffer + len, IPV4_STR_LEN);
+    
+    stream.getline(buffer, 512);
+    if(!strnequal(buffer, "\tCHAR[] m_keyMoPortNumberStr: ", &len))
+      return false;
+    strncpy(m_keyMoPortNumberStr, buffer + len, PORT_STR_LEN);
+    
+    stream.getline(buffer, 512);
+    if(!strnequal(buffer, "\tCHAR[] m_videoPortNumberStr: ", &len))
+      return false;
+    strncpy(m_videoPortNumberStr, buffer + len, PORT_STR_LEN);
+    
+    stream.getline(buffer, 512);
+    if(!strnequal(buffer, "\tCHAR[] m_videoUSBPortNumberStr: ", &len))
+      return false;
+    strncpy(m_videoUSBPortNumberStr, buffer + len, USB_PORT_STR_LEN);
+
+    stream.getline(buffer, 512);
+    if(!strnequal(buffer, "}", &len))
+      return false;
+
+    return true;
   }
 
   static std::optional<std::pair<std::pair<u32, u16>, std::optional<u8>>> ParseIPAndPort(const char* str)
