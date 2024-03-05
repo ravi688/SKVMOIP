@@ -155,6 +155,10 @@ namespace SKVMOIP
 
 		  	/* Remove the machine's UI from the dashboard */
 		  	gMainUI->removeMachine(id);
+		  	gMachineDataList.erase(std::find_if(gMachineDataList.begin(), gMachineDataList.end(), [id](MachineData& data) { return data.getID() == id; }));
+		  	#ifdef USE_PERSISTENT_SETTINGS
+		  	SerializeMachineDataListToFile(gMachineDataList, PERSISTENT_DATA_FILE_PATH);
+		  	#endif
 		  }
 		  gSelectedMachines.clear();
 		}
