@@ -2,6 +2,9 @@
 #include <SKVMOIP/assert.h>
 #include <cstring>
 
+static u32 constexpr IPV4_MAX_STRLEN = strlen("255.255.255.255:65535");
+static u32 constexpr IPV4_MIN_STRLEN = strlen("0.0.0.0:0");
+
 namespace SKVMOIP
 {
 	MachineData::MachineData(u32 videoIPAddress, 
@@ -69,4 +72,101 @@ namespace SKVMOIP
     strcpy(m_videoUSBPortNumberStr, data.m_videoUSBPortNumberStr);
     return *this;
   }
+
+      u32 m_videoIPAddress;
+      u32 m_keyMoIPAddress;
+      u16 m_keyMoPortNumber;
+      u16 m_videoPortNumber;
+      u8 m_videoUSBPortNumber;
+      u8 m_nameLength;
+      u8 m_name[255];
+    
+      char m_videoIPAddressStr[IPV4_STR_LEN];
+      char m_keyMoIPAddressStr[IPV4_STR_LEN];
+      char m_keyMoPortNumberStr[PORT_STR_LEN];
+      char m_videoPortNumberStr[PORT_STR_LEN];
+      char m_videoUSBPortNumberStr[USB_PORT_STR_LEN];
+    
+
+  void MachineData::serialize(std::ostream& stream) const
+  {
+    stream << "UINT32 m_videoIPAddress: " << m_videoIPAddress << "\n";
+    stream << "UINT32 m_keyMoIPAddress: " << m_keyMoIPAddress << "\n";
+    stream << "UINT16 m_keyMoPortNumber: " << m_keyMoPortNumber << "\n";
+    stream << "UINT16 m_videoPortNumber: " << m_videoPortNumber << "\n";
+    stream << "UINT8 m_videoUSBPortNumber: " << m_videoUSBPortNumber << "\n";
+    stream << "UINT8[] m_name: " << m_name << "\n";
+    stream << "CHAR[] m_videoIPAddressStr: " << m_videoIPAddressStr << "\n";
+    stream << "CHAR[] m_keyMoIPAddressStr: " << m_keyMoIPAddressStr << "\n";
+    stream << "CHAR[] m_keyMoPortNumberStr: " << m_keyMoPortNumberStr << "\n";
+    stream << "CHAR[] m_videoPortNumberStr: " << m_videoPortNumberStr << "\n";
+    stream << "CHAR[] m_videoUSBPortNumberStr: " << m_videoUSBPortNumberStr << "\n";
+    stream.flush();
+  }
+  
+  void MachineData::deserialize(std::istream& stream)
+  {
+    
+  }
+
+  static std::optional<std::pair<std::pair<u32, u16>, std::optional<u8>>> ParseIPAndPort(const char* str)
+  {
+    const char* ptr = str;
+    u8 ip[4];
+    for(u32 i = 0; i < 4; i++)
+    {
+      ip[i] = atoi(ptr);
+      ptr = strchr(ptr, '.');
+      if(ptr == NULL)
+      {
+        if(i == 3)
+          break;
+        else
+          /* invalid IPv4 address */
+          return { };
+      }
+      else ++ptr;
+    }
+      
+    ptr = strchr(str, ':');
+    if(ptr == NULL)
+      /* invalid port number */
+      return { };
+    u16 port = atoi(++ptr);
+
+    ptr = strchr(ptr, ':');
+    if(ptr != NULL)
+    {
+      u8 usbPort = atoi(++ptr);
+      return { { { BIT32_PACK8(ip[0], ip[1], ip[2], ip[3]), port }, { usbPort } } };
+    }
+    return { { { BIT32_PACK8(ip[0], ip[1], ip[2], ip[3]), port }, { } } };
+  }
+
+  std::optional<MachineData> MachineData::CreateFromStr(const char* voipAddrStr, const char* kmoipAddrStr, const char* name)
+  {
+    u32 voipLen = strlen(voipAddrStr);
+    u32 kmoipLen = strlen(kmoipAddrStr);
+    if((voipLen >= IPV4_MIN_STRLEN) && (voipLen <= IPV4_MAX_STRLEN) || (kmoipLen >= IPV4_MIN_STRLEN) && (kmoipLen <= IPV4_MAX_STRLEN))
+    {
+      std::optional<std::pair<std::pair<u32, u16>, std::optional<u8>>> voipAddr = ParseIPAndPort(voipAddrStr);
+      if(!voipAddr.has_value())
+      {
+        /* parse error, either invalid IPV4 address or the port number */
+        debug_log_info("Parse error: Invalid voip IPV4 address or Port Number");
+        return { };
+      }
+      std::optional<std::pair<std::pair<u32, u16>, std::optional<u8>>> kmoipAddr = ParseIPAndPort(kmoipAddrStr);
+      if(!kmoipAddr.has_value())
+      {
+        /* parse error, either invalid IPV4 address or the port number */
+        debug_log_info("Parse error: Invalid kmoip IPV4 address or Port Number");
+        return { };
+      }
+      MachineData data(voipAddr->first.first, kmoipAddr->first.first, voipAddr->first.second, kmoipAddr->first.second, name, voipAddr->second.value());
+      return  { data };
+    }
+    return { };
+  }
+
 }

@@ -14,6 +14,9 @@
 #include <SKVMOIP/RDPSession.hpp>
 
 
+#define PERSISTENT_DATA_FILE_PATH "./.data"
+
+
 using namespace SKVMOIP;
 
 static std::vector<MachineData> GetMachineDataListFromServer()
@@ -26,6 +29,49 @@ static std::vector<MachineData> GetMachineDataListFromServer()
     { IP_ADDRESS(192, 168, 1, 5), IP_ADDRESS(192, 168, 1, 116), 2020, 2000, "Encoder-Win10-Intel-Core-i5-6400T", 4  },
   };
   return machines;
+}
+
+static std::optional<std::vector<MachineData>> GetMachineDataListFromFile(const char* fileName)
+{
+	std::fstream file;
+	file.open(fileName, std::ios::in);
+	if(!file.is_open())
+	{
+		DEBUG_LOG_INFO("Failed to open file: %s", fileName);
+		return { };
+	}
+
+	std::vector<MachineData> machines;
+	while(!file.eof())
+	{
+		MachineData data;
+		data.deserialize(file);
+		machines.push_back(data);
+	}
+
+	file.close();
+
+	if(machines.size() == 0)
+		return { };
+	else return { machines };
+}
+
+static void SerializeMachineDataListToFile(const std::vector<MachineData>& data, const char* fileName)
+{
+	std::fstream file;
+	file.open(fileName, std::ios::trunc | std::ios::out);
+	if(!file.is_open())
+	{
+		DEBUG_LOG_ERROR("Failed to open file: %s", fileName);
+		return;
+	}
+
+	for(const MachineData& data : data)
+	{
+		data.serialize(file);
+	}
+
+	file.close();
 }
 
 static std::vector<MachineData> gMachineDataList;
@@ -126,7 +172,7 @@ static void OnAddMachineDataValid(MachineData& data, void* userData)
 		auto& ui = gMainUI->getMachine(id);
 	    
 	  ui.setName(data.getName());
-	  ui.setOutputAddress(data.getVideoIPAddressStr(), data.getVideoPortNumberStr());
+	  ui.setOutputAddress(data.getVideoIPAddressStr(), data.getVideoPortNumberStr(), data.getVideoUSBPortNumberStr());
 	  ui.setInputAddress(data.getKeyMoIPAddressStr(), data.getKeyMoPortNumberStr());
 	  ui.setStatus("Status: Unknown");
 
@@ -137,6 +183,9 @@ static void OnAddMachineDataValid(MachineData& data, void* userData)
 	  ui.setResetButtonPressCallback(OnResetPress, NULL);
 	  ui.setResetButtonReleaseCallback(OnResetRelease, NULL);
 		gMachineDataList.push_back(data);
+#ifdef USE_PERSISTENT_SETTINGS
+		SerializeMachineDataListToFile(gMachineDataList, PERSISTENT_DATA_FILE_PATH);
+#endif
 		MachineData& _data = gMachineDataList.back();
 		_data.setID(id);
 
@@ -174,9 +223,13 @@ static void OnEditMachineDataValid(MachineData& data, void* userData)
 	dstData.setID(id);
 	auto& ui = gMainUI->getMachine(id);
 	ui.setName(data.getName());
-	ui.setOutputAddress(data.getVideoIPAddressStr(), data.getVideoPortNumberStr());
+	ui.setOutputAddress(data.getVideoIPAddressStr(), data.getVideoPortNumberStr(), data.getVideoUSBPortNumberStr());
 	ui.setInputAddress(data.getKeyMoIPAddressStr(), data.getKeyMoPortNumberStr());
 	ui.setStatus("Status: Unknown");
+
+#ifdef USE_PERSISTENT_SETTINGS
+	SerializeMachineDataListToFile(gMachineDataList, PERSISTENT_DATA_FILE_PATH);
+#endif
 
 	gMainUI->hideAddUI();
 }
@@ -283,7 +336,19 @@ static void on_activate (GtkApplication *app) {
 	gMainUI = std::move(std::unique_ptr<SKVMOIP::GUI::MainUI>(new SKVMOIP::GUI::MainUI(app)));
 	gActiveSessions = new std::unordered_map<u32, std::unique_ptr<RDPSession>>();
 
+#ifdef USE_PERSISTENT_SETTINGS
+	std::optional<std::vector<MachineData>> dataList = GetMachineDataListFromFile(PERSISTENT_DATA_FILE_PATH);
+	if(dataList.has_value())
+		gMachineDataList = *dataList;
+	else
+	{
+		DEBUG_LOG_WARNING("No machine data found; either unable to open the file \"%s\", or no machine had been added in previou session", PERSISTENT_DATA_FILE_PATH);
+		gMachineDataList = GetMachineDataListFromServer();
+	}
+#else
 	gMachineDataList = GetMachineDataListFromServer();
+#endif
+
 	for(std::size_t i = 0; i < gMachineDataList.size(); i++)
 	{
 		u32 id = gMainUI->createMachine("Dummy Machine");
@@ -313,6 +378,9 @@ int main (int argc, char *argv[])
 	Win32::DisplayRawInputDeviceList();
 	Win32::RegisterRawInputDevices({ Win32::RawInputDeviceType::Mouse, Win32::RawInputDeviceType::Keyboard });
 	bool result = g_application_run (G_APPLICATION (app), argc, argv);
+#ifdef USE_PERSISTENT_SETTINGS
+	SerializeMachineDataListToFile(gMachineDataList, PERSISTENT_DATA_FILE_PATH);
+#endif
 	delete gActiveSessions;
 	Win32::DeinitializeMediaFoundationAndCOM();
 	return result;

@@ -7,76 +7,18 @@
 #define	WINDOW_DEF_SIZE_X WINDOW_MIN_SIZE_X
 #define WINDOW_DEF_SIZE_Y WINDOW_MIN_SIZE_Y
 
-
-static u32 constexpr IPV4_MAX_STRLEN = strlen("255.255.255.255:65535");
-static u32 constexpr IPV4_MIN_STRLEN = strlen("0.0.0.0:0");
-
-
 namespace SKVMOIP
 {
 	namespace GUI
 	{
-		static std::optional<std::pair<std::pair<u32, u16>, std::optional<u8>>> parseIPAndPort(const char* str)
-		{
-			const char* ptr = str;
-			u8 ip[4];
-			for(u32 i = 0; i < 4; i++)
-			{
-				ip[i] = atoi(ptr);
-				ptr = strchr(ptr, '.');
-				if(ptr == NULL)
-				{
-					if(i == 3)
-						break;
-					else
-						/* invalid IPv4 address */
-						return { };
-				}
-				else ++ptr;
-			}
-				
-			ptr = strchr(str, ':');
-			if(ptr == NULL)
-				/* invalid port number */
-				return { };
-			u16 port = atoi(++ptr);
-
-			ptr = strchr(ptr, ':');
-			if(ptr != NULL)
-			{
-				u8 usbPort = atoi(++ptr);
-				return { { { BIT32_PACK8(ip[0], ip[1], ip[2], ip[3]), port }, { usbPort } } };
-			}
-			return { { { BIT32_PACK8(ip[0], ip[1], ip[2], ip[3]), port }, { } } };
-		}
-
 		static void OkButtonClickCallback(GtkButton* button, gpointer userData)
 		{
 			auto& ui = *reinterpret_cast<AddUI*>(userData);
-			const char* voipAddrStr = gtk_entry_get_text(GTK_ENTRY(ui.m_VIPAddrEntry));
-			const char* kmoipAddrStr = gtk_entry_get_text(GTK_ENTRY(ui.m_KMIPAddrEntry));
-			u32 voipLen = strlen(voipAddrStr);
-			u32 kmoipLen = strlen(kmoipAddrStr);
-			if((voipLen >= IPV4_MIN_STRLEN) && (voipLen <= IPV4_MAX_STRLEN) || (kmoipLen >= IPV4_MIN_STRLEN) && (kmoipLen <= IPV4_MAX_STRLEN))
-			{
-				std::optional<std::pair<std::pair<u32, u16>, std::optional<u8>>> voipAddr = parseIPAndPort(voipAddrStr);
-				if(!voipAddr.has_value())
-				{
-					/* parse error, either invalid IPV4 address or the port number */
-					debug_log_info("Parse error: Invalid voip IPV4 address or Port Number");
-					return;
-				}
-				std::optional<std::pair<std::pair<u32, u16>, std::optional<u8>>> kmoipAddr = parseIPAndPort(kmoipAddrStr);
-				if(!kmoipAddr.has_value())
-				{
-					/* parse error, either invalid IPV4 address or the port number */
-					debug_log_info("Parse error: Invalid kmoip IPV4 address or Port Number");
-					return;
-				}
-				const char* name = gtk_entry_get_text(GTK_ENTRY(ui.m_nameEntry));
-				MachineData data(voipAddr->first.first, kmoipAddr->first.first, voipAddr->first.second, kmoipAddr->first.second, name, voipAddr->second.value());
-				ui.m_onAddCallback(data, ui.m_userData);
-			}
+			std::optional<MachineData> data = MachineData::CreateFromStr(gtk_entry_get_text(GTK_ENTRY(ui.m_VIPAddrEntry)),
+																	   gtk_entry_get_text(GTK_ENTRY(ui.m_KMIPAddrEntry)),
+																	   gtk_entry_get_text(GTK_ENTRY(ui.m_nameEntry)));
+			if(data.has_value())
+				ui.m_onAddCallback(data.value(), ui.m_userData);
 			else 
 			{
 				/* TODO: show error window */

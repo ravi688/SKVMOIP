@@ -1,6 +1,8 @@
 #pragma once
 
 #include <SKVMOIP/defines.hpp>
+#include <optional>
+#include <iostream>
 
 // "192.168.104.105"
 #define IPV4_STR_LEN (15 + 1)
@@ -33,6 +35,8 @@ namespace SKVMOIP
       MachineData() = default;
       MachineData(u32 videoIPAddress, u32 keyMoIPAddress, u16 videoPortNumber, u16 keyMoPortNumber, const char* name, u8 videoUSBPortNumber = 0) noexcept;
       ~MachineData() noexcept = default;
+
+      static std::optional<MachineData> CreateFromStr(const char* voipAddrStr, const char* kmoipAddrStr, const char* name);
     
       bool operator==(const MachineData& data) const;
       MachineData& operator=(const MachineData&  data);
@@ -52,5 +56,8 @@ namespace SKVMOIP
 
       void setID(u32 id) noexcept { m_id = id; }
       u32 getID() const noexcept { return m_id; }
+
+      void serialize(std::ostream& stream) const;
+      void deserialize(std::istream& stream);
     };
 }
