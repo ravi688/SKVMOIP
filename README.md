@@ -123,6 +123,10 @@ It requires buildilng the installer first and then deploying it to a Windows Cli
 #### Setting up client For Linux
 In-Progress
 
+#### Keyboard Shortcuts while using the Client Software
+1. **Ctrl + Alt + Enter** -> toggle Fullscreen; by default, when a session starts the window opens in full screen mode. You can switch back to a Windowed mode by pressing Ctrl + Alt + Enter in order.
+2. **Ctrl + Alt + K** -> toggle focus and cursor lock; by default, when a session starts the cursor is locked and invisible so that you can easily work on the remote Computer. You can get out of that by pressing Ctrl + Alt + K in order.
+
 ### TODO
 1. Add HDMI Routing over IP support to scale Video Over IP across local networks (as LANs are very fast, can handle the RAW HDMI data).'
 2. Add support for USB Mass Storage over IP to enable the host computer boot from a remote USB flash drive or Computer acting as a USB flash drive. However, PXE boot already exists.
