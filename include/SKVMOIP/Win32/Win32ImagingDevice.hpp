@@ -48,6 +48,7 @@ namespace Win32
 		void destroy();
 		std::optional<Win32SourceDevice> activateDevice(u32 index);
 		u32 getDeviceCount() const noexcept { return m_count; }
+		IMFActivateList getActivateList() noexcept { return m_activateList; }
 	};
 
 	class Win32SourceDeviceListGuard : public Win32SourceDeviceList
@@ -63,4 +64,5 @@ namespace Win32
 	};
 
 	SKVMOIP_API std::optional<Win32SourceDeviceListGuard> Win32GetSourceDeviceList(const GUID& deviceGUID);
+	SKVMOIP_API void Win32DumpSourceDevices(Win32SourceDeviceList& list);
 }

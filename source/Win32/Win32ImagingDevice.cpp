@@ -100,4 +100,45 @@ namespace Win32
 
     	return std::optional<Win32SourceDeviceListGuard> { };
     }
+
+    SKVMOIP_API void Win32DumpSourceDevices(Win32SourceDeviceList& list)
+    {
+    	IMFActivateList activateList = list.getActivateList();
+    	wchar_t* str = new wchar_t[1024];
+    	for(u32 i = 0; i < list.getDeviceCount(); i++)
+    	{
+    		IMFActivate* activate = activateList[i];
+    		UINT32 len;
+    		if(activate->GetString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, str, 1024, &len) == S_OK)
+    		{
+    			/* convert the wchar string to char string */
+    			char str2[len + 1] = { };
+    			for(u32 j = 0; j < len; j++)
+    				str2[j] = str[j];
+
+    			DEBUG_LOG_INFO("[%lu] Friendly Name: %s", i, str2);
+    		}
+    		else
+    			DEBUG_LOG_ERROR("[%lu] Friendly Name: Failed to determine", i);
+
+    		if(activate->GetString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK, str, 1024, &len) == S_OK)
+    		{
+    			/* convert the wchar string to char string */
+    			char str2[len + 1] = { };
+    			for(u32 j = 0; j < len; j++)
+    				str2[j] = str[j];
+
+    			DEBUG_LOG_INFO("[%lu] Symbolic Link: %s", i, str2);
+    		}
+    		else
+    			DEBUG_LOG_ERROR("[%lu] Symbolic Link: Failed to determine", i);
+
+    		UINT32 isHardware = 0;
+    		if(activate->GetUINT32(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_HW_SOURCE, &isHardware) == S_OK)
+    			DEBUG_LOG_INFO("[%lu] Hardware: %s", i, isHardware ? "True" : "False");
+    		else
+    			DEBUG_LOG_INFO("[%lu] Hardware: Failed to determine", i);
+    	}
+    	delete[] str;
+    }
 }

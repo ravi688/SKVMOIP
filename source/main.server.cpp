@@ -83,6 +83,7 @@ int main(int argc, const char* argv[])
 	}
  
  	DEBUG_LOG_INFO("Devices Found: %u", deviceList->getDeviceCount());
+	Win32::Win32DumpSourceDevices(*deviceList);
 
  	/* Populate the std::vector with the available device ids - in this (initially) case, all devices would be available */
 	gAvailableDevices.reserve(deviceList->getDeviceCount());
