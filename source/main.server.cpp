@@ -14,12 +14,15 @@
 #include <memory>
 #include <atomic>
 #include <chrono>
+#include <fstream>
 
 #include <conio.h>
+#include <ctype.h> // isdigit
 
 #define LISTEN_PORT_NUMBER "2020"
 #define MAX_CONNECTIONS 4
 #define DEVICE_RELEASE_COOL_DOWN_TIME 4000 /* 4 seconds */
+#define PERSISTENT_DATA_FILE_PATH "./.data"
 
 static std::atomic<u32> gNumConnections = 0;
 
@@ -46,6 +49,45 @@ const char* GetLocalIPAddress()
    return IP;
 }
 
+static std::optional<std::vector<std::string>> ReadStringsFromFile(const char* file)
+{
+	std::fstream stream;
+	stream.open(file, std::ios::in);
+
+	if(!stream.is_open())
+		return { };
+
+	std::vector<std::string> strings;
+
+	char buffer[1024] = { };
+	while(!stream.eof())
+	{
+		stream.getline(buffer, 1024);
+		strings.push_back(std::string(buffer));
+	}
+	stream.close();
+	return { strings };
+}
+
+static void WriteStringsToFile(const std::vector<std::string>& strings, const char* file)
+{
+	std::fstream stream;
+	stream.open(file, std::ios::out);
+
+	if(!stream.is_open())
+	{
+		DEBUG_LOG_ERROR("Failed to write strings, Reason: Failed to open the file %s", file);
+		return;
+	}
+	
+	for(const std::string& str : strings)
+	{
+		stream.write(str.c_str(), str.size());
+		stream << '\n';
+	}
+	stream.close();
+}
+
 /* 
 
 ReadSample: 5 ms to 11 ms
@@ -70,8 +112,51 @@ Expected Total (after GPU program): { 14 ms, 29 ms }
 
 */
 
+static void PrintHelp()
+{
+	DEBUG_LOG_INFO("Correct usage: ./server <port number>\n"
+						"\tExample usage: ./server 2000\n");
+}
+
+struct CmdOptions
+{
+	const char* portNumberStr;
+	u16 portNumber;
+};
+
+static bool IsPositiveInteger(const char* str)
+{
+	u32 len = strlen(str);
+	for(u32 i = 0; i < len; i++)
+		if(!isdigit(str[i]))
+			return false;
+	return true;
+}
+
+static std::optional<CmdOptions>	ParseCmdOptions(int argc, const char* argv[])
+{
+	CmdOptions options = { LISTEN_PORT_NUMBER, static_cast<u16>(atoi(LISTEN_PORT_NUMBER)) };
+	if(argc <= 1)
+		return { options };
+
+	const char* arg = argv[1];
+	if(!IsPositiveInteger(arg))
+	{
+		DEBUG_LOG_ERROR("Invalid portNumber");
+		PrintHelp();
+		return { };
+	}
+	options.portNumberStr = arg;
+	options.portNumber = atoi(arg);
+	return { options };
+}
+
 int main(int argc, const char* argv[])
 {
+	std::optional<CmdOptions> cmdOptions = ParseCmdOptions(argc, argv);
+	if(!cmdOptions.has_value())
+		return -1;
+
 	Win32::InitializeMediaFundationAndCOM();
 	debug_log_info("Platform is Windows");
 
@@ -98,15 +183,15 @@ int main(int argc, const char* argv[])
 	}
 
 	Network::Socket listenSocket(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP);
-	if(listenSocket.bind(listenIPAddress, LISTEN_PORT_NUMBER) != Network::Result::Success)
+	if(listenSocket.bind(listenIPAddress, cmdOptions->portNumberStr) != Network::Result::Success)
 	{
-		debug_log_error("Failed to bind list socket to %s:%s", listenIPAddress, LISTEN_PORT_NUMBER);
+		debug_log_error("Failed to bind list socket to %s:%s", listenIPAddress, cmdOptions->portNumberStr);
 		return 1;
 	}
 
 	do
 	{
-		DEBUG_LOG_INFO("Listening on %s:%s", listenIPAddress, LISTEN_PORT_NUMBER);
+		DEBUG_LOG_INFO("Listening on %s:%s", listenIPAddress, cmdOptions->portNumberStr);
 		auto result = listenSocket.listen();
 		if(result != Network::Result::Success)
 		{
