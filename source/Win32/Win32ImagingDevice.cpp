@@ -67,6 +67,38 @@ namespace Win32
     	return { Win32SourceDevice(pSource, index) };
     }
 
+    std::optional<std::string> Win32SourceDeviceList::getSymbolicLink(u32 index)
+    {
+    	wchar_t* wstr = new wchar_t[1024];
+    	IMFActivate* activate = m_activateList[index];
+    	UINT32 len;
+    	if(activate->GetString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK, wstr, 1024, &len) == S_OK)
+    	{
+    		std::string str;
+    		str.reserve(len);
+    		for(u32 i = 0; i < len; i++)
+    			str.append(1, static_cast<char>(wstr[i]));
+    		delete[] wstr;
+    		return { str };
+    	}
+    	delete[] wstr;
+    	DEBUG_LOG_ERROR("Failed to get symblic link for device at index: %lu", index);
+    	return { };
+    }
+
+    std::unordered_map<std::string, u32> Win32SourceDeviceList::getSymolicLinkToDeviceIDMap()
+    {
+    	std::unordered_map<std::string, u32> map;
+    	u32 count = getDeviceCount();
+    	map.reserve(count);
+    	for(u32 i = 0; i < count; i++)
+    	{
+    		std::optional<std::string> result = getSymbolicLink(i);
+    		if(result.has_value())
+    			map.insert({ *result, i });
+    	}
+    	return map;
+    }
 	
 	Win32SourceDeviceListGuard::Win32SourceDeviceListGuard(IMFActivateList& activateList, UINT32 count) : Win32SourceDeviceList(activateList, count) { }
 

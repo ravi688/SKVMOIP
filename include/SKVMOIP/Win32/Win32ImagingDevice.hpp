@@ -3,6 +3,8 @@
 #include <SKVMOIP/defines.hpp>
 
 #include <optional>
+#include <string>
+#include <unordered_map>
 
 #include <mfapi.h>
 #include <mfidl.h>
@@ -49,6 +51,8 @@ namespace Win32
 		std::optional<Win32SourceDevice> activateDevice(u32 index);
 		u32 getDeviceCount() const noexcept { return m_count; }
 		IMFActivateList getActivateList() noexcept { return m_activateList; }
+		std::optional<std::string> getSymbolicLink(u32 index);
+		std::unordered_map<std::string, u32> getSymolicLinkToDeviceIDMap();
 	};
 
 	class Win32SourceDeviceListGuard : public Win32SourceDeviceList

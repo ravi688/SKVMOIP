@@ -28,6 +28,7 @@ static std::atomic<u32> gNumConnections = 0;
 
 static std::mutex gMutex;
 static std::vector<u32> gAvailableDevices;
+static std::unordered_map<u32, u32> gDeviceIDMap;
 
 using namespace SKVMOIP;
 
@@ -63,9 +64,12 @@ static std::optional<std::vector<std::string>> ReadStringsFromFile(const char* f
 	while(!stream.eof())
 	{
 		stream.getline(buffer, 1024);
-		strings.push_back(std::string(buffer));
+		if(strlen(buffer) > 0)
+			strings.push_back(std::string(buffer));
 	}
 	stream.close();
+	if(strings.size() == 0)
+		return { };
 	return { strings };
 }
 
@@ -151,6 +155,80 @@ static std::optional<CmdOptions>	ParseCmdOptions(int argc, const char* argv[])
 	return { options };
 }
 
+/*
+
+  // prev ordering, from file
+  0 --> abcd0
+  1 --> abcd1
+  2 --> abcd2
+  3 --> abcd3
+  4 --> abcd4
+
+  // new ordering
+  0 --> abcd1
+  1 --> abcd0
+  2 --> abcd2
+  3 --> abcd4
+  4 --> abcd3
+
+  // Final Mapping
+  0 --> 1
+  1 --> 0
+  2 --> 2
+  3 --> 4
+  4 --> 3
+
+*/
+static std::unordered_map<u32, u32> GetDeviceMap(Win32::Win32SourceDeviceList& list)
+{
+	std::unordered_map<u32, u32> map;
+	std::optional<std::vector<std::string>> result = ReadStringsFromFile(PERSISTENT_DATA_FILE_PATH);
+	if(result.has_value())
+	{
+		std::unordered_map<std::string, u32> newMap = list.getSymolicLinkToDeviceIDMap();
+		const std::vector<std::string>& strings = result.value();
+		if(strings.size() >= newMap.size())
+		{
+			bool isMapped = true;
+			for(u32 i = 0; i < strings.size(); i++)
+			{
+				const std::string& str = strings[i];
+				auto it = newMap.find(str);
+				if(it != newMap.end())
+					map.insert({ i, it->second });
+				else
+				{
+					DEBUG_LOG_WARNING("A device is not present with symbolic id: %s", str.c_str());
+					map.clear();
+					isMapped = false;
+					break;
+				}
+			}
+			if(isMapped)
+				return map;
+		}
+	}
+	DEBUG_LOG_INFO("Using default device mapping");
+	std::vector<std::string> strings;
+	strings.reserve(list.getDeviceCount());
+	for(u32 i = 0; i < list.getDeviceCount(); i++)
+	{
+		std::optional<std::string> str = list.getSymbolicLink(i);
+		if(str.has_value())
+			strings.push_back(*str);
+		map.insert({ i, i });
+	}
+	WriteStringsToFile(strings, PERSISTENT_DATA_FILE_PATH);
+	return map;
+}
+
+static void DumpDeviceMap(const std::unordered_map<u32, u32>& map)
+{
+	for(const std::pair<u32, u32>& pair : map)
+		DEBUG_LOG_INFO("Device: %lu --> %lu", pair.first, pair.second);
+}
+
+
 int main(int argc, const char* argv[])
 {
 	std::optional<CmdOptions> cmdOptions = ParseCmdOptions(argc, argv);
@@ -174,6 +252,9 @@ int main(int argc, const char* argv[])
 	gAvailableDevices.reserve(deviceList->getDeviceCount());
 	for(s32 i = deviceList->getDeviceCount() - 1; i >= 0; --i)
 		gAvailableDevices.push_back(static_cast<u32>(i));
+
+	gDeviceIDMap = GetDeviceMap(*deviceList);
+	DumpDeviceMap(gDeviceIDMap);
 
 	const char* listenIPAddress = GetLocalIPAddress();
 	if(listenIPAddress == NULL)
@@ -210,35 +291,35 @@ int main(int argc, const char* argv[])
 			Network::Socket streamSocket = Network::Socket::CreateInvalid();
 			streamSocket = std::move(*acceptedSocket);
 
-			/* Get ID of the one of the available devices */
-			u32 deviceIndex;
+			std::optional<Win32::Win32SourceDevice> device { };
 			{
+				std::unique_lock<std::mutex> lock(gMutex);
+				/* Get ID of the one of the available devices */
+				u32 deviceIndex;
 				{
-					std::unique_lock<std::mutex> lock(gMutex);
 					if(gAvailableDevices.size() <= 0)
 					{
 						DEBUG_LOG_ERROR("No more devices to allocate, all are still being used by other connections");
 						continue;
 					}
 					deviceIndex = gAvailableDevices.back();
+					DEBUG_LOG_INFO("Device ID allocated: %lu", deviceIndex);
 				}
-				DEBUG_LOG_INFO("Device ID allocated: %lu", deviceIndex);
-			}
 
-			std::optional<Win32::Win32SourceDevice> device = deviceList->activateDevice(deviceIndex);
-			if(!device)
-			{
-				DEBUG_LOG_ERROR("Unable to create video source device with index: %lu, Closing connection...", deviceIndex);
-				streamSocket.close();
-				continue;
-			}
+				device = deviceList->activateDevice(gDeviceIDMap[deviceIndex]);
+				if(!device)
+				{
+					DEBUG_LOG_ERROR("Unable to create video source device with index: %lu, Closing connection...", deviceIndex);
+					streamSocket.close();
+					continue;
+				}
 
-			/* Now we are confirmed to have access to the device, therefore remove it from the list of Available Devices */
-			{
-				std::unique_lock<std::mutex> lock(gMutex);
+				/* Now we are confirmed to have access to the device, therefore remove it from the list of Available Devices */
 				gAvailableDevices.pop_back();
+				++gNumConnections;
 			}
-			++gNumConnections;
+
+			_assert(device.has_value());
 
 			auto thread = std::thread([](Win32::Win32SourceDevice&& device, Network::Socket&& socket, std::mutex& mtx)
 			{
