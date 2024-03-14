@@ -5,6 +5,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <memory> // std::unique_ptr
 
 #include <mfapi.h>
 #include <mfidl.h>
@@ -57,7 +58,7 @@ namespace Win32
 
 	class Win32SourceDeviceListGuard : public Win32SourceDeviceList
 	{
-		friend std::optional<Win32SourceDeviceListGuard> Win32GetSourceDeviceList(const GUID& deviceGUID);
+		friend std::optional<std::unique_ptr<Win32SourceDeviceListGuard>> Win32GetSourceDeviceList(const GUID& deviceGUID);
 	private:
 		Win32SourceDeviceListGuard(IMFActivateList& activateList, UINT32 count);
 
@@ -67,6 +68,6 @@ namespace Win32
 		~Win32SourceDeviceListGuard();
 	};
 
-	SKVMOIP_API std::optional<Win32SourceDeviceListGuard> Win32GetSourceDeviceList(const GUID& deviceGUID);
+	SKVMOIP_API std::optional<std::unique_ptr<Win32SourceDeviceListGuard>> Win32GetSourceDeviceList(const GUID& deviceGUID);
 	SKVMOIP_API void Win32DumpSourceDevices(Win32SourceDeviceList& list);
 }

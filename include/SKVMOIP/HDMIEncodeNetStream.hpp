@@ -19,7 +19,7 @@ namespace SKVMOIP
 		bool m_isValid;
 
 	public:
-		HDMIEncodeNetStream(Win32::Win32SourceDevice&& device, Network::Socket&& socket);
+		HDMIEncodeNetStream(Win32::Win32SourceDevice&& device, Network::Socket& socket);
 		HDMIEncodeNetStream(HDMIEncodeNetStream&& stream) = delete;
 		HDMIEncodeNetStream& operator=(HDMIEncodeNetStream&& stream) = delete;
 		HDMIEncodeNetStream(HDMIEncodeNetStream& stream) = delete;
@@ -28,5 +28,6 @@ namespace SKVMOIP
 		~HDMIEncodeNetStream();
 	
 		void start();
+		void stop() { close(); }
 	};
 }

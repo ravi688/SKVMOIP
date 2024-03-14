@@ -110,7 +110,7 @@ namespace Win32
 
 	Win32SourceDeviceListGuard::~Win32SourceDeviceListGuard() { destroy(); }
 
-	SKVMOIP_API std::optional<Win32SourceDeviceListGuard> Win32GetSourceDeviceList(const GUID& deviceGUID)
+	SKVMOIP_API std::optional<std::unique_ptr<Win32SourceDeviceListGuard>> Win32GetSourceDeviceList(const GUID& deviceGUID)
 	{
 		IMFAttributes *pConfig = NULL;
 
@@ -127,10 +127,10 @@ namespace Win32
     		UINT32 count = 0;
     		IMFActivate **ppDevices = NULL;
     		result = MFEnumDeviceSources(pConfig, &ppDevices, &count);
-    		return std::optional<Win32SourceDeviceListGuard> { Win32SourceDeviceListGuard(ppDevices, count) };
+    		return std::optional<std::unique_ptr<Win32SourceDeviceListGuard>> { std::unique_ptr<Win32SourceDeviceListGuard>(new Win32SourceDeviceListGuard(ppDevices, count)) };
     	}
 
-    	return std::optional<Win32SourceDeviceListGuard> { };
+    	return std::optional<std::unique_ptr<Win32SourceDeviceListGuard>> { };
     }
 
     SKVMOIP_API void Win32DumpSourceDevices(Win32SourceDeviceList& list)

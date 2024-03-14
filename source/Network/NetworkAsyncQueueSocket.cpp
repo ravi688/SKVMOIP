@@ -112,10 +112,15 @@ namespace SKVMOIP
 			return false;
 		}
 	
-		AsyncQueueSocket::AsyncQueueSocket(Socket&& socket) : m_socket(std::move(socket)), m_isValid(false), m_isCanSendOrReceive(false)
+		AsyncQueueSocket::AsyncQueueSocket(Socket&& socket) : AsyncQueueSocket(*m_socket)
+		{
+			m_socket = std::move(socket);
+		}
+
+		AsyncQueueSocket::AsyncQueueSocket(Socket& socket) : m_socketRef(socket), m_isValid(false), m_isCanSendOrReceive(false)
 		{
 			m_isValid = true; 
-			if(m_socket.isConnected())
+			if(m_socketRef.isConnected())
 			{
 				m_isCanSendOrReceive = true;
 				m_isStopThread = false;
@@ -150,7 +155,7 @@ namespace SKVMOIP
 		Result AsyncQueueSocket::connect(const char* ipAddress, const char* port)
 		{
 			std::lock_guard<std::mutex> lock(m_mutex);
-			auto result = m_socket.connect(ipAddress, port);
+			auto result = m_socketRef.connect(ipAddress, port);
 			if(result == Result::Success)
 			{
 				m_isCanSendOrReceive = true;
@@ -162,12 +167,15 @@ namespace SKVMOIP
 	
 		Result AsyncQueueSocket::close()
 		{
-			Result result;
+			Result result = Result::Success;
 			{
 				std::lock_guard<std::mutex> lock(m_mutex);
-				result = m_socket.close();
-				if(result != Result::Success)
-					return result;
+				if(m_socket.has_value())
+				{
+					result = m_socketRef.close();
+					if(result != Result::Success)
+						return result;
+				}
 			}
 			if(m_thread)
 			{
@@ -213,7 +221,7 @@ namespace SKVMOIP
 				lock.unlock();
 
 				/* Transxn::doit takes a long time to process due to network latency */
-				bool result = transxn.doit(m_socket);
+				bool result = transxn.doit(m_socketRef);
 				if(!result)
 				{
 					m_isCanSendOrReceive = false;

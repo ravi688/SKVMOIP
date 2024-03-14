@@ -5,7 +5,7 @@
 
 namespace SKVMOIP
 {
-	HDMIEncodeNetStream::HDMIEncodeNetStream(Win32::Win32SourceDevice&& device, Network::Socket&& socket) : AsyncQueueSocket(std::move(socket)), m_device(std::move(device)), m_isValid(false)
+	HDMIEncodeNetStream::HDMIEncodeNetStream(Win32::Win32SourceDevice&& device, Network::Socket& socket) : AsyncQueueSocket(socket), m_device(std::move(device)), m_isValid(false)
 	{
 		m_hdmiStream = std::unique_ptr<VideoSourceStream>(new VideoSourceStream(m_device, VideoSourceStream::Usage::NV12Read, 
 																					{

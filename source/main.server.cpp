@@ -15,6 +15,7 @@
 #include <atomic>
 #include <chrono>
 #include <fstream>
+#include <algorithm>
 
 #include <conio.h>
 #include <ctype.h> // isdigit
@@ -24,20 +25,119 @@
 #define DEVICE_RELEASE_COOL_DOWN_TIME 4000 /* 4 seconds */
 #define PERSISTENT_DATA_FILE_PATH "./.data"
 
+using namespace SKVMOIP;
+
+
 static std::atomic<u32> gNumConnections = 0;
 
 static std::mutex gMutex;
 static std::vector<u32> gAvailableDevices;
 static std::unordered_map<u32, u32> gDeviceIDMap;
+static std::unique_ptr<Win32::Win32SourceDeviceListGuard> gDeviceList;
 
 /* Key: Client ID (u32), Value: Video Stream associated with the client */
 static std::unordered_map<u32, Network::Socket> gStreamSockets;
 
-enum class MessageCode : u8
+class Runner
 {
-	StreamStart = 0,
-	StreamStop,
-	Client,
+private:
+	std::unique_ptr<std::thread> m_thread;
+	std::unique_ptr<HDMIEncodeNetStream> m_netStream;
+	std::optional<Win32::Win32SourceDevice> m_device;
+	u32 m_deviceID;
+	bool m_isRunning;
+
+public:
+	Runner(u32 deviceID, u32 clientID);
+	~Runner();
+
+	void stop();
+	bool isRunning() const noexcept { return m_isRunning; }
+};
+
+Runner::Runner(u32 deviceID, u32 clientID) : m_deviceID(deviceID), m_isRunning(true)
+{
+	auto it = gStreamSockets.find(clientID);
+	if(it == gStreamSockets.end())
+	{
+		DEBUG_LOG_ERROR("Unable to find stream socket for client id: %lu", clientID);
+		m_isRunning	 = false;
+		return;
+	}
+
+	Network::Socket& streamSocket = it->second;
+	if(!streamSocket.isConnected())
+	{
+		DEBUG_LOG_ERROR("Stream socket is not connected for client id: %lu", clientID);
+		gStreamSockets.erase(it);
+		m_isRunning = false;
+		return;
+	}
+
+	{
+		std::unique_lock<std::mutex> lock(gMutex);
+		auto it = std::find(gAvailableDevices.begin(), gAvailableDevices.end(), m_deviceID);
+		if(it == gAvailableDevices.end())
+		{
+			DEBUG_LOG_ERROR("Unable to acquire device with id: %lu, it may be still in use by another Runner", m_deviceID);
+			m_isRunning = false;
+			return;
+		}
+		m_device = gDeviceList->activateDevice(gDeviceIDMap[deviceID]);
+		if(!m_device)
+		{
+			DEBUG_LOG_ERROR("Unable to create video source device with index: %lu, Closing connection...", deviceID);
+			m_isRunning = false;
+			return;
+		}
+		_assert(m_device.has_value());
+		gAvailableDevices.erase(it);
+		++gNumConnections;
+	}
+
+	m_netStream = std::move(std::unique_ptr<HDMIEncodeNetStream>(new HDMIEncodeNetStream(std::move(*m_device), streamSocket)));
+
+	m_thread = std::move(std::unique_ptr<std::thread>(new std::thread([](HDMIEncodeNetStream& netStream, u32 deviceID, bool& isRunning, std::mutex& mtx)
+	{
+		netStream.start();
+		std::this_thread::sleep_for(std::chrono::milliseconds(DEVICE_RELEASE_COOL_DOWN_TIME));
+		
+		std::unique_lock<std::mutex> lock(mtx);
+		gAvailableDevices.push_back(deviceID);
+		--gNumConnections;
+		
+		isRunning = false;
+	}, std::ref(*m_netStream), m_deviceID, std::ref(m_isRunning), std::ref(gMutex))));
+}
+
+Runner::~Runner()
+{
+	stop();
+}
+
+void Runner::stop()
+{
+	if(m_netStream)
+		m_netStream->stop();
+
+	if(m_thread)
+		m_thread->join();
+}
+
+enum class Message : u8
+{
+	/* Format: | u8 (Start) | u8 (device ID) | */
+	Start,
+	/* Format: | u8 (Stop) | */
+	Stop
+};
+
+enum class SocketType : u8
+{
+	/* Control Socket, carries signalling messages */
+	Control,
+	/* Data Socket, carriers video stream data which should be decoded at the client computer 
+	 * Format: | u32 (client id) | */
 	Stream
 };
 
@@ -48,21 +148,53 @@ static u32 GenerateClientID() noexcept
 }
 
 /* Algorithm:
+	
+	stream_runner:
+		while socket.connected() && device.connected() && !semaphore:
+			frame = device.get_frame()
+			socket.send(frame)
+
+	start_stream:
+		device = activate_device(device id)
+		socket = streams.find(client id)
+		semaphore = create semaphore
+		thread = create thread (stream_runner, device, socket, semaphore);
+		return stream_handle(thread, semaphore);
+	
+	stream_handle.close:
+		semaphore = stop
+		thread.join()
+		delete semaphore
+
+	client_thread_function:
+		handle = create empty handle
+		while socket is not closed:
+			cmd = socket.receive(u8)
+			if error:
+				break;
+			if cmd == Start:
+				if handle has value:
+					handle.stop()
+				d_id = socket.receive(u8)
+				handle = call start_stream(device id : d_id, client id : c_id)
+			else if cmd == Stop:
+				if handle has value:
+					handle.stop()
+		socket.close()
+		handle.stop()
 
 	while listen:
-
 		socket = accept
 		header = socket.receive(byte)
-		if header == Client:
+		if header == Control:
 			id = GenerateClientID()
 			socket.send(id)
-			clients.insert(id, socket)
+			thread = create thread (client_thread_function, socket)
+			thread.detach()
 		else if header == Stream:
 			id = socket.receive(byte)
-			streams.insert(id, socket)
+			streams.insert(id, move(socket))
 */
-
-using namespace SKVMOIP;
 
 const char* GetLocalIPAddress()
 {
@@ -270,22 +402,24 @@ int main(int argc, const char* argv[])
 	Win32::InitializeMediaFundationAndCOM();
 	debug_log_info("Platform is Windows");
 
-	std::optional<Win32::Win32SourceDeviceListGuard> deviceList = Win32::Win32GetSourceDeviceList(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
+	std::optional<std::unique_ptr<Win32::Win32SourceDeviceListGuard>> deviceList = Win32::Win32GetSourceDeviceList(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
 	if(!deviceList)
 	{
 		debug_log_error("Unable to get Video source device list");
 		return 0;
 	}
+
+	gDeviceList = std::move(*deviceList);
  
- 	DEBUG_LOG_INFO("Devices Found: %u", deviceList->getDeviceCount());
-	Win32::Win32DumpSourceDevices(*deviceList);
+ 	DEBUG_LOG_INFO("Devices Found: %u", gDeviceList->getDeviceCount());
+	Win32::Win32DumpSourceDevices(*gDeviceList);
 
  	/* Populate the std::vector with the available device ids - in this (initially) case, all devices would be available */
-	gAvailableDevices.reserve(deviceList->getDeviceCount());
-	for(s32 i = deviceList->getDeviceCount() - 1; i >= 0; --i)
+	gAvailableDevices.reserve(gDeviceList->getDeviceCount());
+	for(s32 i = gDeviceList->getDeviceCount() - 1; i >= 0; --i)
 		gAvailableDevices.push_back(static_cast<u32>(i));
 
-	gDeviceIDMap = GetDeviceMap(*deviceList);
+	gDeviceIDMap = GetDeviceMap(*gDeviceList);
 	DumpDeviceMap(gDeviceIDMap);
 
 	const char* listenIPAddress = GetLocalIPAddress();
@@ -306,70 +440,107 @@ int main(int argc, const char* argv[])
 	{
 		DEBUG_LOG_INFO("Listening on %s:%s", listenIPAddress, cmdOptions->portNumberStr);
 		auto result = listenSocket.listen();
+		
 		if(result != Network::Result::Success)
 		{
 			DEBUG_LOG_ERROR("Unable to listen, Retrying...");
 			continue;
 		}
+		
 		if(gNumConnections >= MAX_CONNECTIONS)
 		{
 			DEBUG_LOG_INFO("Max number of connections (=%u) is reached, Refused to connect!", MAX_CONNECTIONS);
 			continue;
 		}
+		
 		if(std::optional<Network::Socket> acceptedSocket = listenSocket.accept())
 		{
 			DEBUG_LOG_INFO("Connection accepted");
 			_assert(acceptedSocket->isConnected());
-			Network::Socket streamSocket = Network::Socket::CreateInvalid();
-			streamSocket = std::move(*acceptedSocket);
-
-			std::optional<Win32::Win32SourceDevice> device { };
+			
+			Network::Socket socket = Network::Socket::CreateInvalid();
+			
+			socket = std::move(*acceptedSocket);
+			
+			u8 socketType;
+			if(socket.receive(&socketType, sizeof(u8)) == Network::Result::Success)
 			{
-				std::unique_lock<std::mutex> lock(gMutex);
-				/* Get ID of the one of the available devices */
-				u32 deviceIndex;
-				{
-					if(gAvailableDevices.size() <= 0)
-					{
-						DEBUG_LOG_ERROR("No more devices to allocate, all are still being used by other connections");
-						continue;
-					}
-					deviceIndex = gAvailableDevices.back();
-					DEBUG_LOG_INFO("Device ID allocated: %lu", deviceIndex);
-				}
-
-				device = deviceList->activateDevice(gDeviceIDMap[deviceIndex]);
-				if(!device)
-				{
-					DEBUG_LOG_ERROR("Unable to create video source device with index: %lu, Closing connection...", deviceIndex);
-					streamSocket.close();
-					continue;
-				}
-
-				/* Now we are confirmed to have access to the device, therefore remove it from the list of Available Devices */
-				gAvailableDevices.pop_back();
-				++gNumConnections;
+				DEBUG_LOG_ERROR("Unable to receive socket type, closing connection");
+				socket.close();
+				continue;
 			}
 
-			_assert(device.has_value());
-
-			auto thread = std::thread([](Win32::Win32SourceDevice&& device, Network::Socket&& socket, std::mutex& mtx)
+			if(socketType == EnumClassToInt(SocketType::Control))
 			{
-				u32 id = device.getID();
+				u32 clientID = GenerateClientID();
+				if(socket.send(reinterpret_cast<u8*>(&clientID), sizeof(u32)) == Network::Result::Success)
 				{
-					HDMIEncodeNetStream netStream(std::move(device), std::move(socket));
-					netStream.start();
+					DEBUG_LOG_ERROR("Unable to send client id, closing connection");
+					socket.close();
+					continue;
 				}
-				std::this_thread::sleep_for(std::chrono::milliseconds(DEVICE_RELEASE_COOL_DOWN_TIME));
+				auto thread = std::thread([](Network::Socket&& socket, u32 clientID)
+				{
+					std::unique_ptr<Runner> runner;
+					while(socket.isConnected())
+					{
+						u8 controlMessage;
+						if(socket.receive(&controlMessage, sizeof(u8)) == Network::Result::Success)
+						{
+							DEBUG_LOG_ERROR("Failed to receive control message for client with ID: %lu", clientID);
+							socket.close();
+							break;
+						}
 
-				/* Put this device ID back into the Available Devices list */
+						if(controlMessage == EnumClassToInt(Message::Start))
+						{
+							u8 deviceID;
+							if(socket.receive(&deviceID, sizeof(u8)) == Network::Result::Success)
+							{
+								DEBUG_LOG_ERROR("Failed to receive device ID for Start command, ignoring the start command");
+								continue;
+							}
+							if(runner)
+								runner.reset();
+							runner = std::move(std::unique_ptr<Runner>(new Runner(deviceID, clientID)));
+							if(!runner->isRunning())
+							{
+								DEBUG_LOG_ERROR("Failed to start the stream runner");
+								runner.reset();
+							}
+						}
+						else if(controlMessage == EnumClassToInt(Message::Stop))
+						{
+							if(runner)
+								runner.reset();
+						}
+						else
+							DEBUG_LOG_ERROR("Unrecognized control message: %u, ignored", controlMessage);
+					}
+				}, std::move(socket), clientID);
+			}
+			else if(socketType == EnumClassToInt(SocketType::Stream))
+			{
+				u32 clientID;
+				if(socket.receive(reinterpret_cast<u8*>(&clientID), sizeof(u32)) == Network::Result::Success)
 				{
-						std::unique_lock<std::mutex> lock(mtx);
-						gAvailableDevices.push_back(id);
-						--gNumConnections;
+					DEBUG_LOG_ERROR("Unable to receive client id, refusing stream socket");
+					socket.close();
+					continue;
 				}
-			}, std::move(device.value()), std::move(streamSocket), std::ref(gMutex));
-			thread.detach();
+				if(gStreamSockets.find(clientID) != gStreamSockets.end())
+				{
+					DEBUG_LOG_ERROR("Stream socket with client id %lu already exists, refusing duplicate stream socket", clientID);
+					socket.close();
+					continue;
+				}
+				gStreamSockets.insert({ clientID, std::move(socket) });
+			}
+			else
+			{
+				DEBUG_LOG_ERROR("Unrecognized socket type, refused - closing");
+				socket.close();
+			}
 		}
 		else
 		{

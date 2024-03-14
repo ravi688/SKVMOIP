@@ -161,7 +161,8 @@ namespace SKVMOIP
 			};
 	
 		private:
-			Socket m_socket;
+			Socket& m_socketRef;
+			std::optional<Socket> m_socket;
 			std::deque<Transxn> m_transxnQueue;
 			std::condition_variable m_dataAvailableCV;
 			std::unique_ptr<std::thread> m_thread;
@@ -174,6 +175,7 @@ namespace SKVMOIP
 		
 		public:
 			AsyncQueueSocket(Socket&& socket);
+			AsyncQueueSocket(Socket& socket);
 			AsyncQueueSocket(AsyncQueueSocket& asyncSocket) = delete;
 			AsyncQueueSocket& operator=(AsyncQueueSocket& asyncSocket) = delete;
 			AsyncQueueSocket(AsyncQueueSocket&& asyncSocket) = delete;
@@ -185,7 +187,7 @@ namespace SKVMOIP
 			void send(const u8* bytes, u32 size);
 			void receive(Transxn::ReceiveCallbackHandler receiveHandler, void* userData, BinaryFormatter& receiveFormatter);
 
-			Socket& getSocket() { return m_socket; }
+			Socket& getSocket() { return m_socketRef; }
 			bool isCanSendOrReceive() const { return m_isCanSendOrReceive; }
 		};
 	}
