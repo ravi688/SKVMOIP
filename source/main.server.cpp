@@ -30,6 +30,38 @@ static std::mutex gMutex;
 static std::vector<u32> gAvailableDevices;
 static std::unordered_map<u32, u32> gDeviceIDMap;
 
+/* Key: Client ID (u32), Value: Video Stream associated with the client */
+static std::unordered_map<u32, Network::Socket> gStreamSockets;
+
+enum class MessageCode : u8
+{
+	StreamStart = 0,
+	StreamStop,
+	Client,
+	Stream
+};
+
+static u32 GenerateClientID() noexcept
+{
+	static u32 id = 0;
+	return id++;
+}
+
+/* Algorithm:
+
+	while listen:
+
+		socket = accept
+		header = socket.receive(byte)
+		if header == Client:
+			id = GenerateClientID()
+			socket.send(id)
+			clients.insert(id, socket)
+		else if header == Stream:
+			id = socket.receive(byte)
+			streams.insert(id, socket)
+*/
+
 using namespace SKVMOIP;
 
 const char* GetLocalIPAddress()
