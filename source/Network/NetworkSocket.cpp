@@ -207,10 +207,12 @@ namespace SKVMOIP
 			{
 				m_isValid = false;
 				m_isConnected = false;
+				callOnDisconnect();
 				return Result::SocketError;
 			}
 			m_isValid = false;
 			m_isConnected = false;
+			callOnDisconnect();
 			return Result::Success;
 		}
 
@@ -224,6 +226,7 @@ namespace SKVMOIP
 				{
 					m_isValid = false;
 					m_isConnected = false;
+					callOnDisconnect();
 					return Result::SocketError;
 				}
 				numSentBytes += static_cast<u32>(result);
@@ -245,16 +248,31 @@ namespace SKVMOIP
 				{
 					m_isValid = false;
 					m_isConnected = false;
+					callOnDisconnect();
 					return Result::SocketError;
 				}
 				else if(result == 0)
 				{
 					m_isConnected = false;
+					callOnDisconnect();
 					return Result::SocketError;
 				}
 				numReceivedBytes += static_cast<u32>(result);
 			}
 			return Result::Success;
+		}
+
+		void Socket::callOnDisconnect()
+		{
+			if(m_onDisconnect == NULL)
+				return;
+			m_onDisconnect(*this, m_userData);
+		}
+
+		void Socket::setOnDisconnect(void (*onDisconnect)(Socket& socket, void* userData), void* userData)
+		{
+			m_onDisconnect = onDisconnect;
+			m_userData = userData;
 		}
 	}
 }

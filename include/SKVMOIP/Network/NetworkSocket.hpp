@@ -56,6 +56,8 @@ namespace SKVMOIP
 			bool m_isConnected;
 			bool m_isValid;
 
+			void (*m_onDisconnect)(Socket& socket, void* userData);
+			void* m_userData;
 
 			Socket() : m_socket(INVALID_SOCKET) { }
 			static Socket CreateAcceptedSocket(SOCKET socket, int socketType, int ipAddressFamily, int ipProtocol)
@@ -70,6 +72,8 @@ namespace SKVMOIP
 				s.m_isValid = true;
 				return s;
 			}
+
+			void callOnDisconnect();
 
 		public:
 
@@ -102,6 +106,8 @@ namespace SKVMOIP
 
 			Result send(const u8* bytes, u32 size);
 			Result receive(u8* bytes, u32 size);
+
+			void setOnDisconnect(void (*onDisconnect)(Socket& socket, void* userData), void* userData);
 
 		};
 	}
