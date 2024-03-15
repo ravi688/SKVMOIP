@@ -66,7 +66,9 @@ namespace SKVMOIP
 																							m_ipProtocol(GetWin32IPProtocol(ipProtocol)),
 																							m_role(role),
 																							m_isConnected(false),
-																							m_isValid(false)
+																							m_isValid(false),
+																							m_onDisconnect(NULL),
+																							m_userData(NULL)
 		{
 			m_socket = socket(m_ipaFamily, m_socketType, m_ipProtocol);
 
@@ -86,7 +88,9 @@ namespace SKVMOIP
 										m_ipProtocol(socket.m_ipProtocol),
 										m_role(socket.m_role),
 										m_isConnected(socket.m_isConnected),
-										m_isValid(socket.m_isValid)
+										m_isValid(socket.m_isValid),
+										m_onDisconnect(socket.m_onDisconnect),
+										m_userData(socket.m_userData)
 		{
 			socket.m_socket = INVALID_SOCKET;
 			socket.m_ipaFamily = 0;
@@ -94,6 +98,8 @@ namespace SKVMOIP
 			socket.m_ipProtocol = 0;
 			socket.m_isConnected = false;
 			socket.m_isValid = false;
+			socket.m_onDisconnect = NULL;
+			socket.m_userData = NULL;
 		}
 
 		Socket& Socket::operator=(Socket&& socket)
@@ -112,6 +118,8 @@ namespace SKVMOIP
 			socket.m_ipProtocol = 0;
 			socket.m_isConnected = false;
 			socket.m_isValid = false;
+			socket.m_onDisconnect = NULL;
+			socket.m_userData = NULL;
 
 			return *this;
 		}

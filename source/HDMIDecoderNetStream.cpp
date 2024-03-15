@@ -18,7 +18,7 @@ namespace SKVMOIP
 												m_inFlightRequestCount(0),
 												m_isStopThread(false),
 												m_isDataAvailable(false),
-												m_decodeThread(decodeThreadHandler, this),
+												m_isDecodeThread(false),
 												m_converter(width, height, frNum, frDen, bitsPerPixel),
 												m_width(width), 
 												m_height(height),
@@ -60,11 +60,30 @@ namespace SKVMOIP
 	
 	HDMIDecodeNetStream::~HDMIDecodeNetStream()
 	{
-		m_isStopThread = true;
-		m_decodeThread.join();
+		stop();
 		Network::Result result = AsyncQueueSocket::close();
 		if(result != Network::Result::Success)
 			debug_log_error("Failed to close network socket");
+	}
+
+	void HDMIDecodeNetStream::stop()
+	{
+		m_isStopThread = true;
+		if(m_isDecodeThread && m_decodeThread->joinable())
+		{
+			m_decodeThread->join();
+			m_decodeThread.reset();
+			m_isDecodeThread = false;
+		}
+	}
+
+	void HDMIDecodeNetStream::start()
+	{
+		if(m_isDecodeThread)
+			stop();
+		m_isStopThread = false;
+		m_isDecodeThread = true;
+		m_decodeThread = std::move(std::unique_ptr<std::thread>(new std::thread(decodeThreadHandler, this)));
 	}
 
 	#ifdef USE_DIRECT_FRAME_DATA_COPY

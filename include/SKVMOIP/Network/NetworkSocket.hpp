@@ -59,7 +59,7 @@ namespace SKVMOIP
 			void (*m_onDisconnect)(Socket& socket, void* userData);
 			void* m_userData;
 
-			Socket() : m_socket(INVALID_SOCKET) { }
+			Socket() : m_socket(INVALID_SOCKET), m_onDisconnect(NULL), m_userData(NULL) { }
 			static Socket CreateAcceptedSocket(SOCKET socket, int socketType, int ipAddressFamily, int ipProtocol)
 			{
 				Socket s;

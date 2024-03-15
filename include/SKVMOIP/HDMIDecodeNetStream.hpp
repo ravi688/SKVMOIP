@@ -32,7 +32,8 @@ namespace SKVMOIP
 		u32 m_inFlightRequestCount;
 		std::atomic<bool> m_isStopThread;
 		bool m_isDataAvailable;
-		std::thread m_decodeThread;
+		bool m_isDecodeThread;
+		std::unique_ptr<std::thread> m_decodeThread;
 		buffer_t m_nv12Buffer;
 		buffer_t m_decodeBuffer;
 		Decoder m_decoder;
@@ -61,6 +62,9 @@ namespace SKVMOIP
 		HDMIDecodeNetStream& operator=(HDMIDecodeNetStream& stream) = delete;
 	
 		~HDMIDecodeNetStream();
+
+		void stop();
+		void start();
 	
 		#ifdef USE_DIRECT_FRAME_DATA_COPY
 		void addFrameDataStorage(void* buffer);

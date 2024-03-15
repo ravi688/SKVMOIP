@@ -8,7 +8,9 @@ enum class Message : u8
 	/* Format: | u8 (Start) | u8 (device ID) | */
 	Start,
 	/* Format: | u8 (Stop) | */
-	Stop
+	Stop,
+	/* Format: | u8 (ACK) | */
+	ACK
 };
 
 enum class SocketType : u8

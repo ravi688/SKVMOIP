@@ -514,6 +514,8 @@ int main(int argc, const char* argv[])
 					socket.close();
 					continue;
 				}
+				else DEBUG_LOG_INFO("Client ID received: %lu", clientID);
+
 				auto it = gStreamSockets.find(clientID);
 				if(it != gStreamSockets.end())
 				{
@@ -521,7 +523,6 @@ int main(int argc, const char* argv[])
 					it->second.close();
 					gStreamSockets.erase(it);
 				}
-				gStreamSockets.insert({ clientID, std::move(socket) });
 
 				std::pair<u32, std::unordered_map<u32, Network::Socket>*>* userData = new std::pair<u32, std::unordered_map<u32, Network::Socket>*> { clientID, &gStreamSockets };
 				socket.setOnDisconnect([](Network::Socket& socket, void* userData)
@@ -533,6 +534,19 @@ int main(int argc, const char* argv[])
 					data.second->erase(it);
 					delete &data;
 				}, reinterpret_cast<void*>(userData));
+				
+				gStreamSockets.insert({ clientID, std::move(socket) });
+				Network::Socket& socketRef = gStreamSockets.at(clientID);
+				
+				u8 ackMessage = EnumClassToInt(Message::ACK);
+				if(socketRef.send(&ackMessage, sizeof(u8)) != Network::Result::Success)
+				{
+					DEBUG_LOG_ERROR("Unable to send ACK Message to the stream socket just accpeted, refusing stream socket");
+					socket.close();
+					gStreamSockets.erase(gStreamSockets.find(clientID));
+					continue;
+				}
+				else DEBUG_LOG_INFO("Acknowledgement is sent");
 			}
 			else
 			{

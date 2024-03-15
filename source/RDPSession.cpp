@@ -3,6 +3,7 @@
 #include <SKVMOIP/assert.h>
 #include <SKVMOIP/StopWatch.hpp>
 #include <SKVMOIP/Protocol.hpp>
+#include <chrono>
 
 namespace SKVMOIP
 {
@@ -100,6 +101,47 @@ namespace SKVMOIP
 		if(m_decodeNetStream->connect(ipAddress, portNumber) == Network::Result::Success)
 		{
 			DEBUG_LOG_INFO("Video Connected to %s:%s", ipAddress, portNumber);
+			u8 socketType = EnumClassToInt(SocketType::Stream);
+			DEBUG_LOG_INFO("Sending socket type: Stream");
+			bool isFailed = false;
+			Network::Socket& socket = m_decodeNetStream->getSocket();
+			if(socket.send(&socketType, sizeof(u8)) == Network::Result::Success)
+			{
+				DEBUG_LOG_INFO("Sending client id: %lu", m_clientID);
+				if(socket.send(reinterpret_cast<u8*>(&m_clientID), sizeof(u32)) == Network::Result::Success)
+				{
+					std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+					DEBUG_LOG_INFO("Waiting for acknowledgement...");
+					if((socket.receive(&socketType, sizeof(u8)) == Network::Result::Success) && (socketType == EnumClassToInt(Message::ACK)))
+						DEBUG_LOG_INFO("Video Stream is acknowledged by the video server");
+					else
+					{
+						DEBUG_LOG_ERROR("Failed to receive acknolwedgement");
+						isFailed = true;
+					}
+				}
+				else
+				{
+					DEBUG_LOG_ERROR("Failed to send client id");
+					isFailed = true;
+				}
+			}
+			else
+			{
+				DEBUG_LOG_INFO("Failed to send socket type: Stream");
+				isFailed = true;
+			};
+
+			if(isFailed)
+			{
+				DEBUG_LOG_ERROR("Closing decodeNetStream");
+				m_decodeNetStream->close();
+				m_decodeNetStream.reset();
+				return;
+			}
+
+			m_decodeNetStream->start();
+
 			m_window = std::move(std::unique_ptr<Window>(new Window(1920, 1080, "Scalable KVM Over IP")));
 			#ifdef USE_VULKAN_PRESENTATION
 			m_presentEngine = std::move(std::unique_ptr<PresentEngine>(new PresentEngine(*m_window, *m_decodeNetStream)));
