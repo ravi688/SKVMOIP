@@ -2,6 +2,7 @@
 #include <SKVMOIP/debug.h>
 #include <SKVMOIP/assert.h>
 #include <SKVMOIP/StopWatch.hpp>
+#include <SKVMOIP/Protocol.hpp>
 
 namespace SKVMOIP
 {
@@ -39,27 +40,46 @@ namespace SKVMOIP
 		m_callbackUserData = userData;
 	}
 
-	void RDPSession::connect(const char* kmIPAddress, const char* kmPortNumber)
+	void RDPSession::connect(const char* kmIPAddress, const char* kmPortNumber, const char* vipAddress, const char* vPortNumber)
 	{
 		assert(DESCRIPTION(m_isValid), "you're trying to use invalid RDPSession object, perhaps you have destroyed it in some another thread?");
 		m_kmNetStream = std::unique_ptr<KMNetStream>(new KMNetStream());
-		m_kmConnectThread = std::unique_ptr<std::thread>(new std::thread([this](std::string kmIPAddress, std::string kmPortNumber)
+		m_kmConnectThread = std::unique_ptr<std::thread>(new std::thread([this](std::string&& kmIPAddress, std::string&& kmPortNumber, std::string&& vIPAddress, std::string&& vPortNumber)
 			{
 				DEBUG_LOG_INFO("KeyMo: Trying to connect to %s:%s", kmIPAddress.c_str(), kmPortNumber.c_str());
 				if(m_kmNetStream->connect(kmIPAddress.c_str(), kmPortNumber.c_str()) == Network::Result::Success)
 				{
-					m_isKMNetStreamConnected = true;
 					DEBUG_LOG_INFO("KeyMo Connected to %s:%s", kmIPAddress.c_str(), kmPortNumber.c_str());
-					if(m_connectionStatusCallback != NULL)
-						m_connectionStatusCallback(true, m_callbackUserData);
+					m_controlSocket = std::unique_ptr<Network::Socket>(new Network::Socket(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP));
+					DEBUG_LOG_INFO("Trying to connect to %s:%s", vIPAddress.c_str(), vPortNumber.c_str());
+					if(m_controlSocket->connect(vIPAddress.c_str(), vPortNumber.c_str()) == Network::Result::Success)
+					{
+						DEBUG_LOG_INFO("Video Control Connected to %s:%s", vIPAddress.c_str(), vPortNumber.c_str());
+						u8 socketType = EnumClassToInt(SocketType::Control);
+						DEBUG_LOG_INFO("Sending Socket Type: Control");
+						if(m_controlSocket->send(&socketType, sizeof(u8)) == Network::Result::Success)
+						{
+							DEBUG_LOG_INFO("Requesting client ID");
+							if(m_controlSocket->receive(reinterpret_cast<u8*>(&m_clientID), sizeof(u32)) == Network::Result::Success)
+							{
+								DEBUG_LOG_INFO("ClientID Received: %lu", m_clientID);
+								m_isKMNetStreamConnected = true;
+								if(m_connectionStatusCallback != NULL)
+									m_connectionStatusCallback(true, m_callbackUserData);
+								return;
+							}
+							else DEBUG_LOG_ERROR("Failed to receive client id from video server");
+						}
+						else DEBUG_LOG_ERROR("Failed to send socket type: control");
+					}
+					else DEBUG_LOG_INFO("Failed to connect to Video Server at %s:%s", vIPAddress.c_str(), vPortNumber.c_str());	
+					m_kmNetStream->close();
+					m_kmNetStream.reset();
 				}
-				else
-				{
-					DEBUG_LOG_ERROR("Failed to connect to KeyMo Server at %s:%s", kmIPAddress.c_str(), kmPortNumber.c_str());
-					if(m_connectionStatusCallback != NULL)
-						m_connectionStatusCallback(false, m_callbackUserData);
-				}
-			}, std::string(kmIPAddress), std::string(kmPortNumber)));
+				else DEBUG_LOG_ERROR("Failed to connect to KeyMo Server at %s:%s", kmIPAddress.c_str(), kmPortNumber.c_str());
+				if(m_connectionStatusCallback != NULL)
+					m_connectionStatusCallback(false, m_callbackUserData);
+			}, std::move(std::string(kmIPAddress)), std::move(std::string(kmPortNumber)), std::move(std::string(vipAddress)), std::move(std::string(vPortNumber))));
 	}
 
 	void RDPSession::start(const char* ipAddress, const char* portNumber)
@@ -131,6 +151,8 @@ namespace SKVMOIP
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 		if(m_window)
 		{
+			if(m_controlSocket)
+				m_controlSocket->close();
 			if(m_kmNetStream)
 			{
 				m_window->getEvent(Window::EventType::MouseInput).unsubscribe(m_mouseInputHandle);

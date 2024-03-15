@@ -21,6 +21,7 @@ namespace SKVMOIP
 		private:
 			std::unique_ptr<HDMIDecodeNetStream> m_decodeNetStream;
 			std::unique_ptr<KMNetStream> m_kmNetStream;
+			std::unique_ptr<Network::Socket> m_controlSocket;
 			std::unique_ptr<Win32::Win32DrawSurface> m_drawSurface;
 			std::unique_ptr<Window> m_window;
 			std::unique_ptr<PresentEngine> m_presentEngine;
@@ -30,6 +31,7 @@ namespace SKVMOIP
 			std::atomic<bool> m_isKMNetStreamConnected;
 			std::unique_ptr<std::thread> m_kmConnectThread;
 			std::atomic<bool> m_isValid;
+			u32 m_clientID;
 
 			void (*m_connectionStatusCallback)(bool isUp, void* userData);
 			void* m_callbackUserData;
@@ -42,7 +44,7 @@ namespace SKVMOIP
 	
 			bool isConnected();
 			void setConnectionStatusCallback(void (*callback)(bool isUp, void* userData), void* userData);
-			void connect(const char* kmipAddress, const char* kmPortNumber);
+			void connect(const char* kmipAddress, const char* kmPortNumber, const char* vipAddress, const char* vPortNumber);
 			void start(const char* ipAddress, const char* portNumber);
 	
 			std::unique_ptr<HDMIDecodeNetStream>& getDecodeNetStream() noexcept { return m_decodeNetStream; }

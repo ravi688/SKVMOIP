@@ -14,7 +14,7 @@
 #include <SKVMOIP/RDPSession.hpp>
 
 
-#define PERSISTENT_DATA_FILE_PATH "./.data"
+#define PERSISTENT_DATA_FILE_PATH "./.client.data"
 
 
 using namespace SKVMOIP;
@@ -120,7 +120,7 @@ namespace SKVMOIP
 						}, reinterpret_cast<void*>(&mui));
 						OptionalReference<MachineData> data = getMachineDataFromID(id);
 						_assert(data.has_value());
-						rdp->connect(data->getKeyMoIPAddressStr(), data->getKeyMoPortNumberStr());
+						rdp->connect(data->getKeyMoIPAddressStr(), data->getKeyMoPortNumberStr(), data->getVideoIPAddressStr(), data->getVideoPortNumberStr());
 					}
 				});
 		}

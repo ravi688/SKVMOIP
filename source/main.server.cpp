@@ -9,6 +9,7 @@
 #include <SKVMOIP/Win32/Win32ImagingDevice.hpp>
 
 #include <SKVMOIP/HDMIEncodeNetStream.hpp>
+#include <SKVMOIP/Protocol.hpp>
 
 #include <thread>
 #include <memory>
@@ -23,7 +24,7 @@
 #define LISTEN_PORT_NUMBER "2020"
 #define MAX_CONNECTIONS 4
 #define DEVICE_RELEASE_COOL_DOWN_TIME 4000 /* 4 seconds */
-#define PERSISTENT_DATA_FILE_PATH "./.data"
+#define PERSISTENT_DATA_FILE_PATH "./.server.data"
 
 using namespace SKVMOIP;
 
@@ -122,23 +123,6 @@ void Runner::stop()
 	if(m_thread)
 		m_thread->join();
 }
-
-enum class Message : u8
-{
-	/* Format: | u8 (Start) | u8 (device ID) | */
-	Start,
-	/* Format: | u8 (Stop) | */
-	Stop
-};
-
-enum class SocketType : u8
-{
-	/* Control Socket, carries signalling messages */
-	Control,
-	/* Data Socket, carriers video stream data which should be decoded at the client computer 
-	 * Format: | u32 (client id) | */
-	Stream
-};
 
 static u32 GenerateClientID() noexcept
 {
@@ -462,7 +446,7 @@ int main(int argc, const char* argv[])
 			socket = std::move(*acceptedSocket);
 			
 			u8 socketType;
-			if(socket.receive(&socketType, sizeof(u8)) == Network::Result::Success)
+			if(socket.receive(&socketType, sizeof(u8)) != Network::Result::Success)
 			{
 				DEBUG_LOG_ERROR("Unable to receive socket type, closing connection");
 				socket.close();
@@ -472,7 +456,8 @@ int main(int argc, const char* argv[])
 			if(socketType == EnumClassToInt(SocketType::Control))
 			{
 				u32 clientID = GenerateClientID();
-				if(socket.send(reinterpret_cast<u8*>(&clientID), sizeof(u32)) == Network::Result::Success)
+				DEBUG_LOG_INFO("Client ID Generated: %lu", clientID);
+				if(socket.send(reinterpret_cast<u8*>(&clientID), sizeof(u32)) != Network::Result::Success)
 				{
 					DEBUG_LOG_ERROR("Unable to send client id, closing connection");
 					socket.close();
@@ -484,7 +469,7 @@ int main(int argc, const char* argv[])
 					while(socket.isConnected())
 					{
 						u8 controlMessage;
-						if(socket.receive(&controlMessage, sizeof(u8)) == Network::Result::Success)
+						if(socket.receive(&controlMessage, sizeof(u8)) != Network::Result::Success)
 						{
 							DEBUG_LOG_ERROR("Failed to receive control message for client with ID: %lu", clientID);
 							socket.close();
@@ -494,7 +479,7 @@ int main(int argc, const char* argv[])
 						if(controlMessage == EnumClassToInt(Message::Start))
 						{
 							u8 deviceID;
-							if(socket.receive(&deviceID, sizeof(u8)) == Network::Result::Success)
+							if(socket.receive(&deviceID, sizeof(u8)) != Network::Result::Success)
 							{
 								DEBUG_LOG_ERROR("Failed to receive device ID for Start command, ignoring the start command");
 								socket.close();
@@ -518,11 +503,12 @@ int main(int argc, const char* argv[])
 							DEBUG_LOG_ERROR("Unrecognized control message: %u, ignored", controlMessage);
 					}
 				}, std::move(socket), clientID);
+				thread.detach();
 			}
 			else if(socketType == EnumClassToInt(SocketType::Stream))
 			{
 				u32 clientID;
-				if(socket.receive(reinterpret_cast<u8*>(&clientID), sizeof(u32)) == Network::Result::Success)
+				if(socket.receive(reinterpret_cast<u8*>(&clientID), sizeof(u32)) != Network::Result::Success)
 				{
 					DEBUG_LOG_ERROR("Unable to receive client id, refusing stream socket");
 					socket.close();
