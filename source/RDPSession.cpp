@@ -277,7 +277,6 @@ namespace SKVMOIP
 		RDPSession& rdp = *reinterpret_cast<RDPSession*>(userData);
 		if(!rdp.getWindow()->isLocked())
 			return;
-		auto& kmNetStream = rdp.getKMNetStream();
 		if(rdp.isConnected())
 		{
 			rdp.getKMNetStream()->sendMouseInput(*reinterpret_cast<Win32::MouseInput*>(mouseInputData));
@@ -297,7 +296,6 @@ namespace SKVMOIP
 		RDPSession& rdp = *reinterpret_cast<RDPSession*>(userData);
 		if(!rdp.getWindow()->isLocked())
 			return;
-		auto& kmNetStream = rdp.getKMNetStream();
 		if(rdp.isConnected())
 		{
 			rdp.getKMNetStream()->sendKeyboardInput(*reinterpret_cast<Win32::KeyboardInput*>(keyboardInputData));
