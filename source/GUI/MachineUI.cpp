@@ -58,17 +58,17 @@ namespace SKVMOIP
 		  auto len1 = strlen(ipAddress);
 		  auto len2 = strlen(portNumber);
 		  auto len3 = strlen(usbPortNumber);
-		  char buffer[len0 + len1 + len2 + len3 + 3];
+		  char buffer[len0 + len1 + len2 + len3 + 3] = { };
 		  memcpy(buffer, desc, len0);
 		  memcpy(buffer + len0, ipAddress, len1);
 		  buffer[len0 + len1] = ':';
 		  memcpy(buffer + len0 + len1 + 1, portNumber, len2);
 		  if(len3 > 0)
 		  {
-		  	buffer[len0 + len1 + len2] = ':';
-		  	memcpy(buffer + len0 + len1 + len2 + 1, usbPortNumber, len3);
+		  	buffer[len0 + len1 + len2 + 1] = ':';
+		  	memcpy(buffer + len0 + len1 + len2 + 2, usbPortNumber, len3);
 		  }
-		  buffer[len0 + len1 + len2 + len3 + 1] = 0;
+		  buffer[len0 + len1 + len2 + len3 + 2] = 0;
 		
 		  gtk_label_set_text(GTK_LABEL(m_outputAddressLabel), buffer);
 		}
