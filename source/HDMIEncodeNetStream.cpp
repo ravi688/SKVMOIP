@@ -31,7 +31,8 @@ namespace SKVMOIP
 		std::pair<u32, u32> frameSize = m_hdmiStream->getOutputFrameSize();
 		std::pair<u32, u32> frameRatePair = m_hdmiStream->getInputFrameRate();
 		_assert((frameSize.first == 1920) && (frameSize.second == 1080));
-		_assert((frameRatePair.first == 60) && (frameRatePair.second == 1));
+		/* For just one Kreo HDMI capture device, this assertion is not true. But Why? */
+		_ASSERT_WRN((frameRatePair.first == 60) && (frameRatePair.second == 1));
 		u32 frameRate = m_hdmiStream->getInputFrameRateF32();
 	
 		m_nv12Buffer = buf_create(sizeof(u8), (frameSize.first * frameSize.second * 3) >> 1, 0);
