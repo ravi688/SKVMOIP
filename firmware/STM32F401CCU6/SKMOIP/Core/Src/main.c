@@ -225,8 +225,8 @@ static void MX_SPI1_Init(void);
 
 static wiz_NetInfo netInfo =
 {
-		.mac = { 0x0c, 0x29, 0xab, 0x7c, 0x00, 0x01 },
-		.ip = { 192, 168, 1, 113 },
+		.mac = { 0xec, 0xec, 0xec, 0xec, 0xec, 0xec },
+		.ip = { 192, 168, 1, 117 },
 		.sn  = { 255, 255, 255, 0 },
 		.gw = { 192, 168, 1, 1 },
 		.dns = { 0, 0, 0, 0 },
@@ -416,6 +416,7 @@ int main(void)
   MX_SPI1_Init();
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
+CREATE_SOCKET:
   W5500_Init();
   SetupNetworkDevice();
   SOCKET mySocket = socket(0, Sn_MR_TCP, 2000, 0);
@@ -439,7 +440,10 @@ int main(void)
   while (1)
   {
 LISTEN_AGAIN:
-	  if(listen(mySocket) != SOCK_OK);
+	  if(listen(mySocket) != SOCK_OK)
+	  {
+		  goto CREATE_SOCKET;
+	  }
 
 	  while(getSn_SR(mySocket) != SOCK_ESTABLISHED);
 
@@ -451,11 +455,11 @@ LISTEN_AGAIN:
 			  if(size == SOCKERR_SOCKSTATUS)
 			  {
 				  if(close(mySocket) != SOCK_OK)
-					  Error("failed to close socket\n");
+					  goto LISTEN_AGAIN;
 				  HAL_Delay(100);
 				  if(socket(mySocket, Sn_MR_TCP, 2000, 0) != mySocket)
 				  {
-				  	  Error("failed to create socket again\n");
+				  	  goto LISTEN_AGAIN;
 				  }
 				  break;
 			  }
@@ -524,11 +528,11 @@ LISTEN_AGAIN:
 					  if(result == SOCKERR_SOCKSTATUS)
 					  {
 						  if(close(mySocket) != SOCK_OK)
-							  Error("failed to close socket\n");
+							  goto LISTEN_AGAIN;
 						  HAL_Delay(100);
 						  if(socket(mySocket, Sn_MR_TCP, 2000, 0) != mySocket)
 						  {
-						  	  Error("failed to create socket again\n");
+						  	  goto LISTEN_AGAIN;
 						  }
 					  }
 					  goto LISTEN_AGAIN;
