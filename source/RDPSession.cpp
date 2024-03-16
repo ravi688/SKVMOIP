@@ -110,7 +110,6 @@ namespace SKVMOIP
 				DEBUG_LOG_INFO("Sending client id: %lu", m_clientID);
 				if(socket.send(reinterpret_cast<u8*>(&m_clientID), sizeof(u32)) == Network::Result::Success)
 				{
-					std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 					DEBUG_LOG_INFO("Waiting for acknowledgement...");
 					if((socket.receive(&socketType, sizeof(u8)) == Network::Result::Success) && (socketType == EnumClassToInt(Message::ACK)))
 						DEBUG_LOG_INFO("Video Stream is acknowledged by the video server");
@@ -139,6 +138,18 @@ namespace SKVMOIP
 				m_decodeNetStream.reset();
 				return;
 			}
+
+			u8 message = EnumClassToInt(Message::Start);
+			DEBUG_LOG_INFO("Requesting Stream Start...");
+			if(m_controlSocket->send(&message, sizeof(u8)) == Network::Result::Success)
+			{
+				u8 deviceID = 1;
+				DEBUG_LOG_INFO("Sending device ID: %lu", deviceID);
+				if(m_controlSocket->send(&deviceID, sizeof(u8)) == Network::Result::Success)
+					DEBUG_LOG_INFO("Stream Device Connected!");
+				else DEBUG_LOG_ERROR("Failed to send device ID: %lu", deviceID);
+			}
+			else DEBUG_LOG_ERROR("Failed to send stream start request");
 
 			m_decodeNetStream->start();
 
@@ -224,14 +235,17 @@ namespace SKVMOIP
 				window->lock(false);
 		}
 		
-		std::vector<Win32::KeyboardInput>& keyComb = *reinterpret_cast<std::vector<Win32::KeyboardInput>*>(keyCombPtr);
-		_assert(keyComb.size() >= 2);
-		auto& kmNetStream = rdp.getKMNetStream();
-		for(std::size_t i = 0; i < (keyComb.size() - 1); i++)
+		if(rdp.isConnected())
 		{
-			Win32::KeyboardInput keyboardInput = keyComb[i];
-			keyboardInput.keyStatus	= Win32::KeyStatus::Released;
-			kmNetStream->sendKeyboardInput(keyboardInput);
+			std::vector<Win32::KeyboardInput>& keyComb = *reinterpret_cast<std::vector<Win32::KeyboardInput>*>(keyCombPtr);
+			_assert(keyComb.size() >= 2);
+			auto& kmNetStream = rdp.getKMNetStream();
+			for(std::size_t i = 0; i < (keyComb.size() - 1); i++)
+			{
+				Win32::KeyboardInput keyboardInput = keyComb[i];
+				keyboardInput.keyStatus	= Win32::KeyStatus::Released;
+				kmNetStream->sendKeyboardInput(keyboardInput);
+			}
 		}
 		debug_log_info("Full Screen Toggled");
 	}
@@ -242,14 +256,17 @@ namespace SKVMOIP
 		auto& window = rdp.getWindow();
 		window->lock(!window->isLocked());
 
-		std::vector<Win32::KeyboardInput>& keyComb = *reinterpret_cast<std::vector<Win32::KeyboardInput>*>(keyCombPtr);
-		_assert(keyComb.size() >= 2);
-		auto& kmNetStream = rdp.getKMNetStream();
-		for(std::size_t i = 0; i < (keyComb.size() - 1); i++)
+		if(rdp.isConnected())
 		{
-			Win32::KeyboardInput keyboardInput = keyComb[i];
-			keyboardInput.keyStatus	= Win32::KeyStatus::Released;
-			kmNetStream->sendKeyboardInput(keyboardInput);
+			std::vector<Win32::KeyboardInput>& keyComb = *reinterpret_cast<std::vector<Win32::KeyboardInput>*>(keyCombPtr);
+			_assert(keyComb.size() >= 2);
+			auto& kmNetStream = rdp.getKMNetStream();
+			for(std::size_t i = 0; i < (keyComb.size() - 1); i++)
+			{
+				Win32::KeyboardInput keyboardInput = keyComb[i];
+				keyboardInput.keyStatus	= Win32::KeyStatus::Released;
+				kmNetStream->sendKeyboardInput(keyboardInput);
+			}
 		}
 		debug_log_info("Lock toggled");
 	}
