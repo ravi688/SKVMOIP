@@ -33,11 +33,13 @@ static std::atomic<u32> gNumConnections = 0;
 
 static std::mutex gMutex;
 static std::vector<u32> gAvailableDevices;
+/* Key: Client ID (u32), Value: Video Stream associated with the client */
+static std::mutex gMutexStreamSockets;
+static std::unordered_map<u32, Network::Socket> gStreamSockets;
+
 static std::unordered_map<u32, u32> gDeviceIDMap;
 static std::unique_ptr<Win32::Win32SourceDeviceListGuard> gDeviceList;
 
-/* Key: Client ID (u32), Value: Video Stream associated with the client */
-static std::unordered_map<u32, Network::Socket> gStreamSockets;
 
 class Runner
 {
@@ -58,44 +60,47 @@ public:
 
 Runner::Runner(u32 deviceID, u32 clientID) : m_deviceID(deviceID), m_isRunning(true)
 {
-	auto it = gStreamSockets.find(clientID);
-	if(it == gStreamSockets.end())
 	{
-		DEBUG_LOG_ERROR("Unable to find stream socket for client id: %lu", clientID);
-		m_isRunning	 = false;
-		return;
-	}
-
-	Network::Socket& streamSocket = it->second;
-	if(!streamSocket.isConnected())
-	{
-		DEBUG_LOG_ERROR("Stream socket is not connected for client id: %lu", clientID);
-		m_isRunning = false;
-		return;
-	}
-
-	{
-		std::unique_lock<std::mutex> lock(gMutex);
-		auto it = std::find(gAvailableDevices.begin(), gAvailableDevices.end(), m_deviceID);
-		if(it == gAvailableDevices.end())
+		std::unique_lock<std::mutex> lock(gMutexStreamSockets);
+		auto it = gStreamSockets.find(clientID);
+		if(it == gStreamSockets.end())
 		{
-			DEBUG_LOG_ERROR("Unable to acquire device with id: %lu, it may be still in use by another Runner", m_deviceID);
+			DEBUG_LOG_ERROR("Unable to find stream socket for client id: %lu", clientID);
+			m_isRunning	 = false;
+			return;
+		}
+
+		Network::Socket& streamSocket = it->second;
+		if(!streamSocket.isConnected())
+		{
+			DEBUG_LOG_ERROR("Stream socket is not connected for client id: %lu", clientID);
 			m_isRunning = false;
 			return;
 		}
-		m_device = gDeviceList->activateDevice(gDeviceIDMap[deviceID]);
-		if(!m_device)
-		{
-			DEBUG_LOG_ERROR("Unable to create video source device with index: %lu, Closing connection...", deviceID);
-			m_isRunning = false;
-			return;
-		}
-		_assert(m_device.has_value());
-		gAvailableDevices.erase(it);
-		++gNumConnections;
-	}
 
-	m_netStream = std::move(std::unique_ptr<HDMIEncodeNetStream>(new HDMIEncodeNetStream(std::move(*m_device), streamSocket)));
+		{
+			std::unique_lock<std::mutex> lock(gMutex);
+			auto it = std::find(gAvailableDevices.begin(), gAvailableDevices.end(), m_deviceID);
+			if(it == gAvailableDevices.end())
+			{
+				DEBUG_LOG_ERROR("Unable to acquire device with id: %lu, it may be still in use by another Runner", m_deviceID);
+				m_isRunning = false;
+				return;
+			}
+			m_device = gDeviceList->activateDevice(gDeviceIDMap[deviceID]);
+			if(!m_device)
+			{
+				DEBUG_LOG_ERROR("Unable to create video source device with index: %lu, Closing connection...", deviceID);
+				m_isRunning = false;
+				return;
+			}
+			_assert(m_device.has_value());
+			gAvailableDevices.erase(it);
+			++gNumConnections;
+		}
+
+		m_netStream = std::move(std::unique_ptr<HDMIEncodeNetStream>(new HDMIEncodeNetStream(std::move(*m_device), streamSocket)));
+	}
 
 	m_thread = std::move(std::unique_ptr<std::thread>(new std::thread([](HDMIEncodeNetStream& netStream, u32 deviceID, bool& isRunning, std::mutex& mtx)
 	{
@@ -535,36 +540,43 @@ int main(int argc, const char* argv[])
 				}
 				else DEBUG_LOG_INFO("Client ID received: %lu", clientID);
 
-				auto it = gStreamSockets.find(clientID);
-				if(it != gStreamSockets.end())
 				{
-					DEBUG_LOG_WARNING("Stream socket with client id %lu already exists, closing the existing one", clientID);
-					it->second.close();
-					gStreamSockets.erase(it);
-				}
+					std::unique_lock<std::mutex> lock(gMutexStreamSockets);
 
-				std::pair<u32, std::unordered_map<u32, Network::Socket>*>* userData = new std::pair<u32, std::unordered_map<u32, Network::Socket>*> { clientID, &gStreamSockets };
-				socket.setOnDisconnect([](Network::Socket& socket, void* userData)
-				{
-					auto& data = *reinterpret_cast<std::pair<u32, std::unordered_map<u32, Network::Socket>*>*>(userData);
-					auto it = data.second->find(data.first);
-					_assert(it != data.second->end());
-					data.second->erase(it);
-					delete &data;
-				}, reinterpret_cast<void*>(userData));
+					auto it = gStreamSockets.find(clientID);
+					if(it != gStreamSockets.end())
+					{
+						DEBUG_LOG_WARNING("Stream socket with client id %lu already exists, closing the existing one", clientID);
+						it->second.close();
+						gStreamSockets.erase(it);
+					}
+
+					std::pair<u32, std::unordered_map<u32, Network::Socket>*>* userData = new std::pair<u32, std::unordered_map<u32, Network::Socket>*> { clientID, &gStreamSockets };
+					socket.setOnDisconnect([](Network::Socket& socket, void* userData)
+					{
+						auto& data = *reinterpret_cast<std::pair<u32, std::unordered_map<u32, Network::Socket>*>*>(userData);
+						{
+							std::unique_lock<std::mutex> lock(gMutexStreamSockets);
+							auto it = data.second->find(data.first);
+							_assert(it != data.second->end());
+							data.second->erase(it);
+						}
+						delete &data;
+					}, reinterpret_cast<void*>(userData));
 				
-				gStreamSockets.insert({ clientID, std::move(socket) });
-				Network::Socket& socketRef = gStreamSockets.at(clientID);
+					gStreamSockets.insert({ clientID, std::move(socket) });
+					Network::Socket& socketRef = gStreamSockets.at(clientID);
 				
-				u8 ackMessage = EnumClassToInt(Message::ACK);
-				if(socketRef.send(&ackMessage, sizeof(u8)) != Network::Result::Success)
-				{
-					DEBUG_LOG_ERROR("Unable to send ACK Message to the stream socket just accpeted, refusing stream socket");
-					socket.close();
-					gStreamSockets.erase(gStreamSockets.find(clientID));
-					continue;
+					u8 ackMessage = EnumClassToInt(Message::ACK);
+					if(socketRef.send(&ackMessage, sizeof(u8)) != Network::Result::Success)
+					{
+						DEBUG_LOG_ERROR("Unable to send ACK Message to the stream socket just accpeted, refusing stream socket");
+						socket.close();
+						gStreamSockets.erase(gStreamSockets.find(clientID));
+						continue;
+					}
+					else DEBUG_LOG_INFO("Acknowledgement is sent");
 				}
-				else DEBUG_LOG_INFO("Acknowledgement is sent");
 			}
 			else
 			{
