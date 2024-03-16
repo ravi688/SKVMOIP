@@ -277,10 +277,10 @@ static void OnVideoClicked(u32 id, void* userData)
 	_assert(data.has_value());
 	std::string ipAddrString(data->getVideoIPAddressStr());
 	std::string prtNumString(data->getVideoPortNumberStr());
-	auto sessionThread = std::thread([](RDPSession* rdp, std::string ipAddress, std::string portNumber)
+	auto sessionThread = std::thread([](RDPSession* rdp, std::string&& ipAddress, std::string&& portNumber, u8 deviceID)
 	{
-		rdp->start(ipAddress.c_str(), portNumber.c_str());
-	}, rdp.get(), ipAddrString, prtNumString);
+		rdp->start(ipAddress.c_str(), portNumber.c_str(), deviceID);
+	}, rdp.get(), std::move(ipAddrString), std::move(prtNumString), data->getVideoUSBPortNumber());
 
 	sessionThread.detach();
 }

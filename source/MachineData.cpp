@@ -58,12 +58,12 @@ namespace SKVMOIP
 
   MachineData& MachineData::operator=(const MachineData&  data)
   {
-    m_videoIPAddress == data.m_videoIPAddress;
-    m_keyMoIPAddress == data.m_keyMoIPAddress;
-    m_keyMoPortNumber == data.m_keyMoPortNumber;
-    m_videoPortNumber == data.m_videoPortNumber;
-    m_videoUSBPortNumber == data.m_videoUSBPortNumber;
-    m_nameLength == data.m_nameLength;
+    m_videoIPAddress = data.m_videoIPAddress;
+    m_keyMoIPAddress = data.m_keyMoIPAddress;
+    m_keyMoPortNumber = data.m_keyMoPortNumber;
+    m_videoPortNumber = data.m_videoPortNumber;
+    m_videoUSBPortNumber = data.m_videoUSBPortNumber;
+    m_nameLength = data.m_nameLength;
     strcpy(reinterpret_cast<char*>(m_name), reinterpret_cast<const char*>(data.m_name));
     strcpy(m_videoIPAddressStr, data.m_videoIPAddressStr);
     strcpy(m_keyMoIPAddressStr, data.m_keyMoIPAddressStr);
@@ -72,21 +72,6 @@ namespace SKVMOIP
     strcpy(m_videoUSBPortNumberStr, data.m_videoUSBPortNumberStr);
     return *this;
   }
-
-      u32 m_videoIPAddress;
-      u32 m_keyMoIPAddress;
-      u16 m_keyMoPortNumber;
-      u16 m_videoPortNumber;
-      u8 m_videoUSBPortNumber;
-      u8 m_nameLength;
-      u8 m_name[255];
-    
-      char m_videoIPAddressStr[IPV4_STR_LEN];
-      char m_keyMoIPAddressStr[IPV4_STR_LEN];
-      char m_keyMoPortNumberStr[PORT_STR_LEN];
-      char m_videoPortNumberStr[PORT_STR_LEN];
-      char m_videoUSBPortNumberStr[USB_PORT_STR_LEN];
-    
 
   void MachineData::serialize(std::ostream& stream) const
   {
@@ -214,6 +199,8 @@ namespace SKVMOIP
       u8 usbPort = atoi(++ptr);
       return { { { BIT32_PACK8(ip[0], ip[1], ip[2], ip[3]), port }, { usbPort } } };
     }
+    else { };
+
     return { { { BIT32_PACK8(ip[0], ip[1], ip[2], ip[3]), port }, { } } };
   }
 

@@ -45,7 +45,7 @@ namespace SKVMOIP
 			bool isConnected();
 			void setConnectionStatusCallback(void (*callback)(bool isUp, void* userData), void* userData);
 			void connect(const char* kmipAddress, const char* kmPortNumber, const char* vipAddress, const char* vPortNumber);
-			void start(const char* ipAddress, const char* portNumber);
+			void start(const char* ipAddress, const char* portNumber, u8 deviceID);
 	
 			std::unique_ptr<HDMIDecodeNetStream>& getDecodeNetStream() noexcept { return m_decodeNetStream; }
 			std::unique_ptr<KMNetStream>& getKMNetStream() noexcept { return m_kmNetStream; }

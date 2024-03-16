@@ -83,7 +83,7 @@ namespace SKVMOIP
 			}, std::move(std::string(kmIPAddress)), std::move(std::string(kmPortNumber)), std::move(std::string(vipAddress)), std::move(std::string(vPortNumber))));
 	}
 
-	void RDPSession::start(const char* ipAddress, const char* portNumber)
+	void RDPSession::start(const char* ipAddress, const char* portNumber, u8 deviceID)
 	{
 		assert(DESCRIPTION(m_isValid), "you're trying to use invalid RDPSession object, perhaps you have destroyed it in some another thread?");
 		/* if previous video session was connected, then destroy already constructed objects */
@@ -143,7 +143,6 @@ namespace SKVMOIP
 			DEBUG_LOG_INFO("Requesting Stream Start...");
 			if(m_controlSocket->send(&message, sizeof(u8)) == Network::Result::Success)
 			{
-				u8 deviceID = 1;
 				DEBUG_LOG_INFO("Sending device ID: %lu", deviceID);
 				if(m_controlSocket->send(&deviceID, sizeof(u8)) == Network::Result::Success)
 					DEBUG_LOG_INFO("Stream Device Connected!");

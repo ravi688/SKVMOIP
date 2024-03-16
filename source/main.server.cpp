@@ -485,6 +485,7 @@ int main(int argc, const char* argv[])
 								socket.close();
 								continue;
 							}
+							DEBUG_LOG_INFO("Device ID received: %u", deviceID);
 							if(runner)
 								runner.reset();
 							runner = std::move(std::unique_ptr<Runner>(new Runner(deviceID, clientID)));
