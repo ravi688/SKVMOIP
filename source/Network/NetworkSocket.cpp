@@ -211,6 +211,9 @@ namespace SKVMOIP
 
 		Result Socket::close()
 		{
+			if(!m_isConnected)
+				return Result::Success;
+
 			if(closesocket(m_socket) == SOCKET_ERROR)
 			{
 				m_isValid = false;

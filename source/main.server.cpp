@@ -471,8 +471,26 @@ int main(int argc, const char* argv[])
 						u8 controlMessage;
 						if(socket.receive(&controlMessage, sizeof(u8)) != Network::Result::Success)
 						{
-							DEBUG_LOG_ERROR("Failed to receive control message for client with ID: %lu", clientID);
+							DEBUG_LOG_ERROR("Failed to receive control message for client with ID: %lu, disposing client", clientID);
+							/* close the control socket */
+							debug_log_info("Closing control socket");
 							socket.close();
+							/* close the runner (encoder) */
+							if(runner)
+							{
+								debug_log_info("Destroying Runner");
+								runner.reset();
+							}
+							/* close the stream socket and remove it from the stream sockets list */
+							auto it = gStreamSockets.find(clientID);
+							if(it != gStreamSockets.end())
+							{
+								debug_log_info("Closing stream socket");
+								Network::Socket& streamSocket = it->second;
+								streamSocket.close();
+								gStreamSockets.erase(it);
+							}
+							debug_log_info("Client is desposed!");
 							break;
 						}
 
@@ -531,7 +549,6 @@ int main(int argc, const char* argv[])
 					auto& data = *reinterpret_cast<std::pair<u32, std::unordered_map<u32, Network::Socket>*>*>(userData);
 					auto it = data.second->find(data.first);
 					_assert(it != data.second->end());
-					it->second.close();
 					data.second->erase(it);
 					delete &data;
 				}, reinterpret_cast<void*>(userData));
