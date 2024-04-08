@@ -3,6 +3,9 @@
 This repository contains source code for a SKVMOIP for Windows and Linux platforms written in C++.<br> <br>
 <a href="https://www.buymeacoffee.com/raviprakashsingh" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
 
+![SKVMOIP_Setup](https://github.com/ravi688/SKVMOIP/assets/67525292/5e5ac389-c66f-4ca8-84d4-b87569688c78)
+
+
 ### Currently supported Operating Systems: <br>
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Windows_logo_-_2012.svg/1024px-Windows_logo_-_2012.svg.png" alt="drawing" width="60"/>
 
