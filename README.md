@@ -3,6 +3,9 @@
 This repository contains source code for a SKVMOIP for Windows and Linux platforms written in C++.<br> <br>
 <a href="https://www.buymeacoffee.com/raviprakashsingh" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
 
+![SKVMOIP_Setup](https://github.com/ravi688/SKVMOIP/assets/67525292/5e5ac389-c66f-4ca8-84d4-b87569688c78)
+
+
 ### Currently supported Operating Systems: <br>
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Windows_logo_-_2012.svg/1024px-Windows_logo_-_2012.svg.png" alt="drawing" width="60"/>
 
@@ -22,7 +25,7 @@ This repository contains source code for a SKVMOIP for Windows and Linux platfor
 There are many options available in the market for KVM over IP, however most of them are either made for a corporate or very expensive for individuals - and still not scalable enough.
 Many people have built cheap solutions such as PiKVM and TinyPilot - but I still find them expensive given that they can only support one machine and one would need to spend more money to replicate over multiple machines.
 
-Therefore, I started this project to invent a Scalable KVM Over IP software suite we can be installed on cheap hardware modules and on a client computer. This KVMK Over IP is scalable to any size because it uses ethernet wiring to communicate with the computers/servers with only one Encoder Server; hence no need to replicate the "pricy" hardware for each machine to be managed.
+Therefore, I started this project to invent a Scalable KVM Over IP software suite which can be installed on cheap hardware modules and on a client computer. This KVMK Over IP is scalable to any size because it uses ethernet wiring to communicate with the computers/servers with only one Encoder Server; hence no need to replicate the "pricy" hardware for each machine to be managed.
 
 ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/d246b7cc-0b23-474b-8a22-5f4ae3b16c89)
 
