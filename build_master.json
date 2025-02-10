@@ -1,0 +1,117 @@
+{
+    "project_name" : "SKVMOIP",
+    "canonical_name" : "skvmoip",
+    "description" : "Scalable KVM Over IP",
+    "dependencies" : [ "common", "playvk", "bufferlib" ],
+    "vars" : [
+        { "cuda_path" : "getenv('CUDA_PATH')" },
+        { "cuda_includes" : "cuda_path + '/include'" },
+        { "cuda_libs_path" : "cuda_path + '/lib/x64'"},
+        { "vulkan_sdk_path" : "getenv('VK_SDK_PATH')"},
+        { "vulkan_libs_path" : "vulkan_sdk_path + '/Lib/'"},
+        { "gtk3_cflags" : "run_command('pkg-config', 'gtk+-3.0', '--cflags').stdout().split(' ')" },
+        { "gtk3_libs" : "run_command('pkg-config', 'gtk+-3.0', '--libs').stdout().split(' ')" },
+        { "gui_sources: list" : [
+            "source/GUI/AddUI.cpp",
+            "source/MachineUI.cpp",
+            "source/MainUI.cpp"
+        ] }
+    ],
+    "defines" : [ 
+        "-DUSE_PERSISTENT_SETTINGS",
+        "-DUSE_VULKAN_PRESENTATION",
+        "-DUSE_VULKAN_FOR_COLOR_SPACE_CONVERSION",
+        "-DUSE_DIRECT_FRAME_DATA_COPY"
+    ],
+    "release_defines": [ "-DSKVMOIP_RELEASE" ],
+    "debug_defines": [ "-DSKVMOIP_DEBUG" ],
+    "install_header_dirs" : [ "include/SKVMOIP" ],
+    "include_dirs" : [ "include" ],
+    "windows_link_args" : [
+        "-lws2_32",
+        "-lole32",
+        "-loleaut32",
+        "-lmfreadwrite",
+        "-lmfplat",
+        "-lmf",
+        "-lmfuuid",
+        "-lgdi32",
+        "-lwmcodecdspuuid"
+    ],
+    "targets" :
+    [
+        {
+            "name" : "server",
+            "is_executable" : true,
+            "windows_link_args" : [
+                "link_dir: ./external-dependencies/x264", "-lx264", "-lx264"
+            ],
+            "defines" : ["-DBUILD_SERVER"],
+            "sources": [
+                "source/Encoder.cpp",
+                "source/HDMIEncodeNetStream.cpp",
+                "source/main.server.cpp"
+            ]
+        },
+        {
+            "name" : "client",
+            "is_executable" : true,
+            "dependencies" : ["gtk+-3.0"],
+            "include_dirs" : [
+                "./external-dependencies/NvidiaCodec/include/", 
+                "$cuda_includes"
+            ],
+            "windows_link_args" : [
+                "link_dir: $cuda_libs_path", "-l:cuda.lib",
+                "link_dir: ./external-dependencies/NvidiaCodec/", "-l:nvcuvid.lib",
+                "link_dir: $vulkan_libs_path", "-lvulkan-1"                
+            ],
+            "defines" : ["-DBUILD_CLIENT"],
+            "sources" : [
+                "source/third_party/NvDecoder.cpp",
+                "source/Decoder.cpp",
+                "source/main.client.cpp",
+                "source/Window.cpp",
+                "source/Win32/Win32DrawSurface.cpp",
+                "source/Win32/Win32RawInput.cpp",
+                "source/Win32/Win32Window.cpp",
+                "source/HDMIDecoderNetStream.cpp",
+                "source/KMNetStream.cpp",
+                "source/HIDUsageID.cpp",
+                "source/RDPSession.cpp",
+                "source/PresentEngine.cpp,
+                "$gui_sources"
+            ]
+        },
+        {
+            "name" : "guitest",
+            "is_executable" : true,
+            "defines" : ["-DBUILD_TEST"],
+            "dependencies" : ["gtk+3.0"],
+            "sources" : [
+                "source/main.guitest.cpp",
+                "$gui_sources"
+            ]
+        },
+        {
+            "name" : "main",
+            "is_executable" : true,
+            "dependencies" : ["gtk+3.0"],
+            "include_dirs" : [
+                "./external-dependencies/NvidiaCodec/include/",
+                "$cuda_includes"
+            ],
+            "windows_link_args" : [
+                "link_dir: ./external-dependencies/x264", "-lx264", "-lx264",
+                "link_dir: ./external-dependencies/NvidiaCodec/", "-l:nvcuvid.lib",
+                "link_dir: $cuda_libs_path", "-l:cuda.lib",
+                "link_dir: $vulkan_libs_path", "-lvulkan-1"                
+            ],
+            "sources" : [
+                "source/main.c",
+                "$gui_sources"
+            ]
+        }
+    ],
+    "sources" : [ ]
+}
