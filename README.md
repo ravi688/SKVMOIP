@@ -69,12 +69,10 @@ Installing and setting up the software suite is easy to follow and requires no s
 - Launch the `MSYS2 MINGW64` from start menu
 - Install gcc using `$pacman -S mingw-w64-x86_64-gcc`
 - Install make using `$pacman -S mingw-w64-x86_64-make`
-- Install git using `$pacman -S git`
 - Install glslang using `$pacman -S mingw-w64-x86_64-glslang`, this is only required for Client Build
 - Install gtk3 using `$pacman -S mingw-w64-x86_64-gtk3`, this is only required for Client Build
 - Clone this repository using `$git clone https://github.com/ravi688/SKVMOIP`
 - Change directory to SKVMOIP using $cd SKVMOIP`
-- Setup dependencies using `$git submodule update --init`
 
 #### Setting up the STM32F401CCU6 and W5500 via SPI interface
 Connect GND and 3.3 Vcc pins of the W5500 to the GND and 3.3 Vcc pins of STM32 MCU. Now check if the W5500 and STM32 MCU both are powering on (the red lights should light up on both).
@@ -93,14 +91,11 @@ NOTE: Before plugging the ST link programmer, make appropriate connections to th
 
 Click on the `Run` tab on the menu bar on the top, and select `run` to build and upload the executable on the Microcontroller.
 
-#### Setting up server for Windows
+#### Building the server for Windows
 It requires building the server executable first and then deploying it to the encoder server computer (a windows computer).
-- cd into the git repo directory (on the server computer) using `$cd SKVMOIP`
-- Make sure to run `$make -s clean` for previous builds if any
-- Run `$make -s build BUILD=server OUT=server`, this will start the server build process
-  ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/5d2ec0c2-a12c-4267-b215-63b535c74115)
-- And outputs a `server.exe` executable file
-- Run the application using `./server.exe`
+- Run `meson setup build`
+- Run `meson compile -C build server`
+- Run the application using `./build/server.exe`
 - Now, note down the IP address and Port number at which the server is listening for connections
 - Done!
 ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/933de9b9-6281-46f5-ae44-58413b717d26)
@@ -108,14 +103,9 @@ It requires building the server executable first and then deploying it to the en
 
 #### Setting up client For Windows
 It requires buildilng the installer first and then deploying it to a Windows Client Computer.
-- cd into the git repo directory (on the client computer) using `$cd SKVMOIP`
-- Make sure to run `$make -s clean` for previous builds if any
-- Run `$make -s build BUILD=client OUT=client`, this will start the client build process
-  ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/cb4909e5-9b20-43fd-8290-7a759876257b)
-  ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/6cdaad28-ecca-4cb6-9dd4-d0d28476cab8)
-
-- And outputs a `client.exe` executable file
-- Run the application using `./client.exe`
+- Run `meson setup build` if haven't already (in the server case)
+- Run `meson compile -C build client`
+- Run the application using `./build/client.exe`
 - Now click on `Add` button on the top right, you'll be shown a machine add wizard window
 - Fill in the Machine details, VIP is the Video Server IP address reported by the SKVMOIP server process and the KMIP is the Keyboard Mouse Server IP address which is set to `192.168.1.113:2000`, and click `Ok`<br>
   ![image](https://github.com/ravi688/SKVMOIP/assets/67525292/e6a9c85c-b5c3-46f8-82ce-840d7d2167d4)
