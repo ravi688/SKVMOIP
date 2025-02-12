@@ -1,0 +1,132 @@
+{
+    "project_name" : "SKVMOIP",
+    "canonical_name" : "skvmoip",
+    "description" : "Scalable KVM Over IP",
+    "dependencies" : [ "common", "playvk", "bufferlib" ],
+    "vars" :
+    {
+        "cuda_path" : "run_command(find_program('python'), '-c', 'import os; print(os.environ[\"CUDA_PATH\"])', check : false).stdout().strip()",
+        "cuda_includes" : "cuda_path + '/include'",
+        "cuda_libs_path" : "cuda_path + '/lib/x64'",
+        "vulkan_sdk_path" : "run_command(find_program('python'), '-c', 'import os; print(os.environ[\"VK_SDK_PATH\"])', check : false).stdout().strip()",
+        "vulkan_libs_path" : "vulkan_sdk_path + '/Lib/'",
+        "gtk3_cflags" : "run_command('pkg-config', 'gtk+-3.0', '--cflags', check : false).stdout().strip().split(' ')",
+        "gtk3_libs" : "run_command('pkg-config', 'gtk+-3.0', '--libs', check : false).stdout().strip().split(' ')",
+        "gui_sources" : [
+            "source/GUI/AddUI.cpp",
+            "source/GUI/MachineUI.cpp",
+            "source/GUI/MainUI.cpp"
+        ],
+        "server_target_sources" : [
+            "source/Encoder.cpp",
+            "source/HDMIEncodeNetStream.cpp",
+            "source/Win32/Win32ImagingDevice.cpp"
+        ],
+        "client_target_sources" : [
+            "source/third_party/NvDecoder.cpp",
+            "source/Decoder.cpp",
+            "source/Window.cpp",
+            "source/Win32/Win32DrawSurface.cpp",
+            "source/Win32/Win32RawInput.cpp",
+            "source/Win32/Win32Window.cpp",
+            "source/HDMIDecoderNetStream.cpp",
+            "source/KMNetStream.cpp",
+            "source/HIDUsageID.cpp",
+            "source/RDPSession.cpp",
+            "source/PresentEngine.cpp",
+            "source/MachineData.cpp",
+            "source/FIFOPool.cpp",
+            "source/Event.cpp",
+            "source/Network/NetworkPacket.cpp",
+            "source/ErrorHandling.cpp"
+        ]
+    },
+    "defines" : [ 
+        "-DUSE_PERSISTENT_SETTINGS",
+        "-DUSE_VULKAN_PRESENTATION",
+        "-DUSE_VULKAN_FOR_COLOR_SPACE_CONVERSION",
+        "-DUSE_DIRECT_FRAME_DATA_COPY"
+    ],
+    "release_defines": [ "-DSKVMOIP_RELEASE" ],
+    "debug_defines": [ "-DSKVMOIP_DEBUG" ],
+    "install_header_dirs" : [ "include/SKVMOIP" ],
+    "include_dirs" : [ "include", "external-dependencies" ],
+    "windows_link_args" : [
+        "-lws2_32",
+        "-lole32",
+        "-loleaut32",
+        "-lmfreadwrite",
+        "-lmfplat",
+        "-lmf",
+        "-lmfuuid",
+        "-lgdi32",
+        "-lwmcodecdspuuid"
+    ],
+    "targets" :
+    [
+        {
+            "name" : "server",
+            "is_executable" : true,
+            "windows_link_args" : [
+                "link_dir: './external-dependencies/x264'", "-lx264"
+            ],
+            "defines" : ["-DBUILD_SERVER"],
+            "sources": [ "$server_target_sources", "source/main.server.cpp" ]
+        },
+        {
+            "name" : "client",
+            "is_executable" : true,
+            "dependencies" : ["gtk+-3.0", "vulkanheaders"],
+            "include_dirs" : [
+                "./external-dependencies/NvidiaCodec/include/",
+                "$cuda_includes"
+            ],
+            "windows_link_args" : [
+                "link_dir: $cuda_libs_path", "-l:cuda.lib",
+                "link_dir: './external-dependencies/NvidiaCodec/'", "-l:nvcuvid.lib",
+                "link_dir: $vulkan_libs_path", "-lvulkan-1"                
+            ],
+            "defines" : ["-DBUILD_CLIENT"],
+            "sources" : [ "$client_target_sources", "$gui_sources", "source/main.client.cpp" ]
+        },
+        // The guitest target was just for experiment, it won't build!
+        {
+            "name" : "guitest",
+            "is_executable" : true,
+            "defines" : ["-DBUILD_GUITEST"],
+            "dependencies" : ["gtk+-3.0"],
+            "sources" : [
+                "source/main.guitest.cpp",
+                "$gui_sources"
+            ]
+        },
+        // The main target was just for experiment, it won't build!
+        {
+            "name" : "main",
+            "is_executable" : true,
+            "defines" : ["-DBUILD_TEST", "-DBUILD_CLIENT"],
+            "dependencies" : ["gtk+-3.0", "vulkanheaders"],
+            "include_dirs" : [
+                "./external-dependencies/NvidiaCodec/include/",
+                "$cuda_includes"
+            ],
+            "windows_link_args" : [
+                "link_dir: './external-dependencies/x264'", "-lx264",
+                "link_dir: './external-dependencies/NvidiaCodec/'", "-l:nvcuvid.lib",
+                "link_dir: $cuda_libs_path", "-l:cuda.lib",
+                "link_dir: $vulkan_libs_path", "-lvulkan-1"                
+            ],
+            "sources" : [
+                "source/main.cpp",
+                "$client_target_sources",
+                "$gui_sources"
+            ]
+        }
+    ],
+    "sources" : [
+        "source/Network/NetworkSocket.cpp",
+        "source/Network/NetworkAsyncQueueSocket.cpp",
+        "source/VideoSourceStream.cpp",
+        "source/Win32/Win32.cpp"
+    ]
+}

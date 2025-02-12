@@ -1,0 +1,7 @@
+[wrap-git]
+url = https://github.com/ravi688/PlayVk.git
+revision = head
+depth = 1
+
+[provide]
+playvk = playvk_headers_dep

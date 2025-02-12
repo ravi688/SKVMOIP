@@ -168,7 +168,7 @@ namespace SKVMOIP
 		pvkDestroyFramebuffers(m_vkDevice, PRESENT_ENGINE_IMAGE_COUNT, m_vkFramebuffers);
 		PVK_DELETE(m_vkFramebuffers);
 		pvkDestroySwapchainImageViews(m_vkDevice, m_vkSwapchain, m_vkSwapchainImageViews);
-		PVK_DEBUG(m_vkSwapchainImageViews);
+		PVK_DELETE(m_vkSwapchainImageViews);
 		vkDestroySwapchainKHR(m_vkDevice, m_vkSwapchain, NULL);
 	}
 
