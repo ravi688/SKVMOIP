@@ -71,6 +71,9 @@ Installing and setting up the software suite is easy to follow and requires no s
 - Install make using `$pacman -S mingw-w64-x86_64-make`
 - Install glslang using `$pacman -S mingw-w64-x86_64-glslang`, this is only required for Client Build
 - Install gtk3 using `$pacman -S mingw-w64-x86_64-gtk3`, this is only required for Client Build
+- Install vulkan headers using `$ meson wrap install vulkan-header`
+- Install glfw3 using `$ meson wrap install glfw`
+- Install Vulkan SDK from LunarG for Windows, after installing, running `$ echo $VK_SDK_PATH` should display the install path
 - Clone this repository using `$git clone https://github.com/ravi688/SKVMOIP`
 - Change directory to SKVMOIP using $cd SKVMOIP`
 
