@@ -63,12 +63,12 @@ gui_sources = [
 'source/GUI/MachineUI.cpp',
 'source/GUI/MainUI.cpp'
 ]
-server_target_sources = [
+server_sources = [
 'source/Encoder.cpp',
 'source/HDMIEncodeNetStream.cpp',
 'source/Win32/Win32ImagingDevice.cpp'
 ]
-client_target_sources = [
+client_sources = [
 'source/third_party/NvDecoder.cpp',
 'source/Decoder.cpp',
 'source/Window.cpp',
@@ -89,43 +89,43 @@ client_target_sources = [
 
 
 # Release Build Defines
-release_defines = [
+release_defines_bm_internal__ = [
 '-DSKVMOIP_RELEASE'
 ] 
 
 # Debug Build Defines
-debug_defines = [
+debug_defines_bm_internal__ = [
 '-DSKVMOIP_DEBUG'
 ]
 
 # Source files (common to all targets)
-sources = files(
+sources_bm_internal__ = files(
 'source/Network/NetworkSocket.cpp', 'source/Network/NetworkAsyncQueueSocket.cpp', 'source/VideoSourceStream.cpp', 'source/Win32/Win32.cpp'
 )
 
 # Include directories
-inc = include_directories(
+inc_bm_internal__ = include_directories(
 'include', 'external-dependencies'
 )
 
 # Library Install Directory
-lib_install_dir = get_option('libdir')/'skvmoip'
+lib_install_dir_bm_internal__ = get_option('libdir')/'skvmoip'
 
 # Dependencies
-dependencies = [
+dependencies_bm_internal__ = [
 dependency('common'),
 dependency('playvk'),
 dependency('bufferlib')
 ]
 
 # Linker Arguments
-windows_link_args = [ 
+windows_link_args_bm_internal__ = [ 
 '-lws2_32', '-lole32', '-loleaut32', '-lmfreadwrite', '-lmfplat', '-lmf', '-lmfuuid', '-lgdi32', '-lwmcodecdspuuid'
 ]
-linux_link_args = [
+linux_link_args_bm_internal__ = [
 
 ]
-darwin_link_args = [
+darwin_link_args_bm_internal__ = [
 
 ]
 
@@ -136,191 +136,190 @@ darwin_link_args = [
 add_project_arguments('-m64', language : 'c')
 add_project_arguments('-m64', language : 'cpp')
 # Linker configuration
-link_args = []
-os_name = host_machine.system()
-if os_name == 'windows'
-  link_args += windows_link_args
-elif os_name == 'linux'
-  link_args += linux_link_args
-elif os_name == 'darwin'
-  link_args += darwin_link_args
+link_args_bm_internal__ = []
+os_name_bm_internal__ = host_machine.system()
+if os_name_bm_internal__ == 'windows'
+  link_args_bm_internal__ += windows_link_args_bm_internal__
+elif os_name_bm_internal__ == 'linux'
+  link_args_bm_internal__ += linux_link_args_bm_internal__
+elif os_name_bm_internal__ == 'darwin'
+  link_args_bm_internal__ += darwin_link_args_bm_internal__
 endif
-add_project_link_arguments('-m64', link_args, language : 'c')
-add_project_link_arguments('-m64', link_args, language : 'cpp')
+add_project_link_arguments('-m64', link_args_bm_internal__, language : 'c')
+add_project_link_arguments('-m64', link_args_bm_internal__, language : 'cpp')
 
 # Build type specific defines
-build_mode_defines = []
+build_mode_defines_bm_internal__ = []
 if get_option('buildtype') == 'release'
-  add_project_arguments(release_defines, language : 'c')
-  add_project_arguments(release_defines, language : 'cpp')
-  build_mode_defines += release_defines
+  add_project_arguments(release_defines_bm_internal__, language : 'c')
+  add_project_arguments(release_defines_bm_internal__, language : 'cpp')
+  build_mode_defines_bm_internal__ += release_defines_bm_internal__
 else
-  add_project_arguments(debug_defines, language : 'c')
-  add_project_arguments(debug_defines, language : 'cpp')
-  build_mode_defines += debug_defines
+  add_project_arguments(debug_defines_bm_internal__, language : 'c')
+  add_project_arguments(debug_defines_bm_internal__, language : 'cpp')
+  build_mode_defines_bm_internal__ += debug_defines_bm_internal__
 endif
 
 # pkg-config package installation
-python = find_program('python')
 # Try PKG_CONFIG_PATH first, typicallly it succeeds on MINGW64 (MSYS2)
-result = run_command(python, '-c', 'import os; print(os.environ["PKG_CONFIG_PATH"])', check : false)
-pkgconfig_install_path = ''
-if result.returncode() == 0
-  str = result.stdout()
+python_pkg_config_path_result_bm_internal__ = run_command(find_program('python'), '-c', 'import os; print(os.environ["PKG_CONFIG_PATH"])', check : false)
+pkgconfig_install_path_bm_internal__ = ''
+if python_pkg_config_path_result_bm_internal__.returncode() == 0
+  str = python_pkg_config_path_result_bm_internal__.stdout()
   # Unix
   if str.startswith('/')
-    pkgconfig_install_path = str.replace(';', ':').split(':')[0]
+    pkgconfig_install_path_bm_internal__ = str.replace(';', ':').split(':')[0]
   # Windows
   else
-    pkgconfig_install_path = str.split(';')[0]
+    pkgconfig_install_path_bm_internal__ = str.split(';')[0]
   endif
 endif
-if pkgconfig_install_path == ''
+if pkgconfig_install_path_bm_internal__ == ''
   # Otherwise use pkg-config to query its lookup directories
   message('PKG_CONFIG_PATH seems to be empty, trying another method')
-  result = run_command('pkg-config', '--variable', 'pc_path', 'pkg-config', check : false)
-  if result.returncode() == 0
-    str = result.stdout()
+  python_pkg_config_path_result_bm_internal__ = run_command('pkg-config', '--variable', 'pc_path', 'pkg-config', check : false)
+  if python_pkg_config_path_result_bm_internal__.returncode() == 0
+    str = python_pkg_config_path_result_bm_internal__.stdout()
     if str.startswith('/')
-      pkgconfig_install_path = str.replace(';', ':').split(':')[0]
+      pkgconfig_install_path_bm_internal__ = str.replace(';', ':').split(':')[0]
     else
-      pkgconfig_install_path = str.split(';')[0]
+      pkgconfig_install_path_bm_internal__ = str.split(';')[0]
     endif
   # Finally if the above attempts fail, use 'libdir' value
   else
-    pkgconfig_install_path = get_option('libdir')
+    pkgconfig_install_path_bm_internal__ = get_option('libdir')
   endif
 endif
-message('pkg config path: ' + pkgconfig_install_path)
+message('pkg config path: ' + pkgconfig_install_path_bm_internal__)
 
 #-------------------------------------------------------------------------------
 #--------------------------------BUILD TARGETS----------------------------------
 pkgmod = import('pkgconfig')
 
 # -------------- Target: server ------------------
-server_sources = [
-server_target_sources,
+server_sources_bm_internal__ = [
+server_sources,
 'source/main.server.cpp'
 ]
-server_include_dirs = [
+server_include_dirs_bm_internal__ = [
 
 ]
-server_dependencies = [
+server_dependencies_bm_internal__ = [
 
 ]
-server_link_args = {
+server_link_args_bm_internal__ = {
 'windows' : ['-L' + meson.project_source_root() + '/' +  './external-dependencies/x264', '-lx264'],
 'linux' : [],
 'darwin' : []
 }
-server_defines = [
+server_defines_bm_internal__ = [
 '-DBUILD_SERVER'
 ]
 server = executable('server',
-	server_sources + sources,
-	dependencies: dependencies + server_dependencies,
-	include_directories: [inc, server_include_dirs],
+	server_sources_bm_internal__ + sources_bm_internal__,
+	dependencies: dependencies_bm_internal__ + server_dependencies_bm_internal__,
+	include_directories: [inc_bm_internal__, server_include_dirs_bm_internal__],
 	install: false,
-	c_args: server_defines,
-	cpp_args: server_defines, 
-	link_args: server_link_args[host_machine.system()],
+	c_args: server_defines_bm_internal__,
+	cpp_args: server_defines_bm_internal__, 
+	link_args: server_link_args_bm_internal__[host_machine.system()],
 	gnu_symbol_visibility: 'hidden'
 )
 
 # -------------- Target: client ------------------
-client_sources = [
-client_target_sources,
+client_sources_bm_internal__ = [
+client_sources,
 gui_sources,
 'source/main.client.cpp'
 ]
-client_include_dirs = [
+client_include_dirs_bm_internal__ = [
 './external-dependencies/NvidiaCodec/include/',
 cuda_includes
 ]
-client_dependencies = [
+client_dependencies_bm_internal__ = [
 dependency('gtk+-3.0'),
 dependency('vulkanheaders')
 ]
-client_link_args = {
+client_link_args_bm_internal__ = {
 'windows' : ['-L' +  cuda_libs_path, '-l:cuda.lib', '-L' + meson.project_source_root() + '/' +  './external-dependencies/NvidiaCodec/', '-l:nvcuvid.lib', '-L' +  vulkan_libs_path, '-lvulkan-1'],
 'linux' : [],
 'darwin' : []
 }
-client_defines = [
+client_defines_bm_internal__ = [
 '-DBUILD_CLIENT'
 ]
 client = executable('client',
-	client_sources + sources,
-	dependencies: dependencies + client_dependencies,
-	include_directories: [inc, client_include_dirs],
+	client_sources_bm_internal__ + sources_bm_internal__,
+	dependencies: dependencies_bm_internal__ + client_dependencies_bm_internal__,
+	include_directories: [inc_bm_internal__, client_include_dirs_bm_internal__],
 	install: false,
-	c_args: client_defines,
-	cpp_args: client_defines, 
-	link_args: client_link_args[host_machine.system()],
+	c_args: client_defines_bm_internal__,
+	cpp_args: client_defines_bm_internal__, 
+	link_args: client_link_args_bm_internal__[host_machine.system()],
 	gnu_symbol_visibility: 'hidden'
 )
 
 # -------------- Target: guitest ------------------
-guitest_sources = [
+guitest_sources_bm_internal__ = [
 'source/main.guitest.cpp',
 gui_sources
 ]
-guitest_include_dirs = [
+guitest_include_dirs_bm_internal__ = [
 
 ]
-guitest_dependencies = [
+guitest_dependencies_bm_internal__ = [
 dependency('gtk+-3.0')
 ]
-guitest_link_args = {
+guitest_link_args_bm_internal__ = {
 'windows' : [],
 'linux' : [],
 'darwin' : []
 }
-guitest_defines = [
+guitest_defines_bm_internal__ = [
 '-DBUILD_GUITEST'
 ]
 guitest = executable('guitest',
-	guitest_sources + sources,
-	dependencies: dependencies + guitest_dependencies,
-	include_directories: [inc, guitest_include_dirs],
+	guitest_sources_bm_internal__ + sources_bm_internal__,
+	dependencies: dependencies_bm_internal__ + guitest_dependencies_bm_internal__,
+	include_directories: [inc_bm_internal__, guitest_include_dirs_bm_internal__],
 	install: false,
-	c_args: guitest_defines,
-	cpp_args: guitest_defines, 
-	link_args: guitest_link_args[host_machine.system()],
+	c_args: guitest_defines_bm_internal__,
+	cpp_args: guitest_defines_bm_internal__, 
+	link_args: guitest_link_args_bm_internal__[host_machine.system()],
 	gnu_symbol_visibility: 'hidden'
 )
 
 # -------------- Target: main ------------------
-main_sources = [
+main_sources_bm_internal__ = [
 'source/main.cpp',
-client_target_sources,
+client_sources,
 gui_sources
 ]
-main_include_dirs = [
+main_include_dirs_bm_internal__ = [
 './external-dependencies/NvidiaCodec/include/',
 cuda_includes
 ]
-main_dependencies = [
+main_dependencies_bm_internal__ = [
 dependency('gtk+-3.0'),
 dependency('vulkanheaders')
 ]
-main_link_args = {
+main_link_args_bm_internal__ = {
 'windows' : ['-L' + meson.project_source_root() + '/' +  './external-dependencies/x264', '-lx264', '-L' + meson.project_source_root() + '/' +  './external-dependencies/NvidiaCodec/', '-l:nvcuvid.lib', '-L' +  cuda_libs_path, '-l:cuda.lib', '-L' +  vulkan_libs_path, '-lvulkan-1'],
 'linux' : [],
 'darwin' : []
 }
-main_defines = [
+main_defines_bm_internal__ = [
 '-DBUILD_TEST',
 '-DBUILD_CLIENT'
 ]
 main = executable('main',
-	main_sources + sources,
-	dependencies: dependencies + main_dependencies,
-	include_directories: [inc, main_include_dirs],
+	main_sources_bm_internal__ + sources_bm_internal__,
+	dependencies: dependencies_bm_internal__ + main_dependencies_bm_internal__,
+	include_directories: [inc_bm_internal__, main_include_dirs_bm_internal__],
 	install: false,
-	c_args: main_defines,
-	cpp_args: main_defines, 
-	link_args: main_link_args[host_machine.system()],
+	c_args: main_defines_bm_internal__,
+	cpp_args: main_defines_bm_internal__, 
+	link_args: main_link_args_bm_internal__[host_machine.system()],
 	gnu_symbol_visibility: 'hidden'
 )
 

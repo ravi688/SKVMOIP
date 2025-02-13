@@ -17,12 +17,12 @@
             "source/GUI/MachineUI.cpp",
             "source/GUI/MainUI.cpp"
         ],
-        "server_target_sources" : [
+        "server_sources" : [
             "source/Encoder.cpp",
             "source/HDMIEncodeNetStream.cpp",
             "source/Win32/Win32ImagingDevice.cpp"
         ],
-        "client_target_sources" : [
+        "client_sources" : [
             "source/third_party/NvDecoder.cpp",
             "source/Decoder.cpp",
             "source/Window.cpp",
@@ -71,7 +71,7 @@
                 "link_dir: './external-dependencies/x264'", "-lx264"
             ],
             "defines" : ["-DBUILD_SERVER"],
-            "sources": [ "$server_target_sources", "source/main.server.cpp" ]
+            "sources": [ "$server_sources", "source/main.server.cpp" ]
         },
         {
             "name" : "client",
@@ -87,7 +87,7 @@
                 "link_dir: $vulkan_libs_path", "-lvulkan-1"                
             ],
             "defines" : ["-DBUILD_CLIENT"],
-            "sources" : [ "$client_target_sources", "$gui_sources", "source/main.client.cpp" ]
+            "sources" : [ "$client_sources", "$gui_sources", "source/main.client.cpp" ]
         },
         // The guitest target was just for experiment, it won't build!
         {
@@ -118,7 +118,7 @@
             ],
             "sources" : [
                 "source/main.cpp",
-                "$client_target_sources",
+                "$client_sources",
                 "$gui_sources"
             ]
         }
