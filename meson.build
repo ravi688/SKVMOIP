@@ -88,6 +88,11 @@ client_sources = [
 ]
 
 
+# Defines
+defines_bm_internal__ = [
+'-DUSE_PERSISTENT_SETTINGS', '-DUSE_VULKAN_PRESENTATION', '-DUSE_VULKAN_FOR_COLOR_SPACE_CONVERSION', '-DUSE_DIRECT_FRAME_DATA_COPY'
+]
+
 # Release Build Defines
 release_defines_bm_internal__ = [
 '-DSKVMOIP_RELEASE'
@@ -149,7 +154,7 @@ add_project_link_arguments('-m64', link_args_bm_internal__, language : 'c')
 add_project_link_arguments('-m64', link_args_bm_internal__, language : 'cpp')
 
 # Build type specific defines
-build_mode_defines_bm_internal__ = []
+build_mode_defines_bm_internal__ = defines_bm_internal__
 if get_option('buildtype') == 'release'
   add_project_arguments(release_defines_bm_internal__, language : 'c')
   add_project_arguments(release_defines_bm_internal__, language : 'cpp')
