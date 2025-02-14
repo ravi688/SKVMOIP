@@ -154,15 +154,15 @@ add_project_link_arguments('-m64', link_args_bm_internal__, language : 'c')
 add_project_link_arguments('-m64', link_args_bm_internal__, language : 'cpp')
 
 # Build type specific defines
-build_mode_defines_bm_internal__ = defines_bm_internal__
+project_build_mode_defines_bm_internal__ = defines_bm_internal__
 if get_option('buildtype') == 'release'
   add_project_arguments(release_defines_bm_internal__, language : 'c')
   add_project_arguments(release_defines_bm_internal__, language : 'cpp')
-  build_mode_defines_bm_internal__ += release_defines_bm_internal__
+  project_build_mode_defines_bm_internal__ += release_defines_bm_internal__
 else
   add_project_arguments(debug_defines_bm_internal__, language : 'c')
   add_project_arguments(debug_defines_bm_internal__, language : 'cpp')
-  build_mode_defines_bm_internal__ += debug_defines_bm_internal__
+  project_build_mode_defines_bm_internal__ += debug_defines_bm_internal__
 endif
 
 # pkg-config package installation
@@ -225,8 +225,8 @@ server = executable('server',
 	dependencies: dependencies_bm_internal__ + server_dependencies_bm_internal__,
 	include_directories: [inc_bm_internal__, server_include_dirs_bm_internal__],
 	install: false,
-	c_args: server_defines_bm_internal__,
-	cpp_args: server_defines_bm_internal__, 
+	c_args: server_defines_bm_internal__ + project_build_mode_defines_bm_internal__,
+	cpp_args: server_defines_bm_internal__ + project_build_mode_defines_bm_internal__, 
 	link_args: server_link_args_bm_internal__[host_machine.system()],
 	gnu_symbol_visibility: 'hidden'
 )
@@ -258,8 +258,8 @@ client = executable('client',
 	dependencies: dependencies_bm_internal__ + client_dependencies_bm_internal__,
 	include_directories: [inc_bm_internal__, client_include_dirs_bm_internal__],
 	install: false,
-	c_args: client_defines_bm_internal__,
-	cpp_args: client_defines_bm_internal__, 
+	c_args: client_defines_bm_internal__ + project_build_mode_defines_bm_internal__,
+	cpp_args: client_defines_bm_internal__ + project_build_mode_defines_bm_internal__, 
 	link_args: client_link_args_bm_internal__[host_machine.system()],
 	gnu_symbol_visibility: 'hidden'
 )
@@ -288,8 +288,8 @@ guitest = executable('guitest',
 	dependencies: dependencies_bm_internal__ + guitest_dependencies_bm_internal__,
 	include_directories: [inc_bm_internal__, guitest_include_dirs_bm_internal__],
 	install: false,
-	c_args: guitest_defines_bm_internal__,
-	cpp_args: guitest_defines_bm_internal__, 
+	c_args: guitest_defines_bm_internal__ + project_build_mode_defines_bm_internal__,
+	cpp_args: guitest_defines_bm_internal__ + project_build_mode_defines_bm_internal__, 
 	link_args: guitest_link_args_bm_internal__[host_machine.system()],
 	gnu_symbol_visibility: 'hidden'
 )
@@ -322,8 +322,8 @@ main = executable('main',
 	dependencies: dependencies_bm_internal__ + main_dependencies_bm_internal__,
 	include_directories: [inc_bm_internal__, main_include_dirs_bm_internal__],
 	install: false,
-	c_args: main_defines_bm_internal__,
-	cpp_args: main_defines_bm_internal__, 
+	c_args: main_defines_bm_internal__ + project_build_mode_defines_bm_internal__,
+	cpp_args: main_defines_bm_internal__ + project_build_mode_defines_bm_internal__, 
 	link_args: main_link_args_bm_internal__[host_machine.system()],
 	gnu_symbol_visibility: 'hidden'
 )
@@ -333,4 +333,5 @@ main = executable('main',
 #--------------------------------Header Intallation----------------------------------
 # Header installation
 install_subdir('include/SKVMOIP', install_dir : get_option('includedir'))
+
 
