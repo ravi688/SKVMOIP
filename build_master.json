@@ -3,6 +3,7 @@
     "canonical_name" : "skvmoip",
     "description" : "Scalable KVM Over IP",
     "dependencies" : [ "common", "playvk", "bufferlib" ],
+    "pre_config_hook" : "install_vulkan-headers.sh",
     "vars" :
     {
         "cuda_path" : "run_command(find_program('python'), '-c', 'import os; print(os.environ[\"CUDA_PATH\"])', check : false).stdout().strip()",

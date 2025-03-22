@@ -1,2 +1,7 @@
-[wrap-redirect]
-filename = common/subprojects/bufferlib.wrap
+[wrap-git]
+url = https://github.com/ravi688/BufferLib.git
+revision = head
+depth = 1
+
+[provide]
+bufferlib = bufferlib_static_dep
