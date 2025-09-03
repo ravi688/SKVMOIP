@@ -141,7 +141,13 @@ static void createCudaContext(CUcontext* cuContext, int iGpu, unsigned int flags
     char szDeviceName[80];
     ck(cuDeviceGetName(szDeviceName, sizeof(szDeviceName), cuDevice));
     std::cout << "GPU in use: " << szDeviceName << std::endl;
-    ck(cuCtxCreate(cuContext, flags, cuDevice));
+#if CUDA_VERSION >= 12020  // CUDA 12.2 and newer use CUctxCreateParams
+    CUctxCreateParams params = {};
+    ck(cuCtxCreate(cuContext, &params, flags, cuDevice));
+#else
+    // CUDA <= 12.1 still uses cuCtxCreate_v2
+    ck(cuCtxCreate_v2(cuContext, flags, cuDevice));
+#endif
 }
 
 /**
