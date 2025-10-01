@@ -90,39 +90,6 @@
             "defines" : ["-DBUILD_CLIENT"],
             "sources" : [ "$client_sources", "$gui_sources", "source/main.client.cpp" ]
         }
-        // , The guitest target was just for experiment, it won't build!
-        // {
-        //     "name" : "guitest",
-        //     "is_executable" : true,
-        //     "defines" : ["-DBUILD_GUITEST"],
-        //     "dependencies" : ["gtk+-3.0"],
-        //     "sources" : [
-        //         "source/main.guitest.cpp",
-        //         "$gui_sources"
-        //     ]
-        // },
-        // The main target was just for experiment, it won't build!
-        // {
-        //     "name" : "main",
-        //     "is_executable" : true,
-        //     "defines" : ["-DBUILD_TEST", "-DBUILD_CLIENT"],
-        //     "dependencies" : ["gtk+-3.0", "vulkanheaders"],
-        //     "include_dirs" : [
-        //         "./external-dependencies/NvidiaCodec/include/",
-        //         "$cuda_includes"
-        //     ],
-        //     "windows_link_args" : [
-        //         "link_dir: './external-dependencies/x264'", "-lx264",
-        //         "link_dir: './external-dependencies/NvidiaCodec/'", "-l:nvcuvid.lib",
-        //         "link_dir: $cuda_libs_path", "-l:cuda.lib",
-        //         "link_dir: $vulkan_libs_path", "-lvulkan-1"                
-        //     ],
-        //     "sources" : [
-        //         "source/main.cpp",
-        //         "$client_sources",
-        //         "$gui_sources"
-        //     ]
-        // }
     ],
     "sources" : [
         "source/Network/NetworkSocket.cpp",
