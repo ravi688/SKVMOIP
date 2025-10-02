@@ -119,7 +119,7 @@ namespace SKVMOIP
 							muiptr->setStatus(isUp ? "Status: Connected" : "Status: No Response");
 						}, reinterpret_cast<void*>(&mui));
 						OptionalReference<MachineData> data = getMachineDataFromID(id);
-						_assert(data.has_value());
+						skvmoip_debug_assert(data.has_value());
 						rdp->connect(data->getKeyMoIPAddressStr(), data->getKeyMoPortNumberStr(), data->getVideoIPAddressStr(), data->getVideoPortNumberStr());
 					}
 				});
@@ -150,7 +150,7 @@ namespace SKVMOIP
 		  			std::unique_ptr<RDPSession>& rdp = (*gActiveSessions)[id];
 		  			rdp.reset();
 		  			auto result = gActiveSessions->erase(id);
-		  			_assert(result == 1);
+		  			skvmoip_debug_assert(result == 1);
 		  	}
 
 		  	/* Remove the machine's UI from the dashboard */
@@ -209,7 +209,7 @@ static MachineData& getFirstSelectedMachine()
 {
 	u32 selectedID = gSelectedMachines.front();
 	OptionalReference<MachineData> refData = getMachineDataFromID(selectedID);
-	_assert(refData.has_value());
+	skvmoip_debug_assert(refData.has_value());
 	return *refData;	
 }
 
@@ -274,7 +274,7 @@ static void OnVideoClicked(u32 id, void* userData)
 	std::unique_ptr<RDPSession>& rdp = it->second;
 
 	OptionalReference<MachineData> data = getMachineDataFromID(id);
-	_assert(data.has_value());
+	skvmoip_debug_assert(data.has_value());
 	std::string ipAddrString(data->getVideoIPAddressStr());
 	std::string prtNumString(data->getVideoPortNumberStr());
 	auto sessionThread = std::thread([](RDPSession* rdp, std::string&& ipAddress, std::string&& portNumber, u8 deviceID)
@@ -290,7 +290,7 @@ static void OnPowerPress(u32 id, void* userData)
 	DEBUG_LOG_INFO("%u:%s", id, __FUNCTION__);
 
 	auto it = gActiveSessions->find(id);
-	_ASSERT(it != gActiveSessions->end());
+	skvmoip_assert(it != gActiveSessions->end());
 	std::unique_ptr<RDPSession>& rdp = it->second;
 
 	rdp->getKMNetStream()->sendFrontPanelInput({ true });
@@ -306,7 +306,7 @@ static void OnPowerRelease(u32 id, void* userData)
 	DEBUG_LOG_INFO("%u:%s", id, __FUNCTION__);
 
 	auto it = gActiveSessions->find(id);
-	_ASSERT(it != gActiveSessions->end());
+	skvmoip_assert(it != gActiveSessions->end());
 	std::unique_ptr<RDPSession>& rdp = it->second;
 
 	rdp->getKMNetStream()->sendFrontPanelInput({ false });
@@ -318,7 +318,7 @@ static void OnResetPress(u32 id, void* userData)
 	DEBUG_LOG_INFO("%u:%s", id, __FUNCTION__);
 
 	auto it = gActiveSessions->find(id);
-	_ASSERT(it != gActiveSessions->end());
+	skvmoip_assert(it != gActiveSessions->end());
 	std::unique_ptr<RDPSession>& rdp = it->second;
 
 	rdp->getKMNetStream()->sendFrontPanelInput({ }, { true });
@@ -329,7 +329,7 @@ static void OnResetRelease(u32 id, void* userData)
 	DEBUG_LOG_INFO("%u:%s", id, __FUNCTION__);
 	
 	auto it = gActiveSessions->find(id);
-	_ASSERT(it != gActiveSessions->end());
+	skvmoip_assert(it != gActiveSessions->end());
 	std::unique_ptr<RDPSession>& rdp = it->second;
 
 	rdp->getKMNetStream()->sendFrontPanelInput({ }, { false });

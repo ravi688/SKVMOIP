@@ -24,7 +24,7 @@ static TypedEventMap* getEventMap(HWND windowHandle)
 static SKVMOIP::Event& getEvent(TypedEventMap& eventMap, SKVMOIP::Window::EventType eventType)
 {
 	TypedEventMap::iterator eventIt = eventMap.find(eventType);
-	_assert(eventIt != eventMap.end());
+	skvmoip_debug_assert(eventIt != eventMap.end());
 	return eventIt->second;
 }
 
@@ -35,7 +35,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 		return DefWindowProc(hwnd, uMsg, wParam, lParam);
 
 	auto it = gWindowsSelfReferenceRegistry.find(hwnd);
-	_assert(it != gWindowsSelfReferenceRegistry.end());
+	skvmoip_debug_assert(it != gWindowsSelfReferenceRegistry.end());
 	SKVMOIP::Window* window = it->second;
 
 	switch (uMsg)
@@ -135,9 +135,9 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 					else
 					{
 						auto result = m_pressedKeys.erase(keyboardInput.makeCode);
-						_assert_wrn(result == 1);
+						skvmoip_debug_assert_wrn(result == 1);
 
-						_assert(keyboardInput.keyStatus == Win32::KeyStatus::Released);
+						skvmoip_debug_assert(keyboardInput.keyStatus == Win32::KeyStatus::Released);
 						Win32::KeyCode virtualKey = IntToEnumClass<Win32::KeyCode>(static_cast<u8>(curKeyComb.back().virtualKey));
 						if(virtualKey == keyboardInput.virtualKey)
 							curKeyComb.pop_back();

@@ -21,6 +21,9 @@
 #include <conio.h>
 #include <ctype.h> // isdigit
 
+#undef _ASSERT
+#include <spdlog/spdlog.h>
+
 #define LISTEN_PORT_NUMBER "2020"
 #define MAX_CONNECTIONS 4
 #define DEVICE_RELEASE_COOL_DOWN_TIME 4000 /* 4 seconds */
@@ -35,7 +38,7 @@ static std::mutex gMutex;
 static std::vector<u32> gAvailableDevices;
 /* Key: Client ID (u32), Value: Video Stream associated with the client */
 static std::mutex gMutexStreamSockets;
-static std::unordered_map<u32, Network::Socket> gStreamSockets;
+static std::unordered_map<u32, netsocket::Socket> gStreamSockets;
 
 static std::unordered_map<u32, u32> gDeviceIDMap;
 static std::unique_ptr<Win32::Win32SourceDeviceListGuard> gDeviceList;
@@ -70,7 +73,7 @@ Runner::Runner(u32 deviceID, u32 clientID) : m_deviceID(deviceID), m_isRunning(t
 			return;
 		}
 
-		Network::Socket& streamSocket = it->second;
+		netsocket::Socket& streamSocket = it->second;
 		if(!streamSocket.isConnected())
 		{
 			DEBUG_LOG_ERROR("Stream socket is not connected for client id: %lu", clientID);
@@ -94,12 +97,12 @@ Runner::Runner(u32 deviceID, u32 clientID) : m_deviceID(deviceID), m_isRunning(t
 				m_isRunning = false;
 				return;
 			}
-			_assert(m_device.has_value());
+			skvmoip_debug_assert(m_device.has_value());
 			gAvailableDevices.erase(it);
 			++gNumConnections;
 		}
 
-		m_netStream = std::move(std::unique_ptr<HDMIEncodeNetStream>(new HDMIEncodeNetStream(std::move(*m_device), streamSocket)));
+		m_netStream = std::move(std::unique_ptr<HDMIEncodeNetStream>(new HDMIEncodeNetStream(std::move(*m_device), std::move(streamSocket))));
 	}
 
 	m_thread = std::move(std::unique_ptr<std::thread>(new std::thread([](HDMIEncodeNetStream& netStream, u32 deviceID, bool& isRunning, std::mutex& mtx)
@@ -417,8 +420,8 @@ int main(int argc, const char* argv[])
 		return -1;
 	}
 
-	Network::Socket listenSocket(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP);
-	if(listenSocket.bind(listenIPAddress, cmdOptions->portNumberStr) != Network::Result::Success)
+	netsocket::Socket listenSocket(netsocket::SocketType::Stream, netsocket::IPAddressFamily::IPv4, netsocket::IPProtocol::TCP);
+	if(listenSocket.bind(listenIPAddress, cmdOptions->portNumberStr) != netsocket::Result::Success)
 	{
 		debug_log_error("Failed to bind list socket to %s:%s", listenIPAddress, cmdOptions->portNumberStr);
 		return 1;
@@ -429,7 +432,7 @@ int main(int argc, const char* argv[])
 		DEBUG_LOG_INFO("Listening on %s:%s", listenIPAddress, cmdOptions->portNumberStr);
 		auto result = listenSocket.listen();
 		
-		if(result != Network::Result::Success)
+		if(result != netsocket::Result::Success)
 		{
 			DEBUG_LOG_ERROR("Unable to listen, Retrying...");
 			continue;
@@ -441,17 +444,18 @@ int main(int argc, const char* argv[])
 			continue;
 		}
 		
-		if(std::optional<Network::Socket> acceptedSocket = listenSocket.accept())
+		if(std::optional<netsocket::Socket> acceptedSocket = listenSocket.accept())
 		{
 			DEBUG_LOG_INFO("Connection accepted");
-			_assert(acceptedSocket->isConnected());
+			skvmoip_debug_assert(acceptedSocket->isConnected());
 			
-			Network::Socket socket = Network::Socket::CreateInvalid();
+			netsocket::Socket socket = netsocket::Socket::CreateInvalid();
 			
 			socket = std::move(*acceptedSocket);
 			
+			DEBUG_LOG_INFO("Waiting for the socket type");
 			u8 socketType;
-			if(socket.receive(&socketType, sizeof(u8)) != Network::Result::Success)
+			if(socket.receive(&socketType, sizeof(u8)) != netsocket::Result::Success)
 			{
 				DEBUG_LOG_ERROR("Unable to receive socket type, closing connection");
 				socket.close();
@@ -460,21 +464,23 @@ int main(int argc, const char* argv[])
 
 			if(socketType == EnumClassToInt(SocketType::Control))
 			{
+				DEBUG_LOG_INFO("Socket Type: Control");
 				u32 clientID = GenerateClientID();
 				DEBUG_LOG_INFO("Client ID Generated: %lu", clientID);
-				if(socket.send(reinterpret_cast<u8*>(&clientID), sizeof(u32)) != Network::Result::Success)
+				if(socket.send(reinterpret_cast<u8*>(&clientID), sizeof(u32)) != netsocket::Result::Success)
 				{
 					DEBUG_LOG_ERROR("Unable to send client id, closing connection");
 					socket.close();
 					continue;
 				}
-				auto thread = std::thread([](Network::Socket&& socket, u32 clientID)
+				auto thread = std::thread([](netsocket::Socket&& socket, u32 clientID)
 				{
 					std::unique_ptr<Runner> runner;
 					while(socket.isConnected())
 					{
+						DEBUG_LOG_INFO("Receiving control message...");
 						u8 controlMessage;
-						if(socket.receive(&controlMessage, sizeof(u8)) != Network::Result::Success)
+						if(socket.receive(&controlMessage, sizeof(u8)) != netsocket::Result::Success)
 						{
 							DEBUG_LOG_ERROR("Failed to receive control message for client with ID: %lu, disposing client", clientID);
 							/* close the control socket */
@@ -491,7 +497,7 @@ int main(int argc, const char* argv[])
 							if(it != gStreamSockets.end())
 							{
 								debug_log_info("Closing stream socket");
-								Network::Socket& streamSocket = it->second;
+								netsocket::Socket& streamSocket = it->second;
 								streamSocket.close();
 								gStreamSockets.erase(it);
 							}
@@ -502,7 +508,7 @@ int main(int argc, const char* argv[])
 						if(controlMessage == EnumClassToInt(Message::Start))
 						{
 							u8 deviceID;
-							if(socket.receive(&deviceID, sizeof(u8)) != Network::Result::Success)
+							if(socket.receive(&deviceID, sizeof(u8)) != netsocket::Result::Success)
 							{
 								DEBUG_LOG_ERROR("Failed to receive device ID for Start command, ignoring the start command");
 								socket.close();
@@ -531,8 +537,9 @@ int main(int argc, const char* argv[])
 			}
 			else if(socketType == EnumClassToInt(SocketType::Stream))
 			{
+				DEBUG_LOG_INFO("Socket Type: Control");
 				u32 clientID;
-				if(socket.receive(reinterpret_cast<u8*>(&clientID), sizeof(u32)) != Network::Result::Success)
+				if(socket.receive(reinterpret_cast<u8*>(&clientID), sizeof(u32)) != netsocket::Result::Success)
 				{
 					DEBUG_LOG_ERROR("Unable to receive client id, refusing stream socket");
 					socket.close();
@@ -551,24 +558,24 @@ int main(int argc, const char* argv[])
 						gStreamSockets.erase(it);
 					}
 
-					std::pair<u32, std::unordered_map<u32, Network::Socket>*>* userData = new std::pair<u32, std::unordered_map<u32, Network::Socket>*> { clientID, &gStreamSockets };
-					socket.setOnDisconnect([](Network::Socket& socket, void* userData)
+					std::pair<u32, std::unordered_map<u32, netsocket::Socket>*>* userData = new std::pair<u32, std::unordered_map<u32, netsocket::Socket>*> { clientID, &gStreamSockets };
+					socket.setOnDisconnect([](netsocket::Socket& socket, void* userData)
 					{
-						auto& data = *reinterpret_cast<std::pair<u32, std::unordered_map<u32, Network::Socket>*>*>(userData);
+						auto& data = *reinterpret_cast<std::pair<u32, std::unordered_map<u32, netsocket::Socket>*>*>(userData);
 						{
 							std::unique_lock<std::mutex> lock(gMutexStreamSockets);
 							auto it = data.second->find(data.first);
-							_assert(it != data.second->end());
+							skvmoip_debug_assert(it != data.second->end());
 							data.second->erase(it);
 						}
 						delete &data;
 					}, reinterpret_cast<void*>(userData));
 				
 					gStreamSockets.insert({ clientID, std::move(socket) });
-					Network::Socket& socketRef = gStreamSockets.at(clientID);
+					netsocket::Socket& socketRef = gStreamSockets.at(clientID);
 				
 					u8 ackMessage = EnumClassToInt(Message::ACK);
-					if(socketRef.send(&ackMessage, sizeof(u8)) != Network::Result::Success)
+					if(socketRef.send(&ackMessage, sizeof(u8)) != netsocket::Result::Success)
 					{
 						DEBUG_LOG_ERROR("Unable to send ACK Message to the stream socket just accpeted, refusing stream socket");
 						socket.close();

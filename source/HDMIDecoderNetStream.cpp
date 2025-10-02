@@ -9,7 +9,7 @@ namespace SKVMOIP
 {
 
 	HDMIDecodeNetStream::HDMIDecodeNetStream(u32 width, u32 height, u32 frNum, u32 frDen, u32 bitsPerPixel) : 
-												AsyncQueueSocket(std::move(Network::Socket(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP))),
+												netsocket::AsyncSocket(netsocket::SocketType::Stream, netsocket::IPAddressFamily::IPv4, netsocket::IPProtocol::TCP),
 								#ifdef USE_DIRECT_FRAME_DATA_COPY
 												m_frameDataPool([](DataBufferNoAlloc& db) { }),
 								#else
@@ -61,8 +61,8 @@ namespace SKVMOIP
 	HDMIDecodeNetStream::~HDMIDecodeNetStream()
 	{
 		stop();
-		Network::Result result = AsyncQueueSocket::close();
-		if(result != Network::Result::Success)
+		netsocket::Result result = netsocket::AsyncSocket::close();
+		if(result != netsocket::Result::Success)
 			debug_log_error("Failed to close network socket");
 	}
 
@@ -121,7 +121,7 @@ namespace SKVMOIP
 		
 		/* copy the data from the network stream to the decode thread */
 		buf_set_element_count(&decodeStream->m_decodeBuffer, 0);
-		_assert(dataSize >= sizeof(u32));
+		skvmoip_debug_assert(dataSize >= sizeof(u32));
 		
 		/* if the payload (after length data) is of zero size then we don't we to process the frame */
 		if(dataSize > sizeof(u32))
@@ -161,12 +161,12 @@ namespace SKVMOIP
 
 			if(m_isDataAvailable)
 			{
-				_assert(m_inFlightRequestCount > 0);
+				skvmoip_debug_assert(m_inFlightRequestCount > 0);
 				--m_inFlightRequestCount;
-				_assert(m_inFlightRequestCount < MAX_IN_FLIGHT_REQUEST_COUNT);
+				skvmoip_debug_assert(m_inFlightRequestCount < MAX_IN_FLIGHT_REQUEST_COUNT);
 				auto decodeBufferSize = buf_get_element_count(&m_decodeBuffer);
 				auto decodeBufferPtr = buf_get_ptr_typeof(&m_decodeBuffer, u8);
-				_assert(decodeBufferSize != 0);
+				skvmoip_debug_assert(decodeBufferSize != 0);
 				u32 nFrameReturned = 0;
 				SKVMOIP::StopWatch decodeWatch;
 				/* Takes: 5 ms to 10 ms for Kreo 1080p60fps HDMI capture card */
@@ -177,13 +177,13 @@ namespace SKVMOIP
 					lock.unlock();
 					m_dataAvailableCV.notify_one();
 
-					// _assert(nFrameReturned == 1);
+					// skvmoip_debug_assert(nFrameReturned == 1);
 					auto decodeTime = decodeWatch.stop();
 
 					for(u32 i = 0; i < nFrameReturned; i++)
 					{
 						u8* frame = m_decoder.getFrame();
-						_assert(m_decoder.getFrameSize() == getUncompressedFrameSize());
+						skvmoip_debug_assert(m_decoder.getFrameSize() == getUncompressedFrameSize());
 						#ifdef USE_VULKAN_FOR_COLOR_SPACE_CONVERSION
 						std::lock_guard<std::mutex> lock(m_ClientMutex);
 						if(!m_frameDataPool.hasInactive())
@@ -229,8 +229,8 @@ namespace SKVMOIP
 							if(auto result = m_frameDataPool.getInactive())
 							{
 								auto rgbDataSize = m_converter.getRGBDataSize();
-								_assert(rgbDataSize == FIFOPool<FrameData>::GetValue(result)->getSize());
-								_assert(rgbDataSize == getUncompressedConvertedFrameSize());
+								skvmoip_debug_assert(rgbDataSize == FIFOPool<FrameData>::GetValue(result)->getSize());
+								skvmoip_debug_assert(rgbDataSize == getUncompressedConvertedFrameSize());
 								/* Takes: 1 ms to 2 ms*/
 								memcpy(FIFOPool<FrameData>::GetValue(result)->getPtr(), rgbData, rgbDataSize);
 								m_frameDataPool.returnInactive(result);

@@ -5,7 +5,7 @@
 
 namespace SKVMOIP
 {
-	HDMIEncodeNetStream::HDMIEncodeNetStream(Win32::Win32SourceDevice&& device, Network::Socket& socket) : AsyncQueueSocket(socket), m_device(std::move(device)), m_isValid(false)
+	HDMIEncodeNetStream::HDMIEncodeNetStream(Win32::Win32SourceDevice&& device, netsocket::Socket&& socket) : netsocket::AsyncSocket(std::move(socket)), m_device(std::move(device)), m_isValid(false)
 	{
 		m_hdmiStream = std::unique_ptr<VideoSourceStream>(new VideoSourceStream(m_device, VideoSourceStream::Usage::NV12Read, 
 																					{
@@ -30,9 +30,9 @@ namespace SKVMOIP
 	
 		std::pair<u32, u32> frameSize = m_hdmiStream->getOutputFrameSize();
 		std::pair<u32, u32> frameRatePair = m_hdmiStream->getInputFrameRate();
-		_assert((frameSize.first == 1920) && (frameSize.second == 1080));
+		skvmoip_debug_assert((frameSize.first == 1920) && (frameSize.second == 1080));
 		/* For just one Kreo HDMI capture device, this assertion is not true. But Why? */
-		_ASSERT_WRN((frameRatePair.first == 60) && (frameRatePair.second == 1));
+		skvmoip_assert_wrn((frameRatePair.first == 60) && (frameRatePair.second == 1));
 		u32 frameRate = m_hdmiStream->getInputFrameRateF32();
 	
 		m_nv12Buffer = buf_create(sizeof(u8), (frameSize.first * frameSize.second * 3) >> 1, 0);

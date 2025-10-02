@@ -25,6 +25,7 @@ fi
 
 
 $NO_ROOT meson wrap install vulkan-headers
+$NO_ROOT meson wrap install spdlog
 
 if [ "$PLATFORM" == "MINGW" ]; then
 	pacman -S mingw-w64-x86_64-gtk3

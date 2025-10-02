@@ -165,9 +165,9 @@ namespace SKVMOIP
 	{
 		switch(pref)
 		{
-			case NativeMediaTypePreference::Any: { _assert(false); return MFVideoFormat_NV12; }
+			case NativeMediaTypePreference::Any: { skvmoip_debug_assert(false); return MFVideoFormat_NV12; }
 			case NativeMediaTypePreference::NV12: { return MFVideoFormat_NV12; }
-			default: { _assert(false); return MFVideoFormat_NV12; }
+			default: { skvmoip_debug_assert(false); return MFVideoFormat_NV12; }
 		}
 	}
 
@@ -289,7 +289,7 @@ namespace SKVMOIP
 
 		GUID majorType;
 		if(mediaType->GetMajorType(&majorType) == S_OK)
-			_assert(majorType == MFMediaType_Video);
+			skvmoip_debug_assert(majorType == MFMediaType_Video);
 		else
 		{
 			debug_log_error("Unable to get major type");
@@ -383,7 +383,7 @@ namespace SKVMOIP
 			case VideoSourceStream::Usage::RGB24Read: return MFVideoFormat_RGB24;
 			case VideoSourceStream::Usage::RGB32Read: return MFVideoFormat_RGB32;
 			default:
-				assert(false, "Undefined");
+				skvmoip_debug_assert(false && "Undefined");
 				return MFVideoFormat_RGB32;
 		}
 	}
@@ -480,7 +480,7 @@ namespace SKVMOIP
 			m_inputSampleSize = pInfo->lSampleSize;
 		}
 
-		_assert(m_isInputFixedSizedSamples == true);
+		skvmoip_debug_assert(m_isInputFixedSizedSamples == true);
 
 		if(m_inputMediaType->FreeRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void*>(pInfo)) != S_OK)
 		{
@@ -522,7 +522,7 @@ namespace SKVMOIP
 
 		GUID majorType;
 		if(m_inputMediaType->GetMajorType(&majorType) == S_OK)
-			_assert(majorType == MFMediaType_Video);
+			skvmoip_debug_assert(majorType == MFMediaType_Video);
 		else
 		{
 			debug_log_error("Unable to get major type");
@@ -537,7 +537,7 @@ namespace SKVMOIP
 		else
 		{
 			/* For now we want to stick with NV12, as it is available on most devices */
-			_assert(m_inputEncodingFormat == MFVideoFormat_NV12);
+			skvmoip_debug_assert(m_inputEncodingFormat == MFVideoFormat_NV12);
 		}
 
 		if((m_usage == Usage::RGB32Read) || (m_usage == Usage::RGB24Read))
@@ -581,7 +581,7 @@ namespace SKVMOIP
 				m_outputSampleSize = pInfo->lSampleSize;
 			}
 
-			_assert(m_isOutputFixedSizedSamples == true);
+			skvmoip_debug_assert(m_isOutputFixedSizedSamples == true);
 
 			if(m_outputMediaType->FreeRepresentation(AM_MEDIA_TYPE_REPRESENTATION, reinterpret_cast<void*>(pInfo)) != S_OK)
 			{
@@ -664,7 +664,7 @@ namespace SKVMOIP
 
 			if((outputStreamInfo.dwFlags & MFT_OUTPUT_STREAM_PROVIDES_SAMPLES) != MFT_OUTPUT_STREAM_PROVIDES_SAMPLES)
 			{
-				_assert(m_outputSampleSize == outputStreamInfo.cbSize);
+				skvmoip_debug_assert(m_outputSampleSize == outputStreamInfo.cbSize);
 				if(MFCreateMemoryBuffer(outputStreamInfo.cbSize, &m_stagingMediaBuffer) != S_OK)
 				{
 					debug_log_error("Unable to create Media Buffer");
@@ -694,7 +694,7 @@ namespace SKVMOIP
 			m_isOutputTemporalCompression = m_isInputTemporalCompression;
 			m_isOutputCompressedFormat = m_isInputCompressedFormat;
 
-			_assert(m_inputSampleSize == ((m_inputFrameWidth * m_inputFrameHeight * 3) >> 1));
+			skvmoip_debug_assert(m_inputSampleSize == ((m_inputFrameWidth * m_inputFrameHeight * 3) >> 1));
 
 			if(MFCreateMemoryBuffer(m_inputSampleSize, &m_stagingMediaBuffer) != S_OK)
 			{
@@ -912,7 +912,7 @@ RELEASE_RES:
 		if(m_videoColorConverter == NULL)
 			return false;
 
-		_assert((m_usage == Usage::RGB32Read) || (m_usage == Usage::RGB24Read));
+		skvmoip_debug_assert((m_usage == Usage::RGB32Read) || (m_usage == Usage::RGB24Read));
 
 		if(m_videoColorConverter->ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0) != S_OK)
 		{
@@ -924,7 +924,7 @@ RELEASE_RES:
 
 	bool VideoSourceStream::readRGBFrameToBuffer(u8* const rgbBuffer, u32 rgbBufferSize)
 	{
-		_assert((m_usage == Usage::RGB32Read) || (m_usage == Usage::RGB24Read));
+		skvmoip_debug_assert((m_usage == Usage::RGB32Read) || (m_usage == Usage::RGB24Read));
 		DWORD streamIndex;
 		DWORD streamFlags;
 		LONGLONG timeStamp;
@@ -943,14 +943,14 @@ RELEASE_RES:
 		DWORD totalLength;
 		if(pSample->GetTotalLength(&totalLength) == S_OK)
 		{
-			_assert(totalLength <= m_inputSampleSize);
+			skvmoip_debug_assert(totalLength <= m_inputSampleSize);
 		}
 		else
 			debug_log_error("Unable to verify total sample length");
 
 		// pSample->AddRef();
 		// auto totalMaxSize = GetTotalMaxSize(pSample);
-		// _assert(totalMaxSize == m_inputSampleSize);
+		// skvmoip_debug_assert(totalMaxSize == m_inputSampleSize);
 
 PROCESS_INPUT:
 
@@ -1028,7 +1028,7 @@ PROCESS_INPUT:
 			}
 			default:
 			{
-				_ASSERT(false);
+				skvmoip_assert(false);
 				break;
 			}
 		}
@@ -1048,7 +1048,7 @@ RELEASE_RES_FALSE:
 
 	bool VideoSourceStream::readNV12FrameToBuffer(u8* const nv12Buffer, u32 nv12BufferSize)
 	{
-		_assert(m_usage == Usage::NV12Read);
+		skvmoip_debug_assert(m_usage == Usage::NV12Read);
 
 		DWORD streamIndex;
 		DWORD streamFlags;
@@ -1074,7 +1074,7 @@ RELEASE_RES_FALSE:
 			pSample->Release();
 			return false;
 		}
-		else _assert(totalLength == m_inputSampleSize);
+		else skvmoip_debug_assert(totalLength == m_inputSampleSize);
 
 		/* copy the non-contiguous data to the staging media buffer */
 		if(pSample->CopyToBuffer(m_stagingMediaBuffer) != S_OK)
@@ -1094,7 +1094,7 @@ RELEASE_RES_FALSE:
 		}
 
 		/* convert to RGB and the copy the data to the RGB Buffer */
-		_assert(nv12BufferSize == currentLength);
+		skvmoip_debug_assert(nv12BufferSize == currentLength);
 		memcpy(nv12Buffer, pMappedBuffer, nv12BufferSize);
 
 		if(m_stagingMediaBuffer->Unlock() != S_OK)
@@ -1234,7 +1234,7 @@ RELEASE_RES_FALSE:
 			} 
 			default:
 			{
-				_assert(false);
+				skvmoip_debug_assert(false);
 				break;
 			}
 		}
@@ -1273,9 +1273,9 @@ RELEASE_RES_FALSE:
 			goto RELEASE_RES;
 		}
 
-		// _assert((inputStreamInfo.dwFlags & MFT_INPUT_STREAM_FIXED_SAMPLE_SIZE) == MFT_INPUT_STREAM_FIXED_SAMPLE_SIZE);
+		// skvmoip_debug_assert((inputStreamInfo.dwFlags & MFT_INPUT_STREAM_FIXED_SAMPLE_SIZE) == MFT_INPUT_STREAM_FIXED_SAMPLE_SIZE);
 		m_inputSampleSize = inputStreamInfo.cbSize;
-		_assert(((m_width * m_height * 3) >> 1) == m_inputSampleSize);
+		skvmoip_debug_assert(((m_width * m_height * 3) >> 1) == m_inputSampleSize);
 
 		if(MFCreateMemoryBuffer(inputStreamInfo.cbSize, &m_inputMediaBuffer) != S_OK)
 		{
@@ -1305,7 +1305,7 @@ RELEASE_RES_FALSE:
 		if((outputStreamInfo.dwFlags & MFT_OUTPUT_STREAM_PROVIDES_SAMPLES) != MFT_OUTPUT_STREAM_PROVIDES_SAMPLES)
 		{
 			m_outputSampleSize = outputStreamInfo.cbSize;
-			_assert((m_width * m_height * (bitsPerPixel >> 3)) == m_outputSampleSize);
+			skvmoip_debug_assert((m_width * m_height * (bitsPerPixel >> 3)) == m_outputSampleSize);
 			if(MFCreateMemoryBuffer(outputStreamInfo.cbSize, &m_outputMediaBuffer) != S_OK)
 			{
 				debug_log_error("Unable to create output Media Buffer");
@@ -1456,7 +1456,7 @@ RELEASE_RES:
 
 	u8* NV12ToRGBConverter::convert(u8* nv12Buffer, u32 nv12BufferSize)
 	{
-		_assert(nv12BufferSize == m_inputSampleSize);
+		skvmoip_debug_assert(nv12BufferSize == m_inputSampleSize);
 
 		if(m_isOutputMediaBufferLocked)
 		{

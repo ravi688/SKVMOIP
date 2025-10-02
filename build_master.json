@@ -2,7 +2,7 @@
     "project_name" : "SKVMOIP",
     "canonical_name" : "skvmoip",
     "description" : "Scalable KVM Over IP",
-    "dependencies" : [ "common", "playvk", "bufferlib" ],
+    "dependencies" : [ "common", "playvk", "bufferlib", "netsocket", "spdlog" ],
     "pre_config_root_hook" : "install_dependencies.sh",
     "vars" :
     {
@@ -92,9 +92,8 @@
         }
     ],
     "sources" : [
-        "source/Network/NetworkSocket.cpp",
-        "source/Network/NetworkAsyncQueueSocket.cpp",
         "source/VideoSourceStream.cpp",
-        "source/Win32/Win32.cpp"
+        "source/Win32/Win32.cpp",
+        "source/assert.cpp"
     ]
 }

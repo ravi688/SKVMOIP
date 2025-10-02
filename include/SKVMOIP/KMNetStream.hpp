@@ -2,7 +2,8 @@
 
 #include <SKVMOIP/defines.hpp>
 #include <SKVMOIP/Win32/Win32RawInput.hpp>
-#include <SKVMOIP/Network/NetworkAsyncQueueSocket.hpp>
+
+#include <netsocket/netasyncsocket.hpp> // for netsocket::AsyncSocket
 
 #include <chrono>
 #include <optional>
@@ -11,7 +12,7 @@ namespace SKVMOIP
 {
 	static void PowerStatusReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData);
 
-	class KMNetStream : public Network::AsyncQueueSocket
+	class KMNetStream : public netsocket::AsyncSocket
 	{
 		friend void PowerStatusReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData);
 	private:
@@ -27,10 +28,10 @@ namespace SKVMOIP
 	public:
 	
 		KMNetStream();
+
+		// Not copyable and not movable
 		KMNetStream(KMNetStream&&) = delete;
 		KMNetStream(KMNetStream&) = delete;
-		KMNetStream& operator=(KMNetStream&) = delete;
-		~KMNetStream() = default;
 	
 		void sendInput(const Win32::KMInputData& inputData);
 		void sendMouseInput(const Win32::MouseInput& mouseInput);

@@ -33,7 +33,7 @@ namespace Win32
 
 	void Win32DrawSurface::setPixels(const u8* bytes, u32 size)
 	{
-		_assert(size == getBufferSize());
+		skvmoip_debug_assert(size == getBufferSize());
 		memcpy(m_memoryView, bytes, size);
 	}
 

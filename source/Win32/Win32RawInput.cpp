@@ -14,7 +14,7 @@ namespace Win32
 		input.makeCode = rawKeyboard->MakeCode;
 		input.virtualKey = rawKeyboard->VKey;
 		input.keyStatus = ((rawKeyboard->Flags & RI_KEY_BREAK) == RI_KEY_BREAK) ? KeyStatus::Released : KeyStatus::Pressed;
-		_assert(((rawKeyboard->Flags & RI_KEY_MAKE) == RI_KEY_MAKE) || ((rawKeyboard->Flags & RI_KEY_BREAK) == RI_KEY_BREAK));
+		skvmoip_debug_assert(((rawKeyboard->Flags & RI_KEY_MAKE) == RI_KEY_MAKE) || ((rawKeyboard->Flags & RI_KEY_BREAK) == RI_KEY_BREAK));
 		input.isExtended0 = (rawKeyboard->Flags & RI_KEY_E0) == RI_KEY_E0;
 		input.isExtended1 = (rawKeyboard->Flags & RI_KEY_E1) == RI_KEY_E1;
 		input.isAltorF10 = rawKeyboard->Message == WM_SYSKEYDOWN;
@@ -24,7 +24,7 @@ namespace Win32
 		else if(input.isExtended1)
 			input.makeCode |= (static_cast<u32>(0xE0) << 16);
 
-		_assert_wrn(rawKeyboard->MakeCode != KEYBOARD_OVERRUN_MAKE_CODE);
+		skvmoip_debug_assert_wrn(rawKeyboard->MakeCode != KEYBOARD_OVERRUN_MAKE_CODE);
 
 		return input;
 	}

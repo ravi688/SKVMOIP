@@ -94,12 +94,12 @@ namespace SKVMOIP
 			MachineUI* machine = reinterpret_cast<MachineUI*>(userData);
 			if(gtk_toggle_button_get_active(toggleButton))
 			{
-				_assert(machine->m_toggleCallbackHandlerInfo.selectHandler.first != NULL);
+				skvmoip_debug_assert(machine->m_toggleCallbackHandlerInfo.selectHandler.first != NULL);
 				machine->m_toggleCallbackHandlerInfo.selectHandler.first(machine->m_toggleCallbackHandlerInfo.id, machine->m_toggleCallbackHandlerInfo.selectHandler.second);
 			}
 			else
 			{
-				_assert(machine->m_toggleCallbackHandlerInfo.deselectHandler.first != NULL);
+				skvmoip_debug_assert(machine->m_toggleCallbackHandlerInfo.deselectHandler.first != NULL);
 				machine->m_toggleCallbackHandlerInfo.deselectHandler.first(machine->m_toggleCallbackHandlerInfo.id, machine->m_toggleCallbackHandlerInfo.deselectHandler.second);
 			}
 		}
@@ -107,35 +107,35 @@ namespace SKVMOIP
 		static void VideoButtonClickHandler(GtkWidget* widget, void* userData)
 		{
 			MachineUI* machine = reinterpret_cast<MachineUI*>(userData);
-			_assert(machine->m_videoCallbackHandlerInfo.handler.first != NULL);
+			skvmoip_debug_assert(machine->m_videoCallbackHandlerInfo.handler.first != NULL);
 			machine->m_videoCallbackHandlerInfo.handler.first(machine->m_videoCallbackHandlerInfo.id, machine->m_videoCallbackHandlerInfo.handler.second);
 		}
 
 		static void PowerButtonPressHandler(GtkWidget* widget, GdkEventButton event, void* userData)
 		{
 			MachineUI* machine = reinterpret_cast<MachineUI*>(userData);
-			_assert(machine->m_powerPressCallbackHandlerInfo.handler.first != NULL);
+			skvmoip_debug_assert(machine->m_powerPressCallbackHandlerInfo.handler.first != NULL);
 			machine->m_powerPressCallbackHandlerInfo.handler.first(machine->m_powerPressCallbackHandlerInfo.id, machine->m_powerPressCallbackHandlerInfo.handler.second);
 		}
 
 		static void PowerButtonReleaseHandler(GtkWidget* widget, GdkEventButton event, void* userData)
 		{
 			MachineUI* machine = reinterpret_cast<MachineUI*>(userData);
-			_assert(machine->m_powerReleaseCallbackHandlerInfo.handler.first != NULL);
+			skvmoip_debug_assert(machine->m_powerReleaseCallbackHandlerInfo.handler.first != NULL);
 			machine->m_powerReleaseCallbackHandlerInfo.handler.first(machine->m_powerReleaseCallbackHandlerInfo.id, machine->m_powerReleaseCallbackHandlerInfo.handler.second);
 		}
 
 		static void ResetButtonPressHandler(GtkWidget* widget, GdkEventButton event, void* userData)
 		{
 			MachineUI* machine = reinterpret_cast<MachineUI*>(userData);
-			_assert(machine->m_resetPressCallbackHandlerInfo.handler.first != NULL);
+			skvmoip_debug_assert(machine->m_resetPressCallbackHandlerInfo.handler.first != NULL);
 			machine->m_resetPressCallbackHandlerInfo.handler.first(machine->m_resetPressCallbackHandlerInfo.id, machine->m_resetPressCallbackHandlerInfo.handler.second);
 		}
 
 		static void ResetButtonReleaseHandler(GtkWidget* widget, GdkEventButton event, void* userData)
 		{
 			MachineUI* machine = reinterpret_cast<MachineUI*>(userData);
-			_assert(machine->m_resetReleaseCallbackHandlerInfo.handler.first != NULL);
+			skvmoip_debug_assert(machine->m_resetReleaseCallbackHandlerInfo.handler.first != NULL);
 			machine->m_resetReleaseCallbackHandlerInfo.handler.first(machine->m_resetReleaseCallbackHandlerInfo.id, machine->m_resetReleaseCallbackHandlerInfo.handler.second);
 		}
 

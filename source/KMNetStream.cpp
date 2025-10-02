@@ -1,12 +1,13 @@
 #include <SKVMOIP/KMNetStream.hpp>
 #include <SKVMOIP/HID/HIDUsageID.hpp>
 #include <SKVMOIP/Network/NetworkPacket.hpp>
+#include <SKVMOIP/assert.h>
 #include <cstring>
 
 
 namespace SKVMOIP
 {
-	KMNetStream::KMNetStream() : AsyncQueueSocket(std::move(Network::Socket(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP))),
+	KMNetStream::KMNetStream() : netsocket::AsyncSocket(netsocket::SocketType::Stream, netsocket::IPAddressFamily::IPv4, netsocket::IPProtocol::TCP),
 								m_modifierKeys(0),
 								m_startTime(std::chrono::steady_clock::now()),
 								m_mouseMinDelay(8),
@@ -21,7 +22,7 @@ namespace SKVMOIP
 	void KMNetStream::sendInput(const Win32::KMInputData& inputData)
 	{
 		const Network::NetworkPacket netPacket = Network::GetNetworkPacket(inputData, m_modifierKeys);
-		AsyncQueueSocket::send(reinterpret_cast<const u8*>(&netPacket), sizeof(netPacket));
+		netsocket::AsyncSocket::send(reinterpret_cast<const u8*>(&netPacket), sizeof(netPacket));
 	}
 	
 	void KMNetStream::sendMouseInput(const Win32::MouseInput& mouseInput)
@@ -74,7 +75,7 @@ namespace SKVMOIP
 				case PS2Set1MakeCode::RightGUI: 
 				{
 					u8 modifierKey = GetModifierBitFromMakeCode(IntToEnumClass<PS2Set1MakeCode>(keyboardInput.makeCode));
-					_assert(modifierKey != 0);
+					skvmoip_debug_assert(modifierKey != 0);
 					m_modifierKeys |= modifierKey;
 					break;
 				}
@@ -94,8 +95,8 @@ namespace SKVMOIP
 				case PS2Set1MakeCode::RightGUI: 
 				{
 					u8 modifierKey = GetModifierBitFromMakeCode(IntToEnumClass<PS2Set1MakeCode>(keyboardInput.makeCode));
-					_assert(modifierKey != 0);
-					_assert_wrn((m_modifierKeys & modifierKey) == modifierKey);
+					skvmoip_debug_assert(modifierKey != 0);
+					skvmoip_debug_assert_wrn((m_modifierKeys & modifierKey) == modifierKey);
 					m_modifierKeys &= ~(modifierKey);
 					break;
 				}
@@ -116,14 +117,14 @@ namespace SKVMOIP
 		const Network::NetworkPacket netPacket = Network::GetNetworkPacket({ }, 0, 
 												powerButton.has_value() ? (powerButton.value() ? pressed : released) : nullRef,
 												resetButton.has_value() ? (resetButton.value() ? pressed : released) : nullRef);
-		AsyncQueueSocket::send(reinterpret_cast<const u8*>(&netPacket), sizeof(netPacket));
+		netsocket::AsyncSocket::send(reinterpret_cast<const u8*>(&netPacket), sizeof(netPacket));
 	}
 
 	static void PowerStatusReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData)
 	{
 		KMNetStream* kmNetStream = reinterpret_cast<KMNetStream*>(userData);
-		_assert(kmNetStream->m_powerStatusReceiveCallback != NULL);
-		_assert(dataSize == sizeof(u8));
+		skvmoip_debug_assert(kmNetStream->m_powerStatusReceiveCallback != NULL);
+		skvmoip_debug_assert(dataSize == sizeof(u8));
 		kmNetStream->m_powerStatusReceiveCallback(*data, kmNetStream->m_callbackUserData);
 	}
 
@@ -132,7 +133,7 @@ namespace SKVMOIP
 		m_powerStatusReceiveCallback = callback;
 		m_callbackUserData = userData;
 		const Network::NetworkPacket netPacket = Network::GetPowerStatusRequestNetworkPacket();
-		AsyncQueueSocket::send(reinterpret_cast<const u8*>(&netPacket), sizeof(netPacket));
-		AsyncQueueSocket::receive(PowerStatusReceiveCallbackHandler, reinterpret_cast<void*>(this), m_powerStatusFormatter);
+		netsocket::AsyncSocket::send(reinterpret_cast<const u8*>(&netPacket), sizeof(netPacket));
+		netsocket::AsyncSocket::receive(PowerStatusReceiveCallbackHandler, reinterpret_cast<void*>(this), m_powerStatusFormatter);
 	}
 }

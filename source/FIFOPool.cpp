@@ -12,7 +12,7 @@ namespace SKVMOIP
 
 	void DataBuffer::destroy()
 	{
-		_assert(m_isValid);
+		skvmoip_debug_assert(m_isValid);
 		m_isValid = false;
 		buf_free(m_buffer);
 		m_buffer = NULL;

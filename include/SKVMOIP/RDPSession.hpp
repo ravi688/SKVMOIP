@@ -21,7 +21,7 @@ namespace SKVMOIP
 		private:
 			std::unique_ptr<HDMIDecodeNetStream> m_decodeNetStream;
 			std::unique_ptr<KMNetStream> m_kmNetStream;
-			std::unique_ptr<Network::Socket> m_controlSocket;
+			std::unique_ptr<netsocket::Socket> m_controlSocket;
 			std::unique_ptr<Win32::Win32DrawSurface> m_drawSurface;
 			std::unique_ptr<Window> m_window;
 			std::unique_ptr<PresentEngine> m_presentEngine;
