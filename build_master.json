@@ -69,7 +69,7 @@
             "name" : "server",
             "is_executable" : true,
             "windows_link_args" : [
-                "link_dir: './external-dependencies/x264'", "-lx264"
+                "link_dir: './external-dependencies/x264'", "-lx264", "-liphlpapi"
             ],
             "defines" : ["-DBUILD_SERVER"],
             "sources": [ "$server_sources", "source/main.server.cpp" ]

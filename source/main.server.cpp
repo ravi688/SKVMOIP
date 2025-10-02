@@ -11,6 +11,8 @@
 #include <SKVMOIP/HDMIEncodeNetStream.hpp>
 #include <SKVMOIP/Protocol.hpp>
 
+#include <netsocket/netinterface.hpp>
+
 #include <thread>
 #include <memory>
 #include <atomic>
@@ -186,24 +188,6 @@ static u32 GenerateClientID() noexcept
 			id = socket.receive(byte)
 			streams.insert(id, move(socket))
 */
-
-const char* GetLocalIPAddress()
-{
-   char host[256];
-   char *IP;
-   struct hostent *host_entry;
-   int hostname;
-   hostname = gethostname(host, sizeof(host)); //find the host name
-   if(hostname == -1)
-   		return NULL;
-   host_entry = gethostbyname(host); //find host information
-   if(host_entry == NULL)
-   		return NULL;
-   IP = inet_ntoa(*((struct in_addr*) host_entry->h_addr_list[0])); //Convert into IP string
-   if(IP == NULL)
-   		return NULL;
-   return IP;
-}
 
 static std::optional<std::vector<std::string>> ReadStringsFromFile(const char* file)
 {
@@ -413,23 +397,18 @@ int main(int argc, const char* argv[])
 	gDeviceIDMap = GetDeviceMap(*gDeviceList);
 	DumpDeviceMap(gDeviceIDMap);
 
-	const char* listenIPAddress = GetLocalIPAddress();
-	if(listenIPAddress == NULL)
-	{
-		DEBUG_LOG_ERROR("Failed to determine local IP address for listening");
-		return -1;
-	}
+	const std::string listenIPAddress = netsocket::GetIPv4Address("192.168.1.1");
 
 	netsocket::Socket listenSocket(netsocket::SocketType::Stream, netsocket::IPAddressFamily::IPv4, netsocket::IPProtocol::TCP);
 	if(listenSocket.bind(listenIPAddress, cmdOptions->portNumberStr) != netsocket::Result::Success)
 	{
-		debug_log_error("Failed to bind list socket to %s:%s", listenIPAddress, cmdOptions->portNumberStr);
+		debug_log_error("Failed to bind list socket to %s:%s", listenIPAddress.c_str(), cmdOptions->portNumberStr);
 		return 1;
 	}
 
 	do
 	{
-		DEBUG_LOG_INFO("Listening on %s:%s", listenIPAddress, cmdOptions->portNumberStr);
+		DEBUG_LOG_INFO("Listening on %s:%s", listenIPAddress.c_str(), cmdOptions->portNumberStr);
 		auto result = listenSocket.listen();
 		
 		if(result != netsocket::Result::Success)
