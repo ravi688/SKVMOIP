@@ -11,11 +11,6 @@
 
 namespace SKVMOIP
 {
-	VideoSourceWindows::VideoSourceWindows(VideoSourceDeviceConnectionID deviceID)
-	{
-
-	}
-
 	SKVMOIP_API const char* getEncodingString(const GUID& guid)
 	{
 		if(guid == MFVideoFormat_RGB8)
@@ -388,7 +383,12 @@ namespace SKVMOIP
 		}
 	}
 
-	VideoSourceWindows::VideoSourceWindows(Win32::Win32SourceDevice& device, Usage usage, const std::vector<std::tuple<u32, u32, u32>>& resPrefList) : 
+	VideoSourceWindows::VideoSourceWindows(IVideoSource::DeviceID deviceID,
+											Win32::Win32SourceDevice& device,
+											IVideoSource::Usage usage,
+											const std::vector<std::tuple<u32, u32, u32>>& resPrefList) :
+																				IVideoSource(deviceID),
+																				m_device(device),
 																				m_usage(usage),
 																				m_sourceReader(NULL), 
 																				m_inputMediaType(NULL),
@@ -723,6 +723,7 @@ RELEASE_RES:
 
 	void VideoSourceWindows::destroy()
 	{
+		this->close();
 		if(m_sourceReader != NULL)
 		{
 			m_sourceReader->Release();
@@ -843,7 +844,7 @@ RELEASE_RES:
 
 	void VideoSourceWindows::close()
 	{
-
+		m_device.shutdown();
 	}
 
 	bool VideoSourceWindows::isReady()

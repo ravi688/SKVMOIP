@@ -6,49 +6,40 @@
 #include <common/platform.h>
 #include <common/defines.hpp>
 
-#ifdef PLATFORM_WINDOWS
-#	include <SKVMOIP/Win32/Win32.hpp>
-#	include <SKVMOIP/Win32/Win32ImagingDevice.hpp>
-#	include <SKVMOIP/VideoSourceWindows.hpp>
-#else // PLATFORM_LINUX
-#	include <SKVMOIP/VideoSourceLinux.hpp>
-#endif
-
 #include <unordered_map>
 #include <vector>
 #include <memory>
 
+#ifdef PLATFORM_WINDOWS
+#	include <SKVMOIP/VideoSourceManagerWindows.hpp>
+#	define ABSTRACT_VIDEO_SOURCE VideoSourceWindows
+#	define ABSTRACT_VIDEO_SOURCE_MANAGER VideoSourceManagerWindows
+#else // PLATFORM_LINUX
+#	include <SKVMOIP/VideoSourceManagerLinux.hpp>
+#	define ABSTRACT_VIDEO_SOURCE VideoSourceLinux
+#	define ABSTRACT_VIDEO_SOURCE_MANAGER VideoSourceManagerLinux
+#endif
+
 namespace SKVMOIP
 {
 	using ClientID = u32;
-	using VideoSourceDeviceID = u64;
-	class VideoStreamSessionManager
+	class VideoStreamSessionManager final
 	{
 	private:
 		struct SessionContext
 		{
-			#ifdef PLATFORM_WINDOWS
-			Win32::Win32SourceDevice device;
-			std::unique_ptr<VideoSourceWindows> videoSource;
-			#else // PLATFORM_LINUX
-			std::unique_ptr<VideoSourceLinux> videoSource;
-			#endif
+			std::unique_ptr<ABSTRACT_VIDEO_SOURCE> videoSource;
 			std::unique_ptr<VideoStreamSession> streamSession;
 		};
 		std::unordered_map<ClientID, SessionContext> m_sessionContexts;
 
-		std::vector<VideoSourceDeviceID> m_availableDevices;
-		std::unordered_map<VideoSourceDeviceID, VideoSourceDeviceID> m_deviceIDMap;
-
-#ifdef PLATFORM_WINDOWS
-		std::unique_ptr<Win32::Win32SourceDeviceListGuard> m_deviceList;
-#endif
+		std::unique_ptr<ABSTRACT_VIDEO_SOURCE_MANAGER> m_videoSourceManager;
 
 	public:
 		VideoStreamSessionManager();
-		~VideoStreamSessionManager();
+		~VideoStreamSessionManager() = default;
 
-		com::OptionalReference<std::unique_ptr<VideoStreamSession>> createSessionForClient(ClientID clientID, VideoSourceDeviceID deviceID, netsocket::AsyncSocket& socket);
+		com::OptionalReference<std::unique_ptr<VideoStreamSession>> createSessionForClient(ClientID clientID, IVideoSource::DeviceID deviceID, netsocket::AsyncSocket& socket);
 		com::OptionalReference<std::unique_ptr<VideoStreamSession>> getSessionForClient(ClientID clientID);
 		void destroySessionForClient(ClientID clientID);
 	};

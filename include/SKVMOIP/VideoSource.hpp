@@ -7,8 +7,18 @@ namespace SKVMOIP
 	class IVideoSource
 	{
 	public:
+		enum class Usage
+		{
+			RGB32Read,
+			RGB24Read,
+			NV12Read
+		};
+		using DeviceID = u64;
+	private:
+		DeviceID m_deviceID;
+	public:
 
-		IVideoSource() = default;
+		IVideoSource(DeviceID deviceID) : m_deviceID(deviceID) { };
 		
 		// Not copyable and not movable
 		IVideoSource(IVideoSource&) = delete;
@@ -39,5 +49,7 @@ namespace SKVMOIP
 
 		virtual std::pair<u32, u32> getInputFrameRate() = 0;
 		virtual std::pair<u32, u32> getOutputFrameSize() = 0;
+
+		DeviceID getDeviceID() const noexcept { return m_deviceID; }
 	};
 }

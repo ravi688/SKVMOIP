@@ -8,29 +8,13 @@
 
 namespace SKVMOIP
 {
-	typedef u64 VideoSourceDeviceConnectionID;
-
-	static inline VideoSourceDeviceConnectionID CreateVideoSourceDeviceConnectionID(u16 vid, u16 pid, u16 usbPortNumber)
-	{
-		return BIT64_PACK32(usbPortNumber, BIT32_PACK16(vid, pid));
-	}
-
 	SKVMOIP_API const char* getEncodingString(const GUID& guid);
 
 	class VideoSourceWindows : public IVideoSource
 	{
-
-	public:
-
-		enum class Usage
-		{
-			RGB32Read,
-			RGB24Read,
-			NV12Read
-		};
-
 	private:
-		Usage m_usage;
+		Win32::Win32SourceDevice& m_device;
+		IVideoSource::Usage m_usage;
 		IMFSourceReader* m_sourceReader;
 		IMFMediaType* m_inputMediaType;
 		IMFMediaType* m_outputMediaType;
@@ -62,8 +46,10 @@ namespace SKVMOIP
 
 	public:
 
-		VideoSourceWindows(VideoSourceDeviceConnectionID deviceID);
-		VideoSourceWindows(Win32::Win32SourceDevice& device, Usage usage, const std::vector<std::tuple<u32, u32, u32>>& resPrefList);
+		VideoSourceWindows(IVideoSource::DeviceID deviceID,
+							Win32::Win32SourceDevice& device,
+							IVideoSource::Usage usage,
+							const std::vector<std::tuple<u32, u32, u32>>& resPrefList);
 
 		// Not copyable and not movable
 		VideoSourceWindows(VideoSourceWindows& stream) = delete;

@@ -243,8 +243,8 @@ server_link_args_bm_internal__ = {
 'darwin' : []
 }
 server_platform_src_bm_internal__ = {
-'windows' : ['source/VideoSourceWindows.cpp', 'source/Win32/Win32ImagingDevice.cpp'],
-'linux' : ['source/VideoSourceLinux.cpp'],
+'windows' : ['source/VideoSourceManagerWindows.cpp', 'source/VideoSourceWindows.cpp', 'source/Win32/Win32ImagingDevice.cpp'],
+'linux' : ['source/VideoSourceManagerLinux.cpp', 'source/VideoSourceLinux.cpp'],
 'darwin' : []
 }
 server_defines_bm_internal__ = [

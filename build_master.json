@@ -75,10 +75,14 @@
                 "source/main.server.cpp"
             ],
             "windows_sources" : [
+                "source/VideoSourceManagerWindows.cpp",
                 "source/VideoSourceWindows.cpp",
                 "source/Win32/Win32ImagingDevice.cpp"
             ],
-            "linux_sources" : [ "source/VideoSourceLinux.cpp" ]
+            "linux_sources" : [
+                "source/VideoSourceManagerLinux.cpp",
+                "source/VideoSourceLinux.cpp"
+            ]
         },
         {
             "name" : "client",
