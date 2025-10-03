@@ -132,8 +132,15 @@ namespace SKVMOIP
 		
 		std::unique_ptr<VideoSourceLinux> videoSource = std::make_unique<VideoSourceLinux>(deviceID, devicePath, resPrefList);
 
+		if(auto result = videoSource->open(); result != IVideoSource::Result::Success)
+		{
+			spdlog::error("Failed to open the video source deivce with id: {}", deviceID);
+			videoSource.reset();
+			return { };
+		}
 		if(!videoSource->isReady())
 		{
+			spdlog::error("Video source device is not ready, device id: {}", deviceID);
 			videoSource.reset();
 			return { };
 		}

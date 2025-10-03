@@ -158,7 +158,8 @@ namespace SKVMOIP
 
 	IVideoSource::Result VideoSourceLinux::open()
 	{
-		skvmoip_assert(m_device.has_value());
+		if(!m_device)
+			return IVideoSource::Result::Failed;
     	v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     	if(ioctl(m_device->fd, VIDIOC_STREAMON, &type) < 0)
     	{
