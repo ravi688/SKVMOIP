@@ -1,6 +1,10 @@
 #include <SKVMOIP/VideoStreamSessionManager.hpp>
 #include <SKVMOIP/assert.h>
+
+#ifdef PLATFORM_WINDOWS
 #include <SKVMOIP/Win32/Win32.hpp>
+#endif
+
 #include <common/platform.h>
 
 #undef _ASSERT
@@ -190,12 +194,16 @@ namespace SKVMOIP
 																						{ 960, 720, 60 },
 																						{ 960, 720, 30 }
 																					});
+#else // PLATFORM_LINUX
+		std::unique_ptr<VideoSourceLinux> videoSource = std::make_unique<VideoSourceLinux>();
 #endif
 		std::unique_ptr<VideoStreamSession> session = std::make_unique<VideoStreamSession>(*videoSource, socket);
 		session->start();
 		SessionContext sessionContext
 		{
+#ifdef PLATFORM_WINDOWS
 			.device = std::move(*device),
+#endif
 			.videoSource = std::move(videoSource),
 			.streamSession = std::move(session)
 		};

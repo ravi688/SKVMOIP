@@ -17,5 +17,7 @@ namespace SKVMOIP
 		virtual void close() override;
 		virtual bool isReady() override;
 		virtual bool readNV12FrameToBuffer(u8* const nv12Buffer, u32 nv12BufferSize) override;
+		virtual std::pair<u32, u32> getInputFrameRate() override;
+		virtual std::pair<u32, u32> getOutputFrameSize() override;
 	};
 }

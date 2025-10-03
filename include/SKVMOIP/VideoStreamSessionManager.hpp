@@ -30,6 +30,8 @@ namespace SKVMOIP
 			#ifdef PLATFORM_WINDOWS
 			Win32::Win32SourceDevice device;
 			std::unique_ptr<VideoSourceWindows> videoSource;
+			#else // PLATFORM_LINUX
+			std::unique_ptr<VideoSourceLinux> videoSource;
 			#endif
 			std::unique_ptr<VideoStreamSession> streamSession;
 		};
@@ -37,7 +39,10 @@ namespace SKVMOIP
 
 		std::vector<VideoSourceDeviceID> m_availableDevices;
 		std::unordered_map<VideoSourceDeviceID, VideoSourceDeviceID> m_deviceIDMap;
+
+#ifdef PLATFORM_WINDOWS
 		std::unique_ptr<Win32::Win32SourceDeviceListGuard> m_deviceList;
+#endif
 
 	public:
 		VideoStreamSessionManager();

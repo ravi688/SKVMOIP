@@ -2,20 +2,31 @@
 
 namespace SKVMOIP
 {
-		virtual IVideoSource::Result VideoSourceLinux::open() override
-		{
-			return IVideoSource::Result::Failed;
-		}
-		virtual void VideoSourceLinux::close() override
-		{
+	IVideoSource::Result VideoSourceLinux::open()
+	{
+		return IVideoSource::Result::Failed;
+	}
+	void VideoSourceLinux::close()
+	{
 
-		}
-		virtual bool VideoSourceLinux::isReady() override
-		{
-			return false;
-		}
-		virtual bool VideoSourceLinux::readNV12FrameToBuffer(u8* const nv12Buffer, u32 nv12BufferSize) override
-		{
-			return false;
-		}
+	}
+	bool VideoSourceLinux::isReady()
+	{
+		return false;
+	}
+	bool VideoSourceLinux::readNV12FrameToBuffer(u8* const nv12Buffer, u32 nv12BufferSize)
+	{
+		return false;
+	}
+
+	std::pair<u32, u32> VideoSourceLinux::getInputFrameRate()
+	{
+		return { };
+	}
+
+	std::pair<u32, u32> VideoSourceLinux::getOutputFrameSize()
+	{
+		return { };
+	}
 }
+
