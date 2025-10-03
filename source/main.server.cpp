@@ -14,8 +14,6 @@
 #include <memory>
 #include <atomic>
 
-#include <conio.h>
-
 #undef _ASSERT
 #include <spdlog/spdlog.h>
 
@@ -250,7 +248,5 @@ int main(int argc, const char* argv[])
 		}
 	} while(true);
 
-	spdlog::error("Press any key to exit...");
-	getch();
 	return 0;
 }
