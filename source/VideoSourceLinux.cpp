@@ -49,7 +49,8 @@ namespace SKVMOIP
 
     	std::cout << "Set format: " << fmt.fmt.pix.width << "x"
     	          << fmt.fmt.pix.height << " "
-    	          << std::hex << fmt.fmt.pix.pixelformat << std::dec << "\n";
+    	          << std::hex << fmt.fmt.pix.pixelformat << std::dec << "\n"
+    	          << "Size: " << fmt.fmt.pix.sizeimage << " bytes\n";
 
     	// ----------------------------
     	// Set frame rate: 60 fps
