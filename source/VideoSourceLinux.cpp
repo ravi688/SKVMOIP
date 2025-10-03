@@ -1,4 +1,10 @@
 #include <SKVMOIP/VideoSourceLinux.hpp>
+#include <SKVMOIP/assert.h>
+
+#ifdef _ASSERT
+#	undef _ASSERT
+#endif
+#include <spdlog/spdlog.h>
 
 #include <iostream>
 #include <string>
@@ -90,8 +96,8 @@ namespace SKVMOIP
     	        spdlog::error("Failed to query buffers for device at {}", devicePath);
     	        for(int k = 0; k < i; ++k)
     	        {
-    	        	auto b& = buffers[k];
-        			munmap(b.start, b.length);
+    	        	auto& b = buffers[k];
+        		munmap(b.start, b.length);
     	        }
     	        return { };
     	    }
@@ -122,7 +128,7 @@ namespace SKVMOIP
     	        spdlog::error("Failed to queue buffers for device at {}", devicePath);
     	        for(int k = 0; k < buffers.size(); ++k)
     	        {
-    	        	auto b& = buffers[k];
+    	        	auto& b = buffers[k];
         			munmap(b.start, b.length);
     	        }
     	        return { };
@@ -137,7 +143,9 @@ namespace SKVMOIP
     	return device;
 	}
 
-	VideoSourceLinux::VideoSourceLinux(const std::string_view devicePath)
+	VideoSourceLinux::VideoSourceLinux(IVideoSource::DeviceID deviceID, 
+			const std::string_view devicePath,
+			const std::vector<std::tuple<u32, u32, u32>>& resPrefList) : IVideoSource(deviceID)
 	{
 		m_device = OpenDevice(devicePath);
 	}
@@ -150,10 +158,11 @@ namespace SKVMOIP
 
 	IVideoSource::Result VideoSourceLinux::open()
 	{
+		skvmoip_assert(m_device.has_value());
     	v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    	if(ioctl(m_device.fd, VIDIOC_STREAMON, &type) < 0)
+    	if(ioctl(m_device->fd, VIDIOC_STREAMON, &type) < 0)
     	{
-    	    spdlog::info("Failed to set VIDIOC_STREAMON for device at {}", m_device.devicePath);
+    	    spdlog::info("Failed to set VIDIOC_STREAMON for device at {}", m_device->devicePath);
     	    return IVideoSource::Result::Failed;
     	}
 		return IVideoSource::Result::Success;
@@ -162,14 +171,15 @@ namespace SKVMOIP
 	{
 		skvmoip_assert(m_device.has_value());
 
-    	if (ioctl(m_device.fd, VIDIOC_STREAMOFF, &type) < 0)
-    	    spdlog::errro("Failed to set VIDIOC_STREAMOFF for device at {}", m_device.devicePath);
+	v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    	if (ioctl(m_device->fd, VIDIOC_STREAMOFF, &type) < 0)
+    	    spdlog::error("Failed to set VIDIOC_STREAMOFF for device at {}", m_device->devicePath);
 
-    	for (auto& b : m_device.buffers) {
+    	for (auto& b : m_device->buffers) {
     	    munmap(b.start, b.length);
     	}
 
-    	::close(fd);
+    	::close(m_device->fd);
 
     	m_device = { };
 	}
@@ -183,14 +193,14 @@ namespace SKVMOIP
 		buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 		buf.memory = V4L2_MEMORY_MMAP;
 	
-		if(ioctl(fd, VIDIOC_DQBUF, &buf) < 0)
+		if(ioctl(m_device->fd, VIDIOC_DQBUF, &buf) < 0)
 		{
-			spdog::error("Failed to deque buffer");
+			spdlog::error("Failed to deque buffer");
 		    return false;
 		}
 	
 		// Access NV12 data here:
-		uint8_t* data = (uint8_t*)buffers[buf.index].start;
+		uint8_t* data = (uint8_t*)m_device->buffers[buf.index].start;
 		size_t data_size = buf.bytesused;
 
 		skvmoip_debug_assert(data_size == nv12BufferSize);
@@ -199,7 +209,7 @@ namespace SKVMOIP
 		std::memcpy(nv12Buffer, data, data_size);
 	
 		// Re-queue buffer
-		if(ioctl(fd, VIDIOC_QBUF, &buf) < 0)
+		if(ioctl(m_device->fd, VIDIOC_QBUF, &buf) < 0)
 		{
 		   	spdlog::error("Failed to enqueue buffer");
 		    return false;

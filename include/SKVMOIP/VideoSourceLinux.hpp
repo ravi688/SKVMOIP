@@ -10,11 +10,11 @@ namespace SKVMOIP
 {
 	class VideoSourceLinux : public IVideoSource
 	{
-	private:
+	public:
 		struct Buffer
 		{
-    		void* start;
-    		size_t length;
+			void* start;
+			size_t length;
 		};
 
 		struct Device
@@ -24,11 +24,14 @@ namespace SKVMOIP
 			std::string devicePath;
 		};
 
+	private:
 		std::optional<Device> m_device;
 
 	public:
 
-		VideoSourceLinux(const std::string_view devicePath);
+		VideoSourceLinux(IVideoSource::DeviceID device,
+				const std::string_view devicePath,
+				const std::vector<std::tuple<u32, u32, u32>>& resPrefList);
 		~VideoSourceLinux();
 
 		// Not copyable and not movable

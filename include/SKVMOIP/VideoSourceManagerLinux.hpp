@@ -21,6 +21,7 @@ namespace SKVMOIP
 	{
 	private:
 		std::vector<VideoDevice> m_devices;
+		std::vector<IVideoSource::DeviceID> m_availableDevices;
 	public:
 		VideoSourceManagerLinux();
 		~VideoSourceManagerLinux();

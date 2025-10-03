@@ -1,5 +1,5 @@
 #include <SKVMOIP/VideoSourceManagerLinux.hpp>
-
+#include <SKVMOIP/assert.h>
 #ifdef _ASSERT
 #	undef _ASSERT
 #endif
@@ -76,14 +76,14 @@ namespace SKVMOIP
 	static void DumpDeviceInfos(const std::vector<VideoDevice>& devices)
 	{
 		spdlog::info("Available Video Devices:");
-    	for(size_t i = 0; i < m_devices.size(); i++)
+    	for(size_t i = 0; i < devices.size(); i++)
     	{
-    	    spdlog::info("{} : {} ({}) {}", i, m_devices[i].path, m_devices[i].name, 
-    	    	m_devices[i].hasRaw ? "[RAW]" : "",
-    	    	m_devices[i].hasRaw ? "[COMPRESSED]" : "");
+    	    spdlog::info("{} : {} ({}) {}", i, devices[i].path, devices[i].name, 
+    	    	devices[i].hasRaw ? "[RAW]" : "",
+    	    	devices[i].hasRaw ? "[COMPRESSED]" : "");
 
     	    spdlog::info("Formats: ");
-    	    for (auto& f : m_devices[i].formats)
+    	    for (auto& f : devices[i].formats)
     	        spdlog::info("\t {}", f);
     	}
 	}
@@ -130,7 +130,7 @@ namespace SKVMOIP
 
 		std::string& devicePath = m_devices[deviceID].path;
 		
-		std::unique_ptr<VideoSourceLinux> videoSource = std::make_unique<VideoSourceLinux>(devicePath);
+		std::unique_ptr<VideoSourceLinux> videoSource = std::make_unique<VideoSourceLinux>(deviceID, devicePath, resPrefList);
 
 		if(!videoSource->isReady())
 		{
@@ -140,7 +140,7 @@ namespace SKVMOIP
 
 		m_availableDevices.erase(it);
 
-		return { videoSource };
+		return { std::move(videoSource) };
 	}
 
 	void VideoSourceManagerLinux::releaseVideoSource(std::unique_ptr<VideoSourceLinux>& videoSource)
