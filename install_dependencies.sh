@@ -31,4 +31,5 @@ if [ "$PLATFORM" == "MINGW" ]; then
 	pacman -S mingw-w64-x86_64-gtk3
 else
 	apt-get install libgtk-3-dev
+	apt-get -y install libx264-dev
 fi

@@ -2,8 +2,15 @@
 
 #include <SKVMOIP/defines.hpp>
 
-#include <x264/include/x264.h>
-#include <x264/include/x264_config.h>
+#include <common/platform.h>
+
+#ifdef PLATFORM_WINDOWS
+#	include <x264/include/x264.h>
+#	include <x264/include/x264_config.h>
+#else // PLATFORM_LINUX
+#	include <x264.h>
+#	include <x264_config.h>
+#endif
 
 namespace SKVMOIP
 {
