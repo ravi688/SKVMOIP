@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SKVMOIP/defines.hpp>
+#include <SKVMOIP/VideoSource.hpp> // for IVideoSource
 #include <SKVMOIP/Win32/Win32ImagingDevice.hpp>
 #include <utility>
 #include <vector>
@@ -17,7 +17,7 @@ namespace SKVMOIP
 
 	SKVMOIP_API const char* getEncodingString(const GUID& guid);
 
-	class VideoSourceStream
+	class VideoSourceWindows : public IVideoSource
 	{
 
 	public:
@@ -61,14 +61,21 @@ namespace SKVMOIP
 		void destroy();
 
 	public:
-		VideoSourceStream(VideoSourceStream& stream) = delete;
-		VideoSourceStream& operator=(VideoSourceStream& stream) = delete;
 
-		VideoSourceStream(VideoSourceDeviceConnectionID deviceID);
-		VideoSourceStream(Win32::Win32SourceDevice& device, Usage usage, const std::vector<std::tuple<u32, u32, u32>>& resPrefList);
-		VideoSourceStream(VideoSourceStream&& stream);
-		VideoSourceStream& operator=(VideoSourceStream&& stream);
-		~VideoSourceStream();
+		VideoSourceWindows(VideoSourceDeviceConnectionID deviceID);
+		VideoSourceWindows(Win32::Win32SourceDevice& device, Usage usage, const std::vector<std::tuple<u32, u32, u32>>& resPrefList);
+
+		// Not copyable and not movable
+		VideoSourceWindows(VideoSourceWindows& stream) = delete;
+		VideoSourceWindows(VideoSourceWindows&& stream) = delete;
+
+		~VideoSourceWindows();
+
+		// IVideoSource Interface Implementation
+		virtual IVideoSource::Result open() override;
+		virtual void close() override;
+		virtual bool isReady() override;
+		virtual bool readNV12FrameToBuffer(u8* const nv12Buffer, u32 nv12BufferSize) override;
 
 		bool isValid() const { return m_isValid; }
 		operator bool() const { return isValid();  }
@@ -88,46 +95,10 @@ namespace SKVMOIP
 		bool isInputFixedSizedSamples() const { return m_isInputFixedSizedSamples;}
 		bool isOutputFixedSizedSamples() const { return m_isOutputFixedSizedSamples; }
 		std::pair<u32, u32> getInputFrameSize() const { return { m_inputFrameWidth, m_inputFrameHeight }; }
-		std::pair<u32, u32> getOutputFrameSize() const { return { m_outputFrameWidth, m_outputFrameHeight }; }
-		std::pair<u32, u32> getInputFrameRate() const { return { m_inputFrameRateNumer, m_inputFrameRateDenom }; }
+		virtual std::pair<u32, u32> getOutputFrameSize() override { return { m_outputFrameWidth, m_outputFrameHeight }; }
+		virtual std::pair<u32, u32> getInputFrameRate() override { return { m_inputFrameRateNumer, m_inputFrameRateDenom }; }
 		std::pair<u32, u32> getOuputFrameRate() const { return { m_outputFrameRateNumer, m_outputFrameRateDenom }; }
 		f32 getInputFrameRateF32() const { return static_cast<f32>(m_inputFrameRateNumer) / m_inputFrameRateDenom; }
 		f32 getOutputFrameRateF32() const { return static_cast<f32>(m_outputFrameRateNumer) / m_outputFrameRateDenom; }
-
-		bool doReadyRGBReader();
-		bool readRGBFrameToBuffer(u8* const rgbBuffer, u32 rgbBufferSize);
-		bool readNV12FrameToBuffer(u8* const nv12Buffer, u32 nv12BufferSize);
 	};
-
-	class NV12ToRGBConverter
-	{
-	private:
-		IMFMediaType* m_inputMediaType;
-		IMFMediaType* m_outputMediaType;
-		IMFMediaBuffer* m_inputMediaBuffer;
-		IMFMediaBuffer* m_outputMediaBuffer;
-		IMFSample* m_inputSample;
-		IMFSample* m_outputSample;
-		IMFTransform* m_colorConverter;
-		u32 m_width;
-		u32 m_height;
-		u32 m_frameRateNum;
-		u32 m_frameRateDen;
-		u32 m_bitsPerPixel;
-		u32 m_inputSampleSize;
-		u32 m_outputSampleSize;
-		bool m_isOutputMediaBufferLocked;
-		bool m_isValid;
-	public:
-		NV12ToRGBConverter(u32 width, u32 height, u32 frameRateNum, u32 frameRateDen, u32 bitsPerPixel);
-		NV12ToRGBConverter(NV12ToRGBConverter&& converter) = delete;
-		NV12ToRGBConverter& operator=(NV12ToRGBConverter&& converter) = delete;
-		NV12ToRGBConverter(NV12ToRGBConverter& converter) = delete;
-		NV12ToRGBConverter& operator =(NV12ToRGBConverter& converter) = delete;
-		~NV12ToRGBConverter();
-
-		u8* convert(u8* nv12Buffer, u32 nv12BufferSize);
-		u32 getRGBDataSize() const noexcept { return m_width * m_height * (m_bitsPerPixel >> 3); }
-	};
-
 }

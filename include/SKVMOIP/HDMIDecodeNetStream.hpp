@@ -1,11 +1,12 @@
 #pragma once
 
+// This avoids warning about winsock2.h should be included before windows.h on Windows
+#include <netsocket/netasyncsocket.hpp> // for netsocket::AsyncSocket
+
 #include <SKVMOIP/defines.hpp>
 #include <SKVMOIP/Decoder.hpp>
-#include <SKVMOIP/VideoSourceStream.hpp>
 #include <SKVMOIP/FIFOPool.hpp>
-
-#include <netsocket/netasyncsocket.hpp> // for netsocket::AsyncSocket
+#include <SKVMOIP/NV12ToRGBConverter.hpp>
 
 #include <thread>
 #include <mutex>

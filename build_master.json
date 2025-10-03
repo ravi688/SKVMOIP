@@ -18,11 +18,6 @@
             "source/GUI/MachineUI.cpp",
             "source/GUI/MainUI.cpp"
         ],
-        "server_sources" : [
-            "source/Encoder.cpp",
-            "source/HDMIEncodeNetStream.cpp",
-            "source/Win32/Win32ImagingDevice.cpp"
-        ],
         "client_sources" : [
             "source/third_party/NvDecoder.cpp",
             "source/Decoder.cpp",
@@ -31,6 +26,7 @@
             "source/Win32/Win32RawInput.cpp",
             "source/Win32/Win32Window.cpp",
             "source/HDMIDecoderNetStream.cpp",
+            "source/NV12ToRGBConverter.cpp",
             "source/KMNetStream.cpp",
             "source/HIDUsageID.cpp",
             "source/RDPSession.cpp",
@@ -72,7 +68,17 @@
                 "link_dir: './external-dependencies/x264'", "-lx264", "-liphlpapi"
             ],
             "defines" : ["-DBUILD_SERVER"],
-            "sources": [ "$server_sources", "source/main.server.cpp" ]
+            "sources": [
+                "source/VideoStreamSessionManager.cpp",
+                "source/VideoStreamSession.cpp",
+                "source/Encoder.cpp",
+                "source/main.server.cpp"
+            ],
+            "windows_sources" : [
+                "source/VideoSourceWindows.cpp",
+                "source/Win32/Win32ImagingDevice.cpp"
+            ],
+            "linux_sources" : [ "source/VideoSourceLinux.cpp" ]
         },
         {
             "name" : "client",
@@ -92,8 +98,9 @@
         }
     ],
     "sources" : [
-        "source/VideoSourceStream.cpp",
-        "source/Win32/Win32.cpp",
         "source/assert.cpp"
+    ],
+    "windows_sources" : [
+        "source/Win32/Win32.cpp"
     ]
 }
