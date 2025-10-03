@@ -149,9 +149,14 @@ namespace SKVMOIP
 
 	VideoSourceManagerWindows::~VideoSourceManagerWindows()
 	{
-		skvmoip_assert(m_availableDevices.size() == m_deviceIDMap.size()
+		skvmoip_assert(m_availableDevices.size() == m_deviceList->getDeviceCount()
 			&& "Not all video source devices have been released before destroying VideoSourceManagerWindows");
 		Win32::DeinitializeMediaFoundationAndCOM();		
+	}
+
+	u32 VideoSourceManagerWindows::getNumVideoSources()
+	{
+		return m_deviceList->getDeviceCount();
 	}
 
 	std::optional<std::unique_ptr<VideoSourceWindows>> VideoSourceManagerWindows::acquireVideoSource(IVideoSource::DeviceID deviceID, 

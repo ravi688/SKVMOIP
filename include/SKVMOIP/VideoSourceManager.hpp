@@ -16,6 +16,8 @@ namespace SKVMOIP
 		IVideoSourceManager() = default;
 		virtual ~IVideoSourceManager() = default;
 
+		virtual u32 getNumVideoSources() = 0;
+
 		virtual std::optional<std::unique_ptr<T>> acquireVideoSource(IVideoSource::DeviceID deviceID,
 																		IVideoSource::Usage usage,
 																		const std::vector<std::tuple<u32, u32, u32>>& resPrefList) = 0;

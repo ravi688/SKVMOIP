@@ -25,6 +25,7 @@ namespace SKVMOIP
 		~VideoSourceManagerWindows();
 
 		// Implementation of IVideoSourceManager interface
+		virtual u32 getNumVideoSources() override;
 		virtual std::optional<std::unique_ptr<VideoSourceWindows>> acquireVideoSource(IVideoSource::DeviceID deviceID,
 																						IVideoSource::Usage usage,
 																						const std::vector<std::tuple<u32, u32, u32>>& resPrefList) override;
