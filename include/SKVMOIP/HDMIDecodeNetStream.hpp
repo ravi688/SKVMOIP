@@ -1,10 +1,12 @@
 #pragma once
 
+// This avoids warning about winsock2.h should be included before windows.h on Windows
+#include <netsocket/netasyncsocket.hpp> // for netsocket::AsyncSocket
+
 #include <SKVMOIP/defines.hpp>
-#include <SKVMOIP/Network/NetworkAsyncQueueSocket.hpp>
 #include <SKVMOIP/Decoder.hpp>
-#include <SKVMOIP/VideoSourceStream.hpp>
 #include <SKVMOIP/FIFOPool.hpp>
+#include <SKVMOIP/NV12ToRGBConverter.hpp>
 
 #include <thread>
 #include <mutex>
@@ -14,7 +16,7 @@ namespace SKVMOIP
 {
 	static void FrameReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData);
 
-	class HDMIDecodeNetStream : public Network::AsyncQueueSocket
+	class HDMIDecodeNetStream : public netsocket::AsyncSocket
 	{
 	public:
 		#ifdef USE_DIRECT_FRAME_DATA_COPY
@@ -44,7 +46,7 @@ namespace SKVMOIP
 		u32 m_frDen;
 		/* rgb bits per pixel */
 		u32 m_bitsPerPixel;
-		Network::AsyncQueueSocket::BinaryFormatter m_receiveFormatter;
+		netsocket::AsyncSocket::BinaryFormatter m_receiveFormatter;
 
 		friend void FrameReceiveCallbackHandler(const u8* data, u32 dataSize, void* userData);
 	

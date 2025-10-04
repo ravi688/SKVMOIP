@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SKVMOIP/defines.hpp>
+#include <SKVMOIP/assert.h>
 
 #include <vector>
 #include <deque>
@@ -130,7 +131,7 @@ namespace SKVMOIP
 	void FIFOPool<T>::returnActive(PoolItemType item)
 	{
 		if(!item) return;
-		_assert(item->second < m_buffer.size());
+		skvmoip_debug_assert(item->second < m_buffer.size());
 		m_inactiveQueue.push_back(item->second);
 	}
 	
@@ -148,7 +149,7 @@ namespace SKVMOIP
 	void FIFOPool<T>::returnInactive(PoolItemType item)
 	{
 		if(!item) return;
-		_assert(item->second < m_buffer.size());
+		skvmoip_debug_assert(item->second < m_buffer.size());
 		m_activeQueue.push_front(item->second);
 	}
 

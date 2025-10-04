@@ -1,5 +1,6 @@
 #include <SKVMOIP/MachineData.hpp>
 #include <SKVMOIP/assert.h>
+#include <common/debug.hpp>
 #include <cstring>
 
 static u32 constexpr IPV4_MAX_STRLEN = strlen("255.255.255.255:65535");
@@ -21,7 +22,7 @@ namespace SKVMOIP
                             m_id(0)
   {
     u32 len = strlen(name);
-    _assert(len < 255);
+    skvmoip_debug_assert(len < 255);
     memcpy(m_name, name, len);
     m_name[len] = 0;
     m_nameLength = len;

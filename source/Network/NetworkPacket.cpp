@@ -92,12 +92,12 @@ namespace SKVMOIP
 						}
 						break;
 					}
-					default: { _assert(false); break; }
+					default: { skvmoip_debug_assert(false); break; }
 				}
 			}
 			else if(powerButton || resetButton)
 			{
-				_assert(!(powerButton && resetButton));
+				skvmoip_debug_assert(!(powerButton && resetButton));
 				packet.deviceType = EnumClassToInt(NetworkPacketValues::DeviceType::FrontPanel);
 				packet.buttonStatus = ((powerButton && (powerButton.value() == NetworkPacketValues::KeyStatus::Pressed)) 
 										|| (resetButton && (resetButton.value() == NetworkPacketValues::KeyStatus::Pressed))) ? 1 : 0;
@@ -139,7 +139,7 @@ namespace SKVMOIP
 				}
 				default:
 				{
-					_assert(false);
+					skvmoip_debug_assert(false);
 					break;
 				}
 			}

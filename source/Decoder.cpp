@@ -18,7 +18,7 @@ namespace SKVMOIP
 
         createCudaContext(&m_cudaContext, iGpu, 0);
 
-        _assert(m_cudaContext != NULL);
+        skvmoip_debug_assert(m_cudaContext != NULL);
 
 		m_nvDecoder = std::move(std::unique_ptr<NvDecoder>(new NvDecoder(m_cudaContext, false, cudaVideoCodec_H264, true, false)));
 

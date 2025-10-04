@@ -1,0 +1,237 @@
+#include <SKVMOIP/VideoSourceLinux.hpp>
+#include <SKVMOIP/assert.h>
+
+#ifdef _ASSERT
+#	undef _ASSERT
+#endif
+#include <spdlog/spdlog.h>
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <cstring>
+#include <cerrno>
+#include <cstdlib>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <linux/videodev2.h>
+
+#include <cstdint>
+
+#include <libyuv.h>
+
+namespace SKVMOIP
+{
+	static std::optional<VideoSourceLinux::Device> OpenDevice(const std::string_view devicePath)
+	{
+    	int fd = ::open(devicePath.data(), O_RDWR);
+    	if(fd < 0)
+    	{
+    	    spdlog::error("Failed to open device at {}", devicePath);
+    	    return { };
+    	}
+
+		// ----------------------------
+		// Set format: NV12, 1920x1080
+		// ----------------------------
+		v4l2_format fmt{};
+		fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+		fmt.fmt.pix.width = 1920;
+		fmt.fmt.pix.height = 1080;
+		fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV; // V4L2_PIX_FMT_NV12;
+		fmt.fmt.pix.field = V4L2_FIELD_NONE;
+
+		if (ioctl(fd, VIDIOC_S_FMT, &fmt) < 0)
+		{
+			spdlog::error("Failed to set format for device at {}", devicePath);
+		    return { };
+		}
+
+		skvmoip_assert(fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV);
+
+    	std::cout << "Set format: " << fmt.fmt.pix.width << "x"
+    	          << fmt.fmt.pix.height << " "
+    	          << std::hex << fmt.fmt.pix.pixelformat << std::dec << "\n"
+    	          << "Size: " << fmt.fmt.pix.sizeimage << " bytes\n";
+
+    	// ----------------------------
+    	// Set frame rate: 60 fps
+    	// ----------------------------
+    	v4l2_streamparm parm{};
+    	parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    	parm.parm.capture.timeperframe.numerator = 1;
+    	parm.parm.capture.timeperframe.denominator = 60;
+
+    	if (ioctl(fd, VIDIOC_S_PARM, &parm) < 0)
+    	{
+    		spdlog::error("Failed to set frame rate for device at {}", devicePath);
+    	    return { };
+    	}
+
+    	std::cout << "Set framerate: "
+              << parm.parm.capture.timeperframe.denominator << " fps\n";
+
+    	// ----------------------------
+    	// Request buffers (MMAP)
+    	// ----------------------------
+    	v4l2_requestbuffers req{};
+    	req.count = 4;
+    	req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    	req.memory = V4L2_MEMORY_MMAP;
+	
+    	if(ioctl(fd, VIDIOC_REQBUFS, &req) < 0)
+    	{
+    		spdlog::error("Failed to request buffers for device at {}", devicePath);
+    	    return { };
+    	}
+
+    	std::vector<VideoSourceLinux::Buffer> buffers(req.count);
+
+    	for(int i = 0; i < req.count; i++)
+    	{
+    	    v4l2_buffer buf{};
+    	    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    	    buf.memory = V4L2_MEMORY_MMAP;
+    	    buf.index = i;
+	
+    	    if(ioctl(fd, VIDIOC_QUERYBUF, &buf) < 0)
+    	    {
+    	        spdlog::error("Failed to query buffers for device at {}", devicePath);
+    	        for(int k = 0; k < i; ++k)
+    	        {
+    	        	auto& b = buffers[k];
+        		munmap(b.start, b.length);
+    	        }
+    	        return { };
+    	    }
+	
+    	    buffers[i].length = buf.length;
+    	    buffers[i].start = mmap(NULL, buf.length,
+    	                            PROT_READ | PROT_WRITE,
+    	                            MAP_SHARED,
+    	                            fd, buf.m.offset);
+    	    if(buffers[i].start == MAP_FAILED)
+    	    {
+    	        spdlog::error("Failed to memory map for device at {}", devicePath);
+    	        return { };
+    	    }
+    	}
+
+    	// ----------------------------
+    	// Queue all buffers
+    	// ----------------------------
+    	for(int i = 0; i < req.count; i++)
+    	{
+    	    v4l2_buffer buf{};
+    	    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    	    buf.memory = V4L2_MEMORY_MMAP;
+    	    buf.index = i;
+    	    if(ioctl(fd, VIDIOC_QBUF, &buf) < 0)
+    	    {
+    	        spdlog::error("Failed to queue buffers for device at {}", devicePath);
+    	        for(int k = 0; k < buffers.size(); ++k)
+    	        {
+    	        	auto& b = buffers[k];
+        			munmap(b.start, b.length);
+    	        }
+    	        return { };
+    	    }
+    	}
+
+    	VideoSourceLinux::Device device;
+    	device.fd = fd;
+    	device.buffers = std::move(buffers);
+    	device.devicePath = devicePath;
+
+    	return device;
+	}
+
+	VideoSourceLinux::VideoSourceLinux(IVideoSource::DeviceID deviceID, 
+			const std::string_view devicePath,
+			const std::vector<std::tuple<u32, u32, u32>>& resPrefList) : IVideoSource(deviceID)
+	{
+		m_device = OpenDevice(devicePath);
+	}
+
+	VideoSourceLinux::~VideoSourceLinux()
+	{
+		if(m_device)
+			close();
+	}
+
+	IVideoSource::Result VideoSourceLinux::open()
+	{
+		if(!m_device)
+			return IVideoSource::Result::Failed;
+    	v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    	if(ioctl(m_device->fd, VIDIOC_STREAMON, &type) < 0)
+    	{
+    	    spdlog::info("Failed to set VIDIOC_STREAMON for device at {}", m_device->devicePath);
+    	    return IVideoSource::Result::Failed;
+    	}
+		return IVideoSource::Result::Success;
+	}
+	void VideoSourceLinux::close()
+	{
+		skvmoip_assert(m_device.has_value());
+
+	v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    	if (ioctl(m_device->fd, VIDIOC_STREAMOFF, &type) < 0)
+    	    spdlog::error("Failed to set VIDIOC_STREAMOFF for device at {}", m_device->devicePath);
+
+    	for (auto& b : m_device->buffers) {
+    	    munmap(b.start, b.length);
+    	}
+
+    	::close(m_device->fd);
+
+    	m_device = { };
+	}
+	bool VideoSourceLinux::isReady()
+	{
+		return m_device.has_value();
+	}
+	bool VideoSourceLinux::readNV12FrameToBuffer(u8* const nv12Buffer, u32 nv12BufferSize)
+	{
+		v4l2_buffer buf{};
+		buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+		buf.memory = V4L2_MEMORY_MMAP;
+	
+		if(ioctl(m_device->fd, VIDIOC_DQBUF, &buf) < 0)
+		{
+			spdlog::error("Failed to deque buffer");
+		    return false;
+		}
+	
+		// Access NV12 data here:
+		uint8_t* data = (uint8_t*)m_device->buffers[buf.index].start;
+		int ret = libyuv::YUY2ToNV12(data, 1920 * 2,
+						nv12Buffer, 1920,          // Y
+    						nv12Buffer + (1920 * 1080), 1920,         // UV interleaved
+    						1920, 1080);
+
+		if(ret)
+			spdlog::error("Failed to convert YUVV 4:2:2 to YUV 4:20 (NV12)");
+		// Re-queue buffer
+		if(ioctl(m_device->fd, VIDIOC_QBUF, &buf) < 0)
+		{
+		   	spdlog::error("Failed to enqueue buffer");
+		    return false;
+		}
+
+		return true;
+	}
+
+	std::pair<u32, u32> VideoSourceLinux::getInputFrameRate()
+	{
+		return { 60, 1 };
+	}
+
+	std::pair<u32, u32> VideoSourceLinux::getOutputFrameSize()
+	{
+		return { 1920, 1080 };
+	}
+}
+

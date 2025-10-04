@@ -80,7 +80,7 @@ namespace SKVMOIP
 	
 	bool Encoder::encodeNV12(u8* const nv12Data, u32 nv12DataSize, u8* &outputBuffer, u32& outputBufferSize)
 	{
-		_assert(m_isValid);
+		skvmoip_debug_assert(m_isValid);
 	
 		u32 luma_size = m_width * m_height;
 		u32 chroma_size = luma_size >> 2;

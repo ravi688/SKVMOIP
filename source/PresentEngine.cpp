@@ -166,9 +166,7 @@ namespace SKVMOIP
 	{
 		vkDestroyPipeline(m_vkDevice, m_vkPipeline, NULL);
 		pvkDestroyFramebuffers(m_vkDevice, PRESENT_ENGINE_IMAGE_COUNT, m_vkFramebuffers);
-		PVK_DELETE(m_vkFramebuffers);
 		pvkDestroySwapchainImageViews(m_vkDevice, m_vkSwapchain, m_vkSwapchainImageViews);
-		PVK_DELETE(m_vkSwapchainImageViews);
 		vkDestroySwapchainKHR(m_vkDevice, m_vkSwapchain, NULL);
 	}
 
@@ -190,7 +188,7 @@ namespace SKVMOIP
 		#else
 		m_vkSwapchainImageViews = pvkCreateSwapchainImageViews(m_vkDevice, m_vkSwapchain, VK_FORMAT_B8G8R8A8_SRGB, &imageCount);
 		#endif
-		_assert(imageCount == PRESENT_ENGINE_IMAGE_COUNT);
+		skvmoip_debug_assert(imageCount == PRESENT_ENGINE_IMAGE_COUNT);
 
 		VkImageView attachments[PRESENT_ENGINE_IMAGE_COUNT];
 		for(u32 i = 0; i < PRESENT_ENGINE_IMAGE_COUNT; i++)
@@ -509,8 +507,8 @@ namespace SKVMOIP
 					
 					#ifndef USE_DIRECT_FRAME_DATA_COPY
 					auto frameData = FIFOPool<HDMIDecodeNetStream::FrameData>::GetValue(frame);
-					_assert(frameData.has_value());
-					// _assert(frameData->getSize() == drawSurface->getBufferSize());
+					skvmoip_debug_assert(frameData.has_value());
+					// skvmoip_debug_assert(frameData->getSize() == drawSurface->getBufferSize());
 					/* Takes: 1 ms to 4 ms */
 					memcpy(m_mapPtr, frameData->getPtr(), frameData->getSize());
 					#endif 
@@ -618,8 +616,8 @@ namespace SKVMOIP
 					
 					#ifndef USE_DIRECT_FRAME_DATA_COPY
 					auto frameData = FIFOPool<HDMIDecodeNetStream::FrameData>::GetValue(frame);
-					_assert(frameData.has_value());
-					// _assert(frameData->getSize() == drawSurface->getBufferSize());
+					skvmoip_debug_assert(frameData.has_value());
+					// skvmoip_debug_assert(frameData->getSize() == drawSurface->getBufferSize());
 					/* Takes: 1 ms to 4 ms */
 					memcpy(m_mapPtr, frameData->getPtr(), frameData->getSize());
 					#endif 

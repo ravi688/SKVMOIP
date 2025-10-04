@@ -2,8 +2,8 @@
     "project_name" : "SKVMOIP",
     "canonical_name" : "skvmoip",
     "description" : "Scalable KVM Over IP",
-    "dependencies" : [ "common", "playvk", "bufferlib" ],
-    "pre_config_hook" : "install_vulkan-headers.sh",
+    "dependencies" : [ "common", "playvk", "bufferlib", "netsocket", "spdlog" ],
+    "pre_config_root_hook" : "install_dependencies.sh",
     "vars" :
     {
         "cuda_path" : "run_command(find_program('python'), '-c', 'import os; print(os.environ[\"CUDA_PATH\"])', check : false).stdout().strip()",
@@ -18,11 +18,6 @@
             "source/GUI/MachineUI.cpp",
             "source/GUI/MainUI.cpp"
         ],
-        "server_sources" : [
-            "source/Encoder.cpp",
-            "source/HDMIEncodeNetStream.cpp",
-            "source/Win32/Win32ImagingDevice.cpp"
-        ],
         "client_sources" : [
             "source/third_party/NvDecoder.cpp",
             "source/Decoder.cpp",
@@ -31,6 +26,7 @@
             "source/Win32/Win32RawInput.cpp",
             "source/Win32/Win32Window.cpp",
             "source/HDMIDecoderNetStream.cpp",
+            "source/NV12ToRGBConverter.cpp",
             "source/KMNetStream.cpp",
             "source/HIDUsageID.cpp",
             "source/RDPSession.cpp",
@@ -69,10 +65,27 @@
             "name" : "server",
             "is_executable" : true,
             "windows_link_args" : [
-                "link_dir: './external-dependencies/x264'", "-lx264"
+                "link_dir: './external-dependencies/x264'", "-lx264", "-liphlpapi"
             ],
+	    "linux_link_args" : [
+		    "-lx264", "-lyuv"
+	    ],
             "defines" : ["-DBUILD_SERVER"],
-            "sources": [ "$server_sources", "source/main.server.cpp" ]
+            "sources": [
+                "source/VideoStreamSessionManager.cpp",
+                "source/VideoStreamSession.cpp",
+                "source/Encoder.cpp",
+                "source/main.server.cpp"
+            ],
+            "windows_sources" : [
+                "source/VideoSourceManagerWindows.cpp",
+                "source/VideoSourceWindows.cpp",
+                "source/Win32/Win32ImagingDevice.cpp"
+            ],
+            "linux_sources" : [
+                "source/VideoSourceManagerLinux.cpp",
+                "source/VideoSourceLinux.cpp"
+            ]
         },
         {
             "name" : "client",
@@ -90,44 +103,11 @@
             "defines" : ["-DBUILD_CLIENT"],
             "sources" : [ "$client_sources", "$gui_sources", "source/main.client.cpp" ]
         }
-        // , The guitest target was just for experiment, it won't build!
-        // {
-        //     "name" : "guitest",
-        //     "is_executable" : true,
-        //     "defines" : ["-DBUILD_GUITEST"],
-        //     "dependencies" : ["gtk+-3.0"],
-        //     "sources" : [
-        //         "source/main.guitest.cpp",
-        //         "$gui_sources"
-        //     ]
-        // },
-        // The main target was just for experiment, it won't build!
-        // {
-        //     "name" : "main",
-        //     "is_executable" : true,
-        //     "defines" : ["-DBUILD_TEST", "-DBUILD_CLIENT"],
-        //     "dependencies" : ["gtk+-3.0", "vulkanheaders"],
-        //     "include_dirs" : [
-        //         "./external-dependencies/NvidiaCodec/include/",
-        //         "$cuda_includes"
-        //     ],
-        //     "windows_link_args" : [
-        //         "link_dir: './external-dependencies/x264'", "-lx264",
-        //         "link_dir: './external-dependencies/NvidiaCodec/'", "-l:nvcuvid.lib",
-        //         "link_dir: $cuda_libs_path", "-l:cuda.lib",
-        //         "link_dir: $vulkan_libs_path", "-lvulkan-1"                
-        //     ],
-        //     "sources" : [
-        //         "source/main.cpp",
-        //         "$client_sources",
-        //         "$gui_sources"
-        //     ]
-        // }
     ],
     "sources" : [
-        "source/Network/NetworkSocket.cpp",
-        "source/Network/NetworkAsyncQueueSocket.cpp",
-        "source/VideoSourceStream.cpp",
+        "source/assert.cpp"
+    ],
+    "windows_sources" : [
         "source/Win32/Win32.cpp"
     ]
 }

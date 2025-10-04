@@ -47,37 +47,39 @@ namespace SKVMOIP
 		m_kmNetStream = std::unique_ptr<KMNetStream>(new KMNetStream());
 		m_kmConnectThread = std::unique_ptr<std::thread>(new std::thread([this](std::string&& kmIPAddress, std::string&& kmPortNumber, std::string&& vIPAddress, std::string&& vPortNumber)
 			{
-				DEBUG_LOG_INFO("KeyMo: Trying to connect to %s:%s", kmIPAddress.c_str(), kmPortNumber.c_str());
-				if(m_kmNetStream->connect(kmIPAddress.c_str(), kmPortNumber.c_str()) == Network::Result::Success)
+				// DEBUG_LOG_INFO("KeyMo: Trying to connect to %s:%s", kmIPAddress.c_str(), kmPortNumber.c_str());
+				// if(m_kmNetStream->connect(kmIPAddress.c_str(), kmPortNumber.c_str()) == netsocket::Result::Success)
+				// 	DEBUG_LOG_INFO("KeyMo Connected to %s:%s", kmIPAddress.c_str(), kmPortNumber.c_str());
+				// else
+				// {
+				// 	DEBUG_LOG_ERROR("Failed to connect to KeyMo Server at %s:%s", kmIPAddress.c_str(), kmPortNumber.c_str());
+				// 	m_kmNetStream->close();
+				// 	m_kmNetStream.reset();
+				// }
+
+				m_controlSocket = std::unique_ptr<netsocket::Socket>(new netsocket::Socket(netsocket::SocketType::Stream, netsocket::IPAddressFamily::IPv4, netsocket::IPProtocol::TCP));
+				DEBUG_LOG_INFO("Trying to connect to %s:%s", vIPAddress.c_str(), vPortNumber.c_str());
+				if(m_controlSocket->connect(vIPAddress.c_str(), vPortNumber.c_str()) == netsocket::Result::Success)
 				{
-					DEBUG_LOG_INFO("KeyMo Connected to %s:%s", kmIPAddress.c_str(), kmPortNumber.c_str());
-					m_controlSocket = std::unique_ptr<Network::Socket>(new Network::Socket(Network::SocketType::Stream, Network::IPAddressFamily::IPv4, Network::IPProtocol::TCP));
-					DEBUG_LOG_INFO("Trying to connect to %s:%s", vIPAddress.c_str(), vPortNumber.c_str());
-					if(m_controlSocket->connect(vIPAddress.c_str(), vPortNumber.c_str()) == Network::Result::Success)
+					DEBUG_LOG_INFO("Video Control Connected to %s:%s", vIPAddress.c_str(), vPortNumber.c_str());
+					u8 socketType = EnumClassToInt(SocketType::Control);
+					DEBUG_LOG_INFO("Sending Socket Type: Control");
+					if(m_controlSocket->send(&socketType, sizeof(u8)) == netsocket::Result::Success)
 					{
-						DEBUG_LOG_INFO("Video Control Connected to %s:%s", vIPAddress.c_str(), vPortNumber.c_str());
-						u8 socketType = EnumClassToInt(SocketType::Control);
-						DEBUG_LOG_INFO("Sending Socket Type: Control");
-						if(m_controlSocket->send(&socketType, sizeof(u8)) == Network::Result::Success)
+						DEBUG_LOG_INFO("Requesting client ID");
+						if(m_controlSocket->receive(reinterpret_cast<u8*>(&m_clientID), sizeof(u32)) == netsocket::Result::Success)
 						{
-							DEBUG_LOG_INFO("Requesting client ID");
-							if(m_controlSocket->receive(reinterpret_cast<u8*>(&m_clientID), sizeof(u32)) == Network::Result::Success)
-							{
-								DEBUG_LOG_INFO("ClientID Received: %lu", m_clientID);
-								m_isKMNetStreamConnected = true;
-								if(m_connectionStatusCallback != NULL)
-									m_connectionStatusCallback(true, m_callbackUserData);
-								return;
-							}
-							else DEBUG_LOG_ERROR("Failed to receive client id from video server");
+							DEBUG_LOG_INFO("ClientID Received: %lu", m_clientID);
+							m_isKMNetStreamConnected = true;
+							if(m_connectionStatusCallback != NULL)
+								m_connectionStatusCallback(true, m_callbackUserData);
+							return;
 						}
-						else DEBUG_LOG_ERROR("Failed to send socket type: control");
+						else DEBUG_LOG_ERROR("Failed to receive client id from video server");
 					}
-					else DEBUG_LOG_INFO("Failed to connect to Video Server at %s:%s", vIPAddress.c_str(), vPortNumber.c_str());	
-					m_kmNetStream->close();
-					m_kmNetStream.reset();
+					else DEBUG_LOG_ERROR("Failed to send socket type: control");
 				}
-				else DEBUG_LOG_ERROR("Failed to connect to KeyMo Server at %s:%s", kmIPAddress.c_str(), kmPortNumber.c_str());
+				else DEBUG_LOG_INFO("Failed to connect to Video Server at %s:%s", vIPAddress.c_str(), vPortNumber.c_str());
 				if(m_connectionStatusCallback != NULL)
 					m_connectionStatusCallback(false, m_callbackUserData);
 			}, std::move(std::string(kmIPAddress)), std::move(std::string(kmPortNumber)), std::move(std::string(vipAddress)), std::move(std::string(vPortNumber))));
@@ -98,20 +100,20 @@ namespace SKVMOIP
 		m_decodeNetStream = std::unique_ptr<HDMIDecodeNetStream>(new HDMIDecodeNetStream(1920, 1080, 60, 1, 32));
 		DEBUG_LOG_INFO("Trying to connect to %s:%s", ipAddress, portNumber);
 		/* pauses (acquires mutex from) the network thread and waiting for connecting with the server */
-		if(m_decodeNetStream->connect(ipAddress, portNumber) == Network::Result::Success)
+		if(m_decodeNetStream->connect(ipAddress, portNumber) == netsocket::Result::Success)
 		{
 			DEBUG_LOG_INFO("Video Connected to %s:%s", ipAddress, portNumber);
 			u8 socketType = EnumClassToInt(SocketType::Stream);
-			DEBUG_LOG_INFO("Sending socket type: Stream");
+			DEBUG_LOG_INFO("Sending socket type: Stream: %u", socketType);
 			bool isFailed = false;
-			Network::Socket& socket = m_decodeNetStream->getSocket();
-			if(socket.send(&socketType, sizeof(u8)) == Network::Result::Success)
+			netsocket::Socket& socket = m_decodeNetStream->getSocket();
+			if(socket.send(&socketType, sizeof(u8)) == netsocket::Result::Success)
 			{
 				DEBUG_LOG_INFO("Sending client id: %lu", m_clientID);
-				if(socket.send(reinterpret_cast<u8*>(&m_clientID), sizeof(u32)) == Network::Result::Success)
+				if(socket.send(reinterpret_cast<u8*>(&m_clientID), sizeof(u32)) == netsocket::Result::Success)
 				{
 					DEBUG_LOG_INFO("Waiting for acknowledgement...");
-					if((socket.receive(&socketType, sizeof(u8)) == Network::Result::Success) && (socketType == EnumClassToInt(Message::ACK)))
+					if((socket.receive(&socketType, sizeof(u8)) == netsocket::Result::Success) && (socketType == EnumClassToInt(Message::ACK)))
 						DEBUG_LOG_INFO("Video Stream is acknowledged by the video server");
 					else
 					{
@@ -141,10 +143,10 @@ namespace SKVMOIP
 
 			u8 message = EnumClassToInt(Message::Start);
 			DEBUG_LOG_INFO("Requesting Stream Start...");
-			if(m_controlSocket->send(&message, sizeof(u8)) == Network::Result::Success)
+			if(m_controlSocket->send(&message, sizeof(u8)) == netsocket::Result::Success)
 			{
 				DEBUG_LOG_INFO("Sending device ID: %lu", deviceID);
-				if(m_controlSocket->send(&deviceID, sizeof(u8)) == Network::Result::Success)
+				if(m_controlSocket->send(&deviceID, sizeof(u8)) == netsocket::Result::Success)
 					DEBUG_LOG_INFO("Stream Device Connected!");
 				else DEBUG_LOG_ERROR("Failed to send device ID: %lu", deviceID);
 			}
@@ -237,7 +239,7 @@ namespace SKVMOIP
 		if(rdp.isConnected())
 		{
 			std::vector<Win32::KeyboardInput>& keyComb = *reinterpret_cast<std::vector<Win32::KeyboardInput>*>(keyCombPtr);
-			_assert(keyComb.size() >= 2);
+			skvmoip_debug_assert(keyComb.size() >= 2);
 			auto& kmNetStream = rdp.getKMNetStream();
 			for(std::size_t i = 0; i < (keyComb.size() - 1); i++)
 			{
@@ -258,7 +260,7 @@ namespace SKVMOIP
 		if(rdp.isConnected())
 		{
 			std::vector<Win32::KeyboardInput>& keyComb = *reinterpret_cast<std::vector<Win32::KeyboardInput>*>(keyCombPtr);
-			_assert(keyComb.size() >= 2);
+			skvmoip_debug_assert(keyComb.size() >= 2);
 			auto& kmNetStream = rdp.getKMNetStream();
 			for(std::size_t i = 0; i < (keyComb.size() - 1); i++)
 			{
@@ -273,7 +275,7 @@ namespace SKVMOIP
 	static void MouseInputHandler(void* mouseInputData, void* userData)
 	{
 		static bool isInvoked = false;
-		_assert(mouseInputData != NULL);
+		skvmoip_debug_assert(mouseInputData != NULL);
 		RDPSession& rdp = *reinterpret_cast<RDPSession*>(userData);
 		if(!rdp.getWindow()->isLocked())
 			return;
@@ -292,7 +294,7 @@ namespace SKVMOIP
 	static void KeyboardInputHandler(void* keyboardInputData, void* userData)
 	{
 		static bool isInvoked = false;
-		_assert(keyboardInputData != NULL);
+		skvmoip_debug_assert(keyboardInputData != NULL);
 		RDPSession& rdp = *reinterpret_cast<RDPSession*>(userData);
 		if(!rdp.getWindow()->isLocked())
 			return;
@@ -312,7 +314,7 @@ namespace SKVMOIP
 	#ifndef USE_VULKAN_PRESENTATION
 	static void WindowPaintHandler(void* paintInfo, void* userData)
 	{
-		_assert(paintInfo != NULL);
+		skvmoip_debug_assert(paintInfo != NULL);
 		RDPSession& rdp = *reinterpret_cast<RDPSession*>(userData);
 		auto& decodeNetStream = rdp.getDecodeNetStream();
 		auto& drawSurface = rdp.getDrawSurface();
@@ -321,8 +323,8 @@ namespace SKVMOIP
 		{
 			// debug_log_info("FrameData borrowed");
 			auto frameData = FIFOPool<HDMIDecodeNetStream::FrameData>::GetValue(frame);
-			_assert(frameData.has_value());
-			_assert(frameData->getSize() == drawSurface->getBufferSize());
+			skvmoip_debug_assert(frameData.has_value());
+			skvmoip_debug_assert(frameData->getSize() == drawSurface->getBufferSize());
 			/* Takes: 1 ms to 4 ms */
 			memcpy(drawSurface->getPixels(), frameData->getPtr(), frameData->getSize());
 			decodeNetStream->returnFrameData(frame);

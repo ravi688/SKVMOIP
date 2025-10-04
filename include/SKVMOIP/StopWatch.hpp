@@ -54,7 +54,7 @@ namespace SKVMOIP
 			}
 			else
 			{
-				_assert(false);
+				skvmoip_debug_assert(false);
 				return 0;
 			}
 		}
