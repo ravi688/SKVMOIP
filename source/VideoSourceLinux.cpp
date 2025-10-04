@@ -20,6 +20,8 @@
 
 #include <cstdint>
 
+#include <libyuv.h>
+
 namespace SKVMOIP
 {
 	static std::optional<VideoSourceLinux::Device> OpenDevice(const std::string_view devicePath)
@@ -38,7 +40,7 @@ namespace SKVMOIP
 		fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 		fmt.fmt.pix.width = 1920;
 		fmt.fmt.pix.height = 1080;
-		fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_NV12;
+		fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV; // V4L2_PIX_FMT_NV12;
 		fmt.fmt.pix.field = V4L2_FIELD_NONE;
 
 		if (ioctl(fd, VIDIOC_S_FMT, &fmt) < 0)
@@ -46,6 +48,8 @@ namespace SKVMOIP
 			spdlog::error("Failed to set format for device at {}", devicePath);
 		    return { };
 		}
+
+		skvmoip_assert(fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV);
 
     	std::cout << "Set format: " << fmt.fmt.pix.width << "x"
     	          << fmt.fmt.pix.height << " "
@@ -203,13 +207,13 @@ namespace SKVMOIP
 	
 		// Access NV12 data here:
 		uint8_t* data = (uint8_t*)m_device->buffers[buf.index].start;
-		size_t data_size = buf.bytesused;
+		int ret = libyuv::YUY2ToNV12(data, 1920 * 2,
+						nv12Buffer, 1920,          // Y
+    						nv12Buffer + (1920 * 1080), 1920,         // UV interleaved
+    						1920, 1080);
 
-		skvmoip_debug_assert(data_size == nv12BufferSize);
-
-		// Process NV12 frame (Y plane + UV interleaved)
-		std::memcpy(nv12Buffer, data, data_size);
-	
+		if(ret)
+			spdlog::error("Failed to convert YUVV 4:2:2 to YUV 4:20 (NV12)");
 		// Re-queue buffer
 		if(ioctl(m_device->fd, VIDIOC_QBUF, &buf) < 0)
 		{

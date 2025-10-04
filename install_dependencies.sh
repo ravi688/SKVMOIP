@@ -32,4 +32,5 @@ if [ "$PLATFORM" == "MINGW" ]; then
 else
 	apt-get install libgtk-3-dev
 	apt-get -y install libx264-dev
+	apt-get -y install libyuv-dev
 fi

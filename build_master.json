@@ -68,7 +68,7 @@
                 "link_dir: './external-dependencies/x264'", "-lx264", "-liphlpapi"
             ],
 	    "linux_link_args" : [
-		    "-lx264"
+		    "-lx264", "-lyuv"
 	    ],
             "defines" : ["-DBUILD_SERVER"],
             "sources": [
