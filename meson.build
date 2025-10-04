@@ -239,7 +239,7 @@ server_dependencies_bm_internal__ = [
 ]
 server_link_args_bm_internal__ = {
 'windows' : ['-L' + meson.project_source_root() + '/' +  './external-dependencies/x264', '-lx264', '-liphlpapi'],
-'linux' : [],
+'linux' : ['-lx264', '-lyuv'],
 'darwin' : []
 }
 server_platform_src_bm_internal__ = {
